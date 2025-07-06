@@ -6,7 +6,7 @@
 </style>
 @section('content')
     <div class="container">
-        <h1>Gestione Utentiwewewe</h1>
+        <h1>Gestione Utenti e di sticazzi</h1>
         <table class="table table-striped table-hover align-middle text-center" id="users-table">
             <thead>
                 <tr>
