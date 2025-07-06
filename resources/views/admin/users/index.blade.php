@@ -13,7 +13,7 @@
                     <th>Nome</th>
                     <th>Cognome</th>
                     <th>Email</th>
-                    <th>Ruoli</th>
+                    <th>Ruolo</th>
                     <th>Abilitato</th>
                     <th>Azioni</th>
                 </tr>
