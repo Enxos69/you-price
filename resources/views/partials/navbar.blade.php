@@ -1,6 +1,7 @@
 <!-- resources/views/partials/navbar.blade.php -->
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
     <a class="navbar-brand" href="/">
+        <span>ecco env: {{ env('ASSET_URL') }}</span>
         <img src="{{ env('ASSET_URL') }}/img/logo.png" alt="Logo" style="height: 50px;">
     </a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav"
