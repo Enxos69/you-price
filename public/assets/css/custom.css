@@ -3,7 +3,7 @@
 #homepage{
     
    /* background-image: url({{ env('ASSET_URL') }}/img/home_background.jpg');  */
-    background-image: url("../img/home_background.jpg");
+    background-image: url("{{ config('app.asset_url') }}/img/home_background.jpg");
     background-size: cover; background-position: center; height: 100vh;
     margin-top:30px;
 }
