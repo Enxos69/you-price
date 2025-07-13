@@ -16,7 +16,8 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: enxos.website
+          host: 109.106.246.2
+          port: 65002
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
