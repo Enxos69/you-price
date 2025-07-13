@@ -1,0 +1,30 @@
+name: 🚀 Deploy to Enxos Website
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 109.106.246.2
+          username: u512107240
+          port: 65002
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/u512107240/domains/enxos.website/public_hyml    # <- Cambialo se serve
+            git pull origin main
+            composer install --no-dev --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
