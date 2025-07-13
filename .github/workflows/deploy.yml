@@ -1,4 +1,4 @@
-name: 🚀 Deploy to Enxos Website
+name: 🚀 Deploy to Hostinger
 
 on:
   push:
@@ -10,22 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: ⏬ Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: 📡 Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          host: 109.106.246.2
-          username: u512107240
-          port: 65002
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/u512107240/domains/enxos.website/public_html    
-            git reset --hard HEAD        
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🚀 Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no u512107240@enxos.website << 'EOF'
+            cd ~/domains/enxos.website/public_html
+            git reset --hard
             git pull origin main
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+          EOF
