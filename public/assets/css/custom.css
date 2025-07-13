@@ -1,8 +1,6 @@
 /* Aggiungi questo CSS al tuo file app.css o in un tag <style> nel file Blade */
 
-#homepage{
-    
-   /* background-image: url({{ env('ASSET_URL') }}/img/home_background.jpg');  */
+#homepage{    
     background-image: url("/assets/img/home_background.jpg");
     background-size: cover; background-position: center; height: 100vh;
     margin-top:30px;
