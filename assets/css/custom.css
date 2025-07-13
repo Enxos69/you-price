@@ -1,0 +1,129 @@
+/* Aggiungi questo CSS al tuo file app.css o in un tag <style> nel file Blade */
+
+#homepage{
+    
+   /* background-image: url({{ env('ASSET_URL') }}/img/home_background.jpg');  */
+    background-image: url("../img/home_background.jpg");
+    background-size: cover; background-position: center; height: 100vh;
+    margin-top:30px;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: white !important;
+}
+
+.navbar-brand img {
+    height: 50px;
+}
+
+.jumbotron {
+    margin-top: 80px;
+    /* Aggiusta questo valore in base all'altezza della navbar */
+}
+
+.container {
+    margin-top: 80px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+}
+
+.nav-item.w-100 {
+    width: 100%;
+}
+
+.nav-link {
+    display: inline-block;
+    text-align: center;
+}
+
+.navbar-nav .dropdown-menu {
+    background-color: #333;
+    border: none;
+    box-shadow: none;
+}
+
+.navbar-nav .dropdown-item {
+    color: darkgreen;
+}
+
+.navbar-nav .dropdown-item:hover {
+    background-color: lightgrey;
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+    .navbar-nav.mx-auto {
+        margin: 0;
+    }
+}
+
+/* Personalizzazione dell'aspetto */
+table.dataTable thead {
+    background-color: darkgreen;
+    color: white;
+}
+
+table.dataTable {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+table.dataTable tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+table.dataTable thead th,
+table.dataTable thead td {
+    padding: 5px 6px !important;
+    border-bottom: 1px solid #111;
+}
+
+table.dataTable td,
+table.dataTable th {
+    padding: 2px 5px !important;
+}
+
+table.dataTable td {
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: darkgreen !important;
+    border-color: darkgreen !important;    
+    margin-right: 5px;
+}
+
+.btn-primary:hover {
+    background-color: darkolivegreen !important;
+    border-color: darkolivegreen !important;
+    margin-right: 5px;
+}
+.btn-lock {
+    background-color: red !important;
+    border-color: red !important;
+    color: white !important;
+}
+
+.btn-lock:hover {
+    background-color: darkred !important;
+    border-color: darkred !important;
+    color: white !important;
+}
+
+.btn-unlock {
+    background-color: darkcyan !important;
+    border-color: darkcyan !important;
+    color: white !important;
+}
+
+.btn-unlock:hover {
+    background-color: darkslategrey !important;
+    border-color: darkslategrey !important;
+    color: white !important;
+}
+ 
