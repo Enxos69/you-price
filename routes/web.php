@@ -1,8 +1,6 @@
 <?php
 
-// routes/web.php
-use Livewire\Livewire;
-use Illuminate\Support\Facades\Auth;
+// routes/web.php - Versione semplificata senza middleware admin
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
@@ -19,9 +17,6 @@ use App\Http\Controllers\Auth\ConfirmPasswordController;
 Route::get('/', function () {
     return view('index');
 });
-
-// Route di default per autenticazione
-//Auth::routes();
 
 // Login Routes...
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -47,33 +42,39 @@ Route::post('email/resend', [VerificationController::class, 'resend'])->name('ve
 Route::get('password/confirm', [ConfirmPasswordController::class, 'showConfirmForm'])->name('password.confirm');
 Route::post('password/confirm', [ConfirmPasswordController::class, 'confirm']);
 
-// Rotte per le crociere
+// Rotte per le crociere (pubbliche)
 Route::get('/crociere', [CrocieraController::class, 'index'])->name('crociere.index');
 Route::post('/crociere/search', [CrocieraController::class, 'search'])->name('crociere.search');
 Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('crociere.stats');
 
-
+// Tutte le rotte protette solo da autenticazione
 Route::middleware('auth')->group(function () {
-    // Rotte per gli admin
+    
+    // Rotte admin (senza controllo isAdmin per ora)
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
+    
+    // Import Crociere
     Route::get('/admin/import-crociere', [CruiseImportController::class, 'showForm'])->name('cruises.import.form');
     Route::post('/admin/import-crociere', [CruiseImportController::class, 'import'])->name('cruises.import');
-
-
-    // Rotte per gli utenti
-    Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
-
-    // Rotta generica per gli utenti autenticati
-    Route::get('/home', function () {
-        return view('home');
-    })->name('home');
-
+    Route::get('/admin/import-results', [CruiseImportController::class, 'showResults'])->name('cruises.import.results');
+    Route::get('/admin/import-data', [CruiseImportController::class, 'getImportedCruisesData'])->name('cruises.import.data');
+    Route::get('/admin/download-skipped', [CruiseImportController::class, 'downloadSkippedRecords'])->name('cruises.import.download-skipped');
+    
+    // Gestione Utenti
     Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/admin/users/data', [UserController::class, 'getUsersData'])->name('users.data');
     Route::get('/admin/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
     Route::post('/admin/users/update', [UserController::class, 'update'])->name('users.update');
     Route::post('/admin/users/lock', [UserController::class, 'lock'])->name('users.lock');
     Route::post('/admin/users/unlock', [UserController::class, 'unlock'])->name('users.unlock');
+
+    // Rotte per gli utenti normali
+    Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
+
+    // Rotta generica per gli utenti autenticati
+    Route::get('/home', function () {
+        return view('home');
+    })->name('home');
 
     // RICHIESTE UTENTE
     Route::get('/richieste', [RichiestaController::class, 'index'])->name('richieste.index');

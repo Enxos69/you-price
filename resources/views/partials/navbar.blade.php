@@ -9,63 +9,66 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav mx-auto">
-            <!-- Menu orizzontale per ruolo -->
+            <!-- Menu orizzontale -->
             @auth
-
-                @if (Auth::user()->isAdmin())
-                    <li class="nav-item dropdown">
-                        <a class="dropdown-item" href="#">Dashboard</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="dropdown-item" href="{{ route('user.index') }}">Gestione Utenti</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="dropdown-item" href="{{ route('cruises.import.form') }}">Importa Crociere</a>
-                    </li>
-                @elseif(Auth::user()->isUser())
-                    <a class="dropdown-item" href="#">Profilo</a>
-                    <a class="dropdown-item" href="{{ route('richieste.index') }}">Le Mie Richieste</a>
-                    <a class="dropdown-item" href="#">Supporto</a>
-                @endif
-        </div>
-        </li>
-    @endauth
-    </ul>
-    <ul class="navbar-nav ml-auto">
-        @if (Route::has('login'))
-            @auth
-                <li class="nav-item w-100">
-                    <a class="nav-link" href="{{ url('/home') }}">
-                        <i class="fa-solid fa-house"></i> Home
-                    </a>
-                    <a class="nav-link ml-3" href="{{ route('logout') }}"
-                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                        <i class="fa-solid fa-right-from-bracket"></i> Logout
-                    </a>
-                    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
-                        @csrf
-                    </form>
-                </li>
-            @else
-                <li class="nav-item">
-                    <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
-                        Fai la tua Ricerca!
-                    </a>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </a>
-                </li>
-                @if (Route::has('register'))
+                <!-- Controllo semplice per admin: se l'utente ha ID 1 o email contiene admin -->
+                @if (Auth::user()->id == 1 || strpos(Auth::user()->email, 'admin') !== false)
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('register') }}">
-                            <i class="fas fa-user-plus"></i> Registrati
+                        <a class="nav-link" href="{{ route('admin.index') }}">Dashboard Admin</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('users.index') }}">Gestione Utenti</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('cruises.import.form') }}">Importa Crociere</a>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('user.index') }}">Profilo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('richieste.index') }}">Le Mie Richieste</a>
+                    </li>
+                @endif
+            @endauth
+        </ul>
+        <ul class="navbar-nav ml-auto">
+            @if (Route::has('login'))
+                @auth
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url('/home') }}">
+                            <i class="fa-solid fa-house"></i> Home
                         </a>
                     </li>
-                @endif
-                </li>
-            @endauth
-        @endif
-    </ul>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('logout') }}"
+                            onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
+                        <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                            @csrf
+                        </form>
+                    </li>
+                @else
+                    <li class="nav-item">
+                        <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
+                            Fai la tua Ricerca!
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('login') }}">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                    </li>
+                    @if (Route::has('register'))
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('register') }}">
+                                <i class="fas fa-user-plus"></i> Registrati
+                            </a>
+                        </li>
+                    @endif
+                @endauth
+            @endif
+        </ul>
     </div>
 </nav>
