@@ -70,34 +70,6 @@
                                 </div>
                             </div>
 
-                            <!-- Filters and Search -->
-                            <div class="filters-section">
-                                <div class="search-container">
-                                    <div class="search-box">
-                                        <i class="fas fa-search"></i>
-                                        <input type="text" id="globalSearch" placeholder="Cerca utenti..." class="search-input">
-                                    </div>
-                                </div>
-                                <div class="filters-container">
-                                    <div class="filter-group">
-                                        <label for="roleFilter">Ruolo:</label>
-                                        <select id="roleFilter" class="filter-select">
-                                            <option value="">Tutti i ruoli</option>
-                                            <option value="admin">Amministratore</option>
-                                            <option value="user">Utente</option>
-                                        </select>
-                                    </div>
-                                    <div class="filter-group">
-                                        <label for="statusFilter">Stato:</label>
-                                        <select id="statusFilter" class="filter-select">
-                                            <option value="">Tutti gli stati</option>
-                                            <option value="1">Attivo</option>
-                                            <option value="0">Disabilitato</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- Table Container -->
                             <div class="table-container">
                                 <table class="table users-table" id="users-table">
