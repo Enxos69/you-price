@@ -9,6 +9,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CrocieraController;
 use App\Http\Controllers\RichiestaController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CruiseImportController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -46,9 +47,7 @@ Route::post('email/resend', [VerificationController::class, 'resend'])->name('ve
 Route::get('password/confirm', [ConfirmPasswordController::class, 'showConfirmForm'])->name('password.confirm');
 Route::post('password/confirm', [ConfirmPasswordController::class, 'confirm']);
 
-//Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-
-
+// Rotte per le crociere
 Route::get('/crociere', [CrocieraController::class, 'index'])->name('crociere.index');
 Route::post('/crociere/search', [CrocieraController::class, 'search'])->name('crociere.search');
 Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('crociere.stats');
@@ -57,6 +56,8 @@ Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('cr
 Route::middleware('auth')->group(function () {
     // Rotte per gli admin
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
+    Route::get('/admin/import-crociere', [CruiseImportController::class, 'showForm'])->name('cruises.import.form');
+    Route::post('/admin/import-crociere', [CruiseImportController::class, 'import'])->name('cruises.import');
 
 
     // Rotte per gli utenti
