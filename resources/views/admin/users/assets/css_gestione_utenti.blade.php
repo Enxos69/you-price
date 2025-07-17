@@ -14,7 +14,7 @@
 
 /* Wrapper principale */
 .users-page-wrapper {
-    padding-top: 50px;
+    padding-top: 90px;
     padding-bottom: 20px;
     background: linear-gradient(135deg, #f8fdfc 0%, #e8f5f3 100%);
     min-height: 100vh;
@@ -260,7 +260,7 @@
     box-shadow: 0 0 0 3px rgba(132, 188, 0, 0.1);
 }
 
-/* Table Container */
+/* Table Container - FIX RESPONSIVE */
 .table-container {
     position: relative;
     background: white;
@@ -272,6 +272,44 @@
 .users-table {
     margin-bottom: 0;
     width: 100%;
+    table-layout: fixed; /* FIX: Layout fisso per controllare le larghezze */
+}
+
+/* FIX: Larghezze colonne ottimizzate */
+.users-table th:nth-child(1), /* Nome */
+.users-table td:nth-child(1) {
+    width: 15%;
+    min-width: 120px;
+}
+
+.users-table th:nth-child(2), /* Cognome */
+.users-table td:nth-child(2) {
+    width: 15%;
+    min-width: 120px;
+}
+
+.users-table th:nth-child(3), /* Email */
+.users-table td:nth-child(3) {
+    width: 25%;
+    min-width: 200px;
+}
+
+.users-table th:nth-child(4), /* Ruolo */
+.users-table td:nth-child(4) {
+    width: 15%;
+    min-width: 130px; /* FIX: Larghezza minima per evitare wrapping */
+}
+
+.users-table th:nth-child(5), /* Stato */
+.users-table td:nth-child(5) {
+    width: 12%;
+    min-width: 110px;
+}
+
+.users-table th:nth-child(6), /* Azioni */
+.users-table td:nth-child(6) {
+    width: 18%;
+    min-width: 140px;
 }
 
 .users-table thead {
@@ -282,12 +320,13 @@
     color: white;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: 0.75rem; /* FIX: Font più piccolo per header */
     letter-spacing: 0.5px;
-    padding: 1rem 0.75rem;
+    padding: 0.75rem 0.5rem; /* FIX: Padding ridotto */
     border: none;
     text-align: center;
     vertical-align: middle;
+    white-space: nowrap; /* FIX: Evita wrapping negli header */
 }
 
 .users-table tbody tr {
@@ -297,28 +336,39 @@
 
 .users-table tbody tr:hover {
     background-color: rgba(132, 188, 0, 0.05);
-    transform: scale(1.01);
+    transform: scale(1.005); /* FIX: Trasformazione ridotta */
 }
 
 .users-table tbody td {
-    padding: 1rem 0.75rem;
+    padding: 0.75rem 0.5rem; /* FIX: Padding ridotto */
     vertical-align: middle;
     text-align: center;
     border: none;
     font-weight: 500;
+    font-size: 0.9rem; /* FIX: Font leggermente più piccolo */
+    word-wrap: break-word; /* FIX: Gestisce testi lunghi */
+    overflow: hidden;
 }
 
-/* Status Badges */
+/* FIX: Gestione testi lunghi nelle celle */
+.users-table tbody td:nth-child(3) { /* Email */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* Status Badges - FIX COMPATTI */
 .status-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
+    border-radius: 15px; /* FIX: Border radius ridotto */
+    font-size: 0.7rem; /* FIX: Font più piccolo */
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
+    white-space: nowrap; /* FIX: Evita wrapping */
 }
 
 .status-badge.active {
@@ -333,14 +383,18 @@
     border: 1px solid rgba(220, 53, 69, 0.2);
 }
 
-/* Role Badges */
+/* Role Badges - FIX COMPATTI */
 .role-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
+    border-radius: 15px;
+    font-size: 0.7rem; /* FIX: Font più piccolo */
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    white-space: nowrap; /* FIX: Evita wrapping del testo */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
 }
 
 .role-badge.admin {
@@ -355,17 +409,18 @@
     border: 1px solid rgba(132, 188, 0, 0.2);
 }
 
-/* Action Buttons */
+/* Action Buttons - FIX COMPATTI */
 .action-buttons {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.3rem; /* FIX: Gap ridotto */
     justify-content: center;
+    flex-wrap: nowrap; /* FIX: Evita wrapping */
 }
 
 .btn-sm {
-    padding: 0.4rem 0.8rem;
-    font-size: 0.8rem;
-    border-radius: 6px;
+    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
+    font-size: 0.75rem; /* FIX: Font più piccolo */
+    border-radius: 5px;
     font-weight: 500;
     transition: all 0.3s ease;
     border: none;
@@ -373,7 +428,9 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
+    min-width: 32px; /* FIX: Larghezza minima */
+    height: 28px; /* FIX: Altezza fissa */
 }
 
 .btn-primary {
@@ -503,7 +560,31 @@
     border-color: var(--youPrice-accent) !important;
 }
 
-/* Responsive */
+/* FIX RESPONSIVE - Schermi piccoli */
+@media (max-width: 1200px) {
+    .users-table {
+        font-size: 0.8rem;
+    }
+    
+    .users-table th,
+    .users-table td {
+        padding: 0.5rem 0.25rem;
+    }
+    
+    .role-badge,
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.7rem;
+        min-width: 28px;
+        height: 24px;
+    }
+}
+
 @media (max-width: 768px) {
     .users-page-wrapper {
         padding-top: 70px;
@@ -537,8 +618,13 @@
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .action-buttons {
-        flex-direction: column;
+    /* FIX: Tabella mobile con scroll orizzontale */
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .users-table {
+        min-width: 700px; /* FIX: Larghezza minima per scroll orizzontale */
     }
 }
 
@@ -548,12 +634,13 @@
     }
     
     .users-table {
-        font-size: 0.8rem;
+        min-width: 600px;
+        font-size: 0.75rem;
     }
     
-    .users-table thead th,
-    .users-table tbody td {
-        padding: 0.5rem 0.25rem;
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.2rem;
     }
 }
 </style>
