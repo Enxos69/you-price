@@ -1,152 +1,153 @@
 @extends('layouts.app')
-<style>
-    td {
-        vertical-align: middle !important;
-    }
-</style>
+
 @section('content')
-    <div class="container">
-        <h1>Gestione Utenti</h1>
-        <table class="table table-striped table-hover align-middle text-center" id="users-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Cognome</th>
-                    <th>Email</th>
-                    <th>Ruolo</th>
-                    <th>Abilitato</th>
-                    <th>Azioni</th>
-                </tr>
-            </thead>
-        </table>
+    <div class="users-page-wrapper">
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-12">
+                    
+                    <!-- Header della pagina -->
+                    <div class="page-header">
+                        <div class="header-content">
+                            <div class="header-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="header-text">
+                                <h1>Gestione Utenti</h1>
+                                <p>Amministra e gestisci tutti gli utenti del sistema</p>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <button class="btn btn-action" onclick="refreshTable()" style="color: white">
+                                <i class="fas fa-sync-alt me-2"></i>Aggiorna
+                            </button>
+                            <button class="btn btn-action" onclick="exportUsers()" style="color: white">
+                                <i class="fas fa-download me-2"></i>Esporta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Card principale -->
+                    <div class="users-card">
+                        <div class="card-body">                            
+                            <!-- Statistics Row -->
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-number" id="totalUsers">-</div>
+                                        <div class="stat-label">Totale Utenti</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon active">
+                                        <i class="fas fa-user-check"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-number" id="activeUsers">-</div>
+                                        <div class="stat-label">Utenti Attivi</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon disabled">
+                                        <i class="fas fa-user-times"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-number" id="disabledUsers">-</div>
+                                        <div class="stat-label">Utenti Disabilitati</div>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-icon admin">
+                                        <i class="fas fa-user-shield"></i>
+                                    </div>
+                                    <div class="stat-content">
+                                        <div class="stat-number" id="adminUsers">-</div>
+                                        <div class="stat-label">Amministratori</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filters and Search -->
+                            <div class="filters-section">
+                                <div class="search-container">
+                                    <div class="search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" id="globalSearch" placeholder="Cerca utenti..." class="search-input">
+                                    </div>
+                                </div>
+                                <div class="filters-container">
+                                    <div class="filter-group">
+                                        <label for="roleFilter">Ruolo:</label>
+                                        <select id="roleFilter" class="filter-select">
+                                            <option value="">Tutti i ruoli</option>
+                                            <option value="admin">Amministratore</option>
+                                            <option value="user">Utente</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label for="statusFilter">Stato:</label>
+                                        <select id="statusFilter" class="filter-select">
+                                            <option value="">Tutti gli stati</option>
+                                            <option value="1">Attivo</option>
+                                            <option value="0">Disabilitato</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Table Container -->
+                            <div class="table-container">
+                                <table class="table users-table" id="users-table">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <i class="fas fa-user me-2"></i>Nome
+                                            </th>
+                                            <th>
+                                                <i class="fas fa-user me-2"></i>Cognome
+                                            </th>
+                                            <th>
+                                                <i class="fas fa-envelope me-2"></i>Email
+                                            </th>
+                                            <th>
+                                                <i class="fas fa-user-tag me-2"></i>Ruolo
+                                            </th>
+                                            <th>
+                                                <i class="fas fa-toggle-on me-2"></i>Stato
+                                            </th>
+                                            <th>
+                                                <i class="fas fa-cogs me-2"></i>Azioni
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dati caricati via AJAX -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Loading Overlay -->
+                            <div class="loading-overlay d-none" id="loadingOverlay">
+                                <div class="loading-content">
+                                    <div class="spinner"></div>
+                                    <p>Caricamento utenti...</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+@endsection
 
-    <script>
-        $(function() {
-            $('#users-table').DataTable({
-                responsive: true,
-                processing: true,
-                serverSide: true,
-                ajax: '{{ route('users.data') }}',
-                columns: [{
-                        data: 'name',
-                        name: 'name'
-                    },
-                    {
-                        data: 'surname',
-                        name: 'surname'
-                    },
-                    {
-                        data: 'email',
-                        name: 'email'
-                    },
-                    {
-                        data: 'roles',
-                        name: 'roles',
-                        orderable: false,
-                        searchable: false
-                    },
-                    {
-                        data: 'abilitato',
-                        name: 'abilitato',
-                        orderable: false,
-                        searchable: false
-                    },
-                    {
-                        data: 'actions',
-                        name: 'actions',
-                        orderable: false,
-                        searchable: false
-                    }
-                ],
-                // Traduzione in italiano
-                language: {
-                    url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Italian.json"
-                },
-                // Personalizzazione dell'aspetto 
-                pageLength: 5,
-                lengthMenu: [
-                    [5, 10, 25, 50, -1],
-                    [5, 10, 25, 50, "Tutti"]
-                ],
-            });
-        });
-        $(document).ready(function() {
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        });
-        // Eventi per i pulsanti "Lock"
-        $(document).on('click', '.lockButton', function() {
-            var userId = $(this).data('id'); // Ottieni l'ID utente
-            Swal.fire({
-                title: 'Sei sicuro?',
-                text: "L'utente sarà disabilitato!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sì, disabilita!',
-                cancelButtonText: 'Annulla'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: "{{ route('users.lock') }}",
-                        type: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            userId: userId
-                        },
-                        success: function(response) {
-                            Swal.fire('Disabilitato!',
-                                'L\'utente è stato disabilitato con successo.', 'success');
-                            $('#users-table').DataTable().ajax.reload(); // Ricarica la tabella
-                        },
-                        error: function(xhr) {
-                            Swal.fire('Errore!', 'Si è verificato un errore.', 'error');
-                        }
-                    });
-                }
-            });
-        });
+@include('admin.users.assets.css_gestione_utenti')
 
-        // Eventi per i pulsanti "Unlock"
-        $(document).on('click', '.unlockButton', function() {
-            var userId = $(this).data('id'); // Ottieni l'ID utente
-            Swal.fire({
-                title: 'Sei sicuro?',
-                text: "L'utente sarà abilitato!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sì, abilita!',
-                cancelButtonText: 'Annulla'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: "{{ route('users.unlock') }}",
-                        type: 'POST',
-                        async: false,
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            userId: userId
-                        },
-                        dataType: 'json',
-                        success: function(response) {
-                            Swal.fire('Abilitato!', 'L\'utente è stato abilitato con successo.',
-                                'success');
-                            $('#users-table').DataTable().ajax.reload(); // Ricarica la tabella
-                        },
-                        error: function(xhr) {
-                            Swal.fire('Errore!', 'Si è verificato un errore.', 'error');
-                        }
-                    });
-                }
-            });
-        });
-
-        /* $('#users-table').DataTable().ajax.reload(null, false);
-        setTimeout(() => {
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        }, 500); */
-    </script>
+@section('scripts')
+    @parent
+    @include('admin.users.assets.js_gestione_utenti')
 @endsection

@@ -81,36 +81,92 @@ class UserController extends Controller
 
     public function getUsersData()
     {
-        $users = User::with('roles')->select('users.*');
+        // Fix: Usa eager loading corretto per la relazione belongsTo
+        $users = User::with('roles')->select('*');
 
         return DataTables::of($users)
             ->addColumn('roles', function (User $user) {
-                return $user->roles->name;
+                // Fix: gestisce la relazione belongsTo corretta
+                if ($user->roles && $user->roles->name) {
+                    return $user->roles->name;
+                }
+
+                // Fallback basato sul campo role numerico
+                switch ($user->role) {
+                    case '1':
+                    case 1:
+                        return 'Amministratore';
+                    case '2':
+                    case 2:
+                        return 'Utente';
+                    default:
+                        return 'Non definito';
+                }
             })
             ->addColumn('abilitato', function (User $user) {
-                return $user->abilitato
-                    ? '<span class="badge bg-success">SI</span>'
-                    : '<span class="badge bg-danger">NO</span>';
+                // Fix: controlla il campo abilitato correttamente
+                // Gestisce sia string che boolean che int
+                $isEnabled = $user->abilitato == 1 ||
+                    $user->abilitato === true ||
+                    $user->abilitato === '1' ||
+                    strtolower($user->abilitato) === 'si';
+
+                if ($isEnabled) {
+                    return '<span class="status-badge active">
+                    <i class="fas fa-check-circle"></i>
+                    Attivo
+                </span>';
+                } else {
+                    return '<span class="status-badge disabled">
+                    <i class="fas fa-times-circle"></i>
+                    Disabilitato
+                </span>';
+                }
             })
             ->addColumn('actions', function ($user) {
-                $commonClass = 'btn btn-sm d-inline-flex align-items-center justify-content-center';
-                $editButton = '<a href="' . route('users.edit', $user->id) . '" class="' . $commonClass . ' btn-outline-primary" style="min-width: 36px;" title="Modifica utente"><i class="fa-solid fa-user-pen"></i></a>';
+                $actions = '<div class="action-buttons">';
 
-                $lockButton = $unlockButton = '';
+                // Pulsante Modifica
+                $actions .= '<a href="' . route('users.edit', $user->id) . '" 
+                class="btn btn-sm btn-info" 
+                data-bs-toggle="tooltip" 
+                title="Modifica utente">
+                <i class="fas fa-edit"></i>
+            </a>';
 
+                // Pulsanti Lock/Unlock solo se non è l'utente corrente
                 if ($user->id !== Auth::id()) {
-                    if ($user->abilitato) {
-                        $lockButton = '<button data-id="' . $user->id . '" class="' . $commonClass . 'btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center lockButton" data-bs-toggle="tooltip" title="Disabilita utente"><i class="fa-solid fa-lock"></i></button>';
+                    $userName = trim($user->name . ' ' . ($user->surname ?? ''));
+                    $isEnabled = $user->abilitato == 1 ||
+                        $user->abilitato === true ||
+                        $user->abilitato === '1' ||
+                        strtolower($user->abilitato) === 'si';
+
+                    if ($isEnabled) {
+                        // Pulsante Lock (Disabilita)
+                        $actions .= '<button 
+                        data-id="' . $user->id . '" 
+                        data-name="' . htmlspecialchars($userName) . '"
+                        class="btn btn-sm btn-danger lockButton" 
+                        data-bs-toggle="tooltip" 
+                        title="Disabilita utente">
+                        <i class="fas fa-user-times"></i>
+                    </button>';
                     } else {
-                        $unlockButton = '<button data-id="' . $user->id . '" class="' . $commonClass . 'btn btn-sm btn-outline-success d-inline-flex align-items-center justify-content-center unlockButton" data-bs-toggle="tooltip" title="Abilita utente"><i class="fa-solid fa-unlock"></i></button>';
+                        // Pulsante Unlock (Abilita)
+                        $actions .= '<button 
+                        data-id="' . $user->id . '" 
+                        data-name="' . htmlspecialchars($userName) . '"
+                        class="btn btn-sm btn-success unlockButton" 
+                        data-bs-toggle="tooltip" 
+                        title="Abilita utente">
+                        <i class="fas fa-user-check"></i>
+                    </button>';
                     }
                 }
 
-                return '<div class="d-flex justify-content-center align-items-center gap-2 flex-nowrap">'
-                    . $editButton
-                    . $lockButton
-                    . $unlockButton
-                    . '</div>';
+                $actions .= '</div>';
+                return $actions;
             })
             ->rawColumns(['actions', 'abilitato'])
             ->make(true);
