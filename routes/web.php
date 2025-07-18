@@ -4,6 +4,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CruiseController;
 use App\Http\Controllers\CrocieraController;
 use App\Http\Controllers\RichiestaController;
 use App\Http\Controllers\Auth\LoginController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Auth\ConfirmPasswordController;
 Route::get('/', function () {
     return view('index');
 });
+
 
 // Login Routes...
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -53,7 +55,22 @@ Route::middleware('auth')->group(function () {
     // Rotte admin (senza controllo isAdmin per ora)
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
     
-    // Import Crociere
+    // CRUD Crociere (Admin)
+    Route::get('/admin/cruises', [CruiseController::class, 'index'])->name('cruises.index');
+    Route::get('/admin/cruises/create', [CruiseController::class, 'create'])->name('cruises.create');
+    Route::post('/admin/cruises', [CruiseController::class, 'store'])->name('cruises.store');
+    Route::get('/admin/cruises/{cruise}', [CruiseController::class, 'show'])->name('cruises.show');
+    Route::get('/admin/cruises/{cruise}/edit', [CruiseController::class, 'edit'])->name('cruises.edit');
+    Route::put('/admin/cruises/{cruise}', [CruiseController::class, 'update'])->name('cruises.update');
+    Route::delete('/admin/cruises/{cruise}', [CruiseController::class, 'destroy'])->name('cruises.destroy');
+    
+    // Route aggiuntive per CRUD Crociere
+    Route::get('/admin/cruises-data', [CruiseController::class, 'getData'])->name('cruises.data');
+    Route::get('/admin/cruises-stats', [CruiseController::class, 'getStats'])->name('cruises.stats');
+    Route::post('/admin/cruises/bulk-delete', [CruiseController::class, 'bulkDelete'])->name('cruises.bulk-delete');
+    Route::get('/admin/cruises/export', [CruiseController::class, 'export'])->name('cruises.export');
+    
+    // Import Crociere (come funzionalità aggiuntiva)
     Route::get('/admin/import-crociere', [CruiseImportController::class, 'showForm'])->name('cruises.import.form');
     Route::post('/admin/import-crociere', [CruiseImportController::class, 'import'])->name('cruises.import');
     Route::get('/admin/import-results', [CruiseImportController::class, 'showResults'])->name('cruises.import.results');

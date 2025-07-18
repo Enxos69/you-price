@@ -10,14 +10,15 @@
     --youPrice-danger: #dc3545;
     --youPrice-warning: #ffc107;
     --youPrice-success: #28a745;
+    --youPrice-info: #17a2b8;
 }
 
 /* Wrapper principale */
-.users-page-wrapper {
+.cruises-page-wrapper {
     padding-top: 50px;
     padding-bottom: 20px;
     background: linear-gradient(135deg, #f8fdfc 0%, #e8f5f3 100%);
-    min-height: 50vh;
+    min-height: 100vh;
 }
 
 /* Header della pagina */
@@ -68,6 +69,7 @@
 .header-actions {
     display: flex;
     gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .btn-action {
@@ -79,16 +81,18 @@
     font-weight: 500;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
+    text-decoration: none;
 }
 
 .btn-action:hover {
     background: rgba(255, 255, 255, 0.3);
     color: white;
     transform: translateY(-1px);
+    text-decoration: none;
 }
 
 /* Card principale */
-.users-card {
+.cruises-card {
     background: white;
     border-radius: 15px;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
@@ -148,15 +152,15 @@
     background: var(--youPrice-primary);
 }
 
-.stat-icon.active {
+.stat-icon.available {
     background: var(--youPrice-success);
 }
 
-.stat-icon.disabled {
-    background: var(--youPrice-danger);
+.stat-icon.future {
+    background: var(--youPrice-info);
 }
 
-.stat-icon.admin {
+.stat-icon.companies {
     background: var(--youPrice-accent);
 }
 
@@ -228,6 +232,7 @@
 .filters-container {
     display: flex;
     gap: 1rem;
+    align-items: end;
 }
 
 .filter-group {
@@ -260,7 +265,7 @@
     box-shadow: 0 0 0 3px rgba(132, 188, 0, 0.1);
 }
 
-/* Table Container - FIX RESPONSIVE */
+/* Table Container */
 .table-container {
     position: relative;
     background: white;
@@ -269,158 +274,100 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-.users-table {
+.cruises-table {
     margin-bottom: 0;
     width: 100%;
-    table-layout: fixed; /* FIX: Layout fisso per controllare le larghezze */
 }
 
-/* FIX: Larghezze colonne ottimizzate */
-.users-table th:nth-child(1), /* Nome */
-.users-table td:nth-child(1) {
-    width: 15%;
-    min-width: 120px;
-}
-
-.users-table th:nth-child(2), /* Cognome */
-.users-table td:nth-child(2) {
-    width: 15%;
-    min-width: 120px;
-}
-
-.users-table th:nth-child(3), /* Email */
-.users-table td:nth-child(3) {
-    width: 25%;
-    min-width: 200px;
-}
-
-.users-table th:nth-child(4), /* Ruolo */
-.users-table td:nth-child(4) {
-    width: 15%;
-    min-width: 130px; /* FIX: Larghezza minima per evitare wrapping */
-}
-
-.users-table th:nth-child(5), /* Stato */
-.users-table td:nth-child(5) {
-    width: 12%;
-    min-width: 110px;
-}
-
-.users-table th:nth-child(6), /* Azioni */
-.users-table td:nth-child(6) {
-    width: 18%;
-    min-width: 140px;
-}
-
-.users-table thead {
+.cruises-table thead {
     background: var(--youPrice-gradient);
 }
 
-.users-table thead th {
+.cruises-table thead th {
     color: white;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.75rem; /* FIX: Font più piccolo per header */
+    font-size: 0.8rem;
     letter-spacing: 0.5px;
-    padding: 0.75rem 0.5rem; /* FIX: Padding ridotto */
+    padding: 1rem 0.75rem;
     border: none;
     text-align: center;
     vertical-align: middle;
-    white-space: nowrap; /* FIX: Evita wrapping negli header */
+    white-space: nowrap;
 }
 
-.users-table tbody tr {
+.cruises-table tbody tr {
     transition: all 0.3s ease;
     border-bottom: 1px solid #f1f3f4;
 }
 
-.users-table tbody tr:hover {
+.cruises-table tbody tr:hover {
     background-color: rgba(132, 188, 0, 0.05);
-    transform: scale(1.005); /* FIX: Trasformazione ridotta */
+    transform: scale(1.005);
 }
 
-.users-table tbody td {
-    padding: 0.75rem 0.5rem; /* FIX: Padding ridotto */
+.cruises-table tbody td {
+    padding: 0.75rem;
     vertical-align: middle;
     text-align: center;
     border: none;
     font-weight: 500;
-    font-size: 0.9rem; /* FIX: Font leggermente più piccolo */
-    word-wrap: break-word; /* FIX: Gestisce testi lunghi */
-    overflow: hidden;
+    font-size: 0.9rem;
+    word-wrap: break-word;
 }
 
-/* FIX: Gestione testi lunghi nelle celle */
-.users-table tbody td:nth-child(3) { /* Email */
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
+/* Checkbox Styling */
+.form-check-input {
+    border: 2px solid var(--youPrice-accent);
+    border-radius: 4px;
 }
 
-/* Status Badges - FIX COMPATTI */
-.status-badge {
-    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
-    border-radius: 15px; /* FIX: Border radius ridotto */
-    font-size: 0.7rem; /* FIX: Font più piccolo */
+.form-check-input:checked {
+    background-color: var(--youPrice-primary);
+    border-color: var(--youPrice-primary);
+}
+
+/* Badge Styling per Compagnie */
+.badge {
+    font-size: 0.75rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-    white-space: nowrap; /* FIX: Evita wrapping */
-}
-
-.status-badge.active {
-    background: rgba(40, 167, 69, 0.1);
-    color: var(--youPrice-success);
-    border: 1px solid rgba(40, 167, 69, 0.2);
-}
-
-.status-badge.disabled {
-    background: rgba(220, 53, 69, 0.1);
-    color: var(--youPrice-danger);
-    border: 1px solid rgba(220, 53, 69, 0.2);
-}
-
-/* Role Badges - FIX COMPATTI */
-.role-badge {
-    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
+    padding: 0.4rem 0.8rem;
     border-radius: 15px;
-    font-size: 0.7rem; /* FIX: Font più piccolo */
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    white-space: nowrap; /* FIX: Evita wrapping del testo */
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
 }
 
-.role-badge.admin {
-    background: rgba(0, 97, 112, 0.1);
-    color: var(--youPrice-accent);
-    border: 1px solid rgba(0, 97, 112, 0.2);
+.badge.bg-info {
+    background-color: var(--youPrice-info) !important;
 }
 
-.role-badge.user {
-    background: rgba(132, 188, 0, 0.1);
-    color: var(--youPrice-primary);
-    border: 1px solid rgba(132, 188, 0, 0.2);
+.badge.bg-success {
+    background-color: var(--youPrice-success) !important;
 }
 
-/* Action Buttons - FIX COMPATTI */
+.badge.bg-warning {
+    background-color: var(--youPrice-warning) !important;
+    color: var(--youPrice-dark) !important;
+}
+
+.badge.bg-primary {
+    background-color: var(--youPrice-primary) !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+/* Action Buttons */
 .action-buttons {
     display: flex;
-    gap: 0.3rem; /* FIX: Gap ridotto */
+    gap: 0.25rem;
     justify-content: center;
-    flex-wrap: nowrap; /* FIX: Evita wrapping */
+    flex-wrap: nowrap;
 }
 
 .btn-sm {
-    padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
-    font-size: 0.75rem; /* FIX: Font più piccolo */
-    border-radius: 5px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
     font-weight: 500;
     transition: all 0.3s ease;
     border: none;
@@ -428,9 +375,19 @@
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 0.2rem;
-    min-width: 32px; /* FIX: Larghezza minima */
-    height: 28px; /* FIX: Altezza fissa */
+    gap: 0.25rem;
+}
+
+.btn-info {
+    background: var(--youPrice-info);
+    color: white;
+}
+
+.btn-info:hover {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    color: white;
 }
 
 .btn-primary {
@@ -442,6 +399,7 @@
     background: #6a9c00;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(132, 188, 0, 0.3);
+    color: white;
 }
 
 .btn-danger {
@@ -453,28 +411,18 @@
     background: #c82333;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-}
-
-.btn-success {
-    background: var(--youPrice-success);
     color: white;
 }
 
-.btn-success:hover {
-    background: #218838;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+/* Bulk Actions */
+#bulkDeleteBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.btn-info {
-    background: var(--youPrice-accent);
-    color: white;
-}
-
-.btn-info:hover {
-    background: #004d5c;
+#bulkDeleteBtn:not(:disabled):hover {
+    background: #c82333;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 97, 112, 0.3);
 }
 
 /* Loading Overlay */
@@ -511,6 +459,46 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Modal Styling */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header.bg-danger {
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.cruise-info {
+    background: rgba(220, 53, 69, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #dc3545;
+    margin: 1rem 0;
+}
+
+/* Alert Styling */
+.alert {
+    border-radius: 10px;
+    border: none;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.alert-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: #721c24;
+    border-left: 4px solid #dc3545;
 }
 
 /* DataTables Custom Styling */
@@ -560,33 +548,20 @@
     border-color: var(--youPrice-accent) !important;
 }
 
-/* FIX RESPONSIVE - Schermi piccoli */
+/* Responsive */
 @media (max-width: 1200px) {
-    .users-table {
-        font-size: 0.8rem;
+    .cruises-table {
+        font-size: 0.85rem;
     }
     
-    .users-table th,
-    .users-table td {
+    .cruises-table th,
+    .cruises-table td {
         padding: 0.5rem 0.25rem;
-    }
-    
-    .role-badge,
-    .status-badge {
-        font-size: 0.65rem;
-        padding: 0.2rem 0.4rem;
-    }
-    
-    .btn-sm {
-        padding: 0.25rem 0.4rem;
-        font-size: 0.7rem;
-        min-width: 28px;
-        height: 24px;
     }
 }
 
 @media (max-width: 768px) {
-    .users-page-wrapper {
+    .cruises-page-wrapper {
         padding-top: 70px;
     }
     
@@ -599,6 +574,7 @@
     .header-actions {
         width: 100%;
         justify-content: center;
+        flex-wrap: wrap;
     }
     
     .filters-section {
@@ -608,6 +584,7 @@
     
     .filters-container {
         justify-content: center;
+        flex-wrap: wrap;
     }
     
     .card-body {
@@ -618,13 +595,12 @@
         grid-template-columns: repeat(2, 1fr);
     }
     
-    /* FIX: Tabella mobile con scroll orizzontale */
     .table-container {
         overflow-x: auto;
     }
     
-    .users-table {
-        min-width: 700px; /* FIX: Larghezza minima per scroll orizzontale */
+    .cruises-table {
+        min-width: 900px;
     }
 }
 
@@ -633,14 +609,85 @@
         grid-template-columns: 1fr;
     }
     
-    .users-table {
-        min-width: 600px;
+    .cruises-table {
+        min-width: 800px;
         font-size: 0.75rem;
     }
     
+    .header-actions {
+        gap: 0.5rem;
+    }
+    
+    .btn-action {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Tooltip Styling */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+.tooltip {
+    font-size: 0.8rem;
+}
+
+.tooltip-inner {
+    background-color: var(--youPrice-dark);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stat-card {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.stat-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.stat-card:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.stat-card:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+/* Print Styles */
+@media print {
+    .cruises-page-wrapper {
+        padding: 0;
+        background: white;
+    }
+    
+    .page-header,
+    .filters-section,
+    .header-actions,
     .action-buttons {
-        flex-direction: column;
-        gap: 0.2rem;
+        display: none !important;
+    }
+    
+    .cruises-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .cruises-table {
+        font-size: 0.8rem;
     }
 }
 </style>

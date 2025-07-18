@@ -17,10 +17,15 @@
                         <a class="dropdown-item" href="#">Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="dropdown-item" href="{{ route('user.index') }}">Gestione Utenti</a>
+                        <a class="dropdown-item" href="{{ route('user.index') }}"><i class="fas fa-users"></i>Gestione Utenti</a>
                     </li>
-                    <li class="nav-item dropdown">
+                    {{-- <li class="nav-item dropdown">
                         <a class="dropdown-item" href="{{ route('cruises.import.form') }}">Importa Crociere</a>
+                    </li> --}}
+                    <li class="nav-item dropdown">
+                        <a class="dropdown-item" href="{{ route('cruises.index') }}">
+                            <i class="fas fa-ship me-2"></i>Gestione Crociere
+                        </a>
                     </li>
                 @elseif(Auth::user()->isUser())
                     <a class="dropdown-item" href="#">Profilo</a>
