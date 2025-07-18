@@ -1,370 +1,511 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-lg border-0">
-                <div class="card-header bg-gradient-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="card-title mb-0">
-                                <i class="fas fa-ship me-2"></i>
-                                Risultati Importazione Crociere
-                            </h3>
-                            <p class="mb-0 mt-1 opacity-75">
-                                Riepilogo dell'ultima importazione effettuata
-                            </p>
+    <div class="results-page-wrapper">
+        <div class="container-fluid">
+            <div class="row justify-content-center">
+                <div class="col-lg-12 col-xl-11">
+
+                    <!-- Header della pagina -->
+                    <div class="page-header">
+                        <div class="header-content">
+                            <div class="header-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="header-text">
+                                <h1>Risultati Importazione</h1>
+                                <p>Riepilogo dettagliato dell'ultima importazione effettuata</p>
+                            </div>
                         </div>
-                        <div>
-                            <a href="{{ route('cruises.import.form') }}" class="btn btn-light btn-sm">
-                                <i class="fas fa-plus me-1"></i> Nuova Importazione
+                        <div class="header-actions">
+                            <a href="{{ route('cruises.import.form') }}" class="btn btn-action" style="color: white">
+                                <i class="fas fa-plus me-2"></i>Nuova Importazione
                             </a>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card-body p-4">
-                    <!-- Statistiche Importazione -->
-                    <div class="row mb-4">
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="stats-card bg-info">
-                                <div class="stats-icon">
-                                    <i class="fas fa-file-csv"></i>
-                                </div>
-                                <div class="stats-content">
-                                    <h3 class="stats-number">{{ $importStats['total_processed'] ?? 0 }}</h3>
-                                    <p class="stats-label">Record Elaborati</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="stats-card bg-success">
-                                <div class="stats-icon">
-                                    <i class="fas fa-check"></i>
-                                </div>
-                                <div class="stats-content">
-                                    <h3 class="stats-number">{{ $importStats['total_imported'] ?? 0 }}</h3>
-                                    <p class="stats-label">Importati</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="stats-card bg-warning">
-                                <div class="stats-icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <div class="stats-content">
-                                    <h3 class="stats-number">{{ $importStats['total_skipped'] ?? 0 }}</h3>
-                                    <p class="stats-label">Saltati (Duplicati)</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <div class="stats-card bg-danger">
-                                <div class="stats-icon">
-                                    <i class="fas fa-times"></i>
-                                </div>
-                                <div class="stats-content">
-                                    <h3 class="stats-number">{{ count($importStats['errors'] ?? []) }}</h3>
-                                    <p class="stats-label">Errori</p>
-                                </div>
-                            </div>
+                            <button class="btn btn-action" onclick="exportResults()" style="color: white">
+                                <i class="fas fa-download me-2"></i>Esporta
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Pulsanti Azione -->
-                    @if(!empty($importStats['skipped_records']) || !empty($importStats['errors']))
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="bg-light rounded-3 p-3">
-                                <h6 class="text-dark mb-3">
-                                    <i class="fas fa-tools me-2"></i>Azioni Disponibili
+                    <!-- Card principale -->
+                    <div class="results-card">
+                        <div class="card-body">
+
+                            <!-- Alert di successo se presente -->
+                            @if (session('success'))
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    {{ session('success') }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            @endif
+
+                            <!-- Statistiche Principali -->
+                            <div class="stats-section mb-4">
+                                <h6 class="section-title">
+                                    <i class="fas fa-chart-pie me-2"></i>Statistiche Importazione
                                 </h6>
-                                <div class="d-flex flex-wrap gap-2">
-                                    @if(!empty($importStats['skipped_records']))
-                                        <a href="{{ route('cruises.import.download-skipped') }}" class="btn btn-warning btn-sm">
-                                            <i class="fas fa-download me-1"></i> Scarica Record Saltati
-                                        </a>
-                                    @endif
-                                    
-                                    @if(!empty($importStats['errors']))
-                                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#errorsModal">
-                                            <i class="fas fa-exclamation-circle me-1"></i> Visualizza Errori ({{ count($importStats['errors']) }})
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- DataTable Crociere Importate -->
-                    @if(($importStats['total_imported'] ?? 0) > 0)
-                        <div class="table-responsive">
-                            <table id="cruisesTable" class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Nave</th>
-                                        <th>Crociera</th>
-                                        <th>Linea</th>
-                                        <th>Durata</th>
-                                        <th>Partenza</th>
-                                        <th>Arrivo</th>
-                                        <th>Interior</th>
-                                        <th>Oceanview</th>
-                                        <th>Balcony</th>
-                                        <th>Mini Suite</th>
-                                        <th>Suite</th>
-                                        <th>Importato il</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- I dati verranno caricati via AJAX -->
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="alert alert-info d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <div>
-                                <strong>Nessuna crociera importata</strong><br>
-                                Non sono state importate nuove crociere durante questa operazione.
-                                @if(($importStats['total_skipped'] ?? 0) > 0)
-                                    Tutti i {{ $importStats['total_skipped'] }} record erano duplicati.
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Errori -->
-@if(!empty($importStats['errors']))
-<div class="modal fade" id="errorsModal" tabindex="-1" aria-labelledby="errorsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="errorsModalLabel">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    Errori durante l'importazione ({{ count($importStats['errors']) }})
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="accordion" id="errorsAccordion">
-                    @foreach($importStats['errors'] as $index => $error)
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="heading{{ $index }}">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $index }}" aria-expanded="false" aria-controls="collapse{{ $index }}">
-                                    <strong>Errore #{{ $index + 1 }}</strong>
-                                    @if(isset($error['line']))
-                                        <span class="badge bg-secondary ms-2">Riga {{ $error['line'] }}</span>
-                                    @endif
-                                    <span class="ms-auto me-3 text-danger">{{ $error['error'] }}</span>
-                                </button>
-                            </h2>
-                            <div id="collapse{{ $index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ $index }}" data-bs-parent="#errorsAccordion">
-                                <div class="accordion-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <h6>Dettagli Errore:</h6>
-                                            <div class="bg-danger bg-opacity-10 rounded p-3">
-                                                <code>{{ $error['error'] }}</code>
-                                            </div>
+                                <div class="stats-grid">
+                                    <div class="stat-card bg-info">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-file-csv"></i>
                                         </div>
-                                        <div class="col-md-6">
-                                            <h6>Dati del Record:</h6>
-                                            <div class="bg-light rounded p-3">
-                                                <pre class="mb-0"><code>{{ json_encode($error['record'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                                        <div class="stat-content">
+                                            <div class="stat-number">{{ $importStats['total_processed'] ?? 0 }}</div>
+                                            <div class="stat-label">Processati</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-card bg-success">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-plus-circle"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-number">{{ $importStats['total_imported'] ?? 0 }}</div>
+                                            <div class="stat-label">Nuovi</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-card bg-primary">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-number">{{ $importStats['total_updated'] ?? 0 }}</div>
+                                            <div class="stat-label">Aggiornati</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-card bg-warning">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-minus-circle"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-number">{{ $importStats['total_skipped'] ?? 0 }}</div>
+                                            <div class="stat-label">Saltati</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-card bg-danger">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-number">{{ count($importStats['errors'] ?? []) }}</div>
+                                            <div class="stat-label">Errori</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="stat-card bg-secondary">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-percentage"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-number">
+                                                {{ $importStats['total_processed'] > 0 ? round(((($importStats['total_imported'] ?? 0) + ($importStats['total_updated'] ?? 0)) / $importStats['total_processed']) * 100) : 0 }}%
                                             </div>
+                                            <div class="stat-label">Successo</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Filtri e Ricerca -->
+                            <div class="filters-section">
+                                <h6 class="section-title">
+                                    <i class="fas fa-filter me-2"></i>Filtri e Ricerca
+                                </h6>
+                                <div class="filters-grid">
+                                    <div class="filter-group">
+                                        <label>Ricerca</label>
+                                        <div class="search-box">
+                                            <i class="fas fa-search"></i>
+                                            <input type="text" class="search-input" id="quickSearch"
+                                                placeholder="Cerca nave, crociera...">
+                                        </div>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>Compagnia</label>
+                                        <select class="filter-select" id="lineFilter">
+                                            <option value="">Tutte</option>
+                                            <option value="MSC">MSC Cruises</option>
+                                            <option value="Costa">Costa Crociere</option>
+                                            <option value="Royal">Royal Caribbean</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>Mese Partenza</label>
+                                        <select class="filter-select" id="monthFilter">
+                                            <option value="">Tutti</option>
+                                            <option value="01">Gennaio</option>
+                                            <option value="02">Febbraio</option>
+                                            <option value="03">Marzo</option>
+                                            <option value="04">Aprile</option>
+                                            <option value="05">Maggio</option>
+                                            <option value="06">Giugno</option>
+                                            <option value="07">Luglio</option>
+                                            <option value="08">Agosto</option>
+                                            <option value="09">Settembre</option>
+                                            <option value="10">Ottobre</option>
+                                            <option value="11">Novembre</option>
+                                            <option value="12">Dicembre</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>&nbsp;</label>
+                                        <button class="filter-reset-btn" onclick="resetFilters()">
+                                            <i class="fas fa-undo me-1"></i>Reset
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Azioni Disponibili -->
+                            @if (!empty($importStats['skipped_records']) || !empty($importStats['errors']))
+                                <div class="actions-section">
+                                    <h6 class="section-title">
+                                        <i class="fas fa-tools me-2"></i>Azioni Disponibili
+                                    </h6>
+                                    <div class="actions-grid">
+                                        @if (!empty($importStats['skipped_records']))
+                                            <a href="{{ route('cruises.import.download-skipped') }}"
+                                                class="action-btn warning">
+                                                <i class="fas fa-download me-2"></i>
+                                                <div class="action-content">
+                                                    <div class="action-title">Scarica Record Saltati</div>
+                                                    <div class="action-subtitle">
+                                                        {{ count($importStats['skipped_records']) }} elementi</div>
+                                                </div>
+                                            </a>
+                                        @endif
+
+                                        @if (!empty($importStats['errors']))
+                                            <button type="button" class="action-btn danger" onclick="showErrorsModal()">
+                                                <i class="fas fa-exclamation-circle me-2"></i>
+                                                <div class="action-content">
+                                                    <div class="action-title">Visualizza Errori</div>
+                                                    <div class="action-subtitle">{{ count($importStats['errors']) }}
+                                                        errori trovati</div>
+                                                </div>
+                                            </button>
+                                        @endif
+
+                                        <button type="button" class="action-btn success" onclick="exportResults()">
+                                            <i class="fas fa-file-excel me-2"></i>
+                                            <div class="action-content">
+                                                <div class="action-title">Esporta Risultati</div>
+                                                <div class="action-subtitle">Excel/CSV</div>
+                                            </div>
+                                        </button>
+
+                                        @if (!empty($importStats['errors']))
+                                            <button type="button" class="action-btn info" onclick="debugErrors()">
+                                                <i class="fas fa-bug me-2"></i>
+                                                <div class="action-content">
+                                                    <div class="action-title">Debug Errori</div>
+                                                    <div class="action-subtitle">Console Log</div>
+                                                </div>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+
+                            <!-- Tabella Risultati -->
+                            <div class="table-section">
+                                <h6 class="section-title">
+                                    <i class="fas fa-table me-2"></i>Crociere Importate/Aggiornate
+                                </h6>
+
+                                @if (($importStats['total_imported'] ?? 0) > 0 || ($importStats['total_updated'] ?? 0) > 0)
+                                    <div class="table-container">
+                                        <table id="cruisesTable" class="table table-striped table-hover">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th width="4%">ID</th>
+                                                    <th width="12%">Nave</th>
+                                                    <th width="15%">Crociera</th>
+                                                    <th width="10%">Compagnia</th>
+                                                    <th width="8%">Durata</th>
+                                                    <th width="8%">Partenza</th>
+                                                    <th width="8%">Arrivo</th>
+                                                    <th width="8%">Interior</th>
+                                                    <th width="8%">Oceanview</th>
+                                                    <th width="8%">Balcony</th>
+                                                    <th width="11%">Dettagli</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- I dati verranno caricati via AJAX -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="empty-state">
+                                        <div class="empty-icon">
+                                            <i class="fas fa-inbox"></i>
+                                        </div>
+                                        <h5>Nessuna crociera importata</h5>
+                                        <p>Non sono state importate o aggiornate crociere durante questa operazione.</p>
+                                        @if (($importStats['total_skipped'] ?? 0) > 0)
+                                            <p class="text-muted">Tutti i {{ $importStats['total_skipped'] }} record erano
+                                                già presenti con prezzi migliori.</p>
+                                        @endif
+                                        <a href="{{ route('cruises.import.form') }}" class="btn btn-primary">
+                                            <i class="fas fa-upload me-2"></i>Prova Nuova Importazione
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Loading Overlay -->
+                            <div class="loading-overlay d-none" id="loadingOverlay">
+                                <div class="loading-content">
+                                    <div class="spinner"></div>
+                                    <p>Caricamento dati...</p>
+                                </div>
+                            </div>
                         </div>
-                    @endforeach
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
             </div>
         </div>
     </div>
-</div>
-@endif
 
-<style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
+    <!-- Modal Errori -->
+    @if (!empty($importStats['errors']))
+        <div class="modal fade" id="errorsModal" tabindex="-1" role="dialog" aria-labelledby="errorsModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="errorsModalLabel">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Errori durante l'importazione ({{ count($importStats['errors']) }})
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close" onclick="closeErrorsModal()">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
 
-.stats-card {
-    background: white;
-    border-radius: 10px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    border-left: 4px solid;
-    position: relative;
-    overflow: hidden;
-}
+                        <!-- Ricerca negli errori -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="errorSearch"
+                                    placeholder="Cerca negli errori...">
+                            </div>
+                        </div>
 
-.stats-card.bg-info { border-left-color: #17a2b8; }
-.stats-card.bg-success { border-left-color: #28a745; }
-.stats-card.bg-warning { border-left-color: #ffc107; }
-.stats-card.bg-danger { border-left-color: #dc3545; }
+                        <!-- Lista errori -->
+                        <div class="errors-list">
+                            @foreach ($importStats['errors'] as $index => $error)
+                                <div class="error-item mb-3" data-error-text="{{ strtolower($error['error'] ?? '') }}">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>Errore #{{ $index + 1 }}</strong>
+                                                <div>
+                                                    @if (isset($error['line']))
+                                                        <span class="badge bg-secondary">Riga {{ $error['line'] }}</span>
+                                                    @endif
+                                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#errorDetails{{ $index }}"
+                                                        aria-expanded="false">
+                                                        <i class="fas fa-chevron-down"></i> Dettagli
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span
+                                                    class="text-danger">{{ $error['error'] ?? 'Errore sconosciuto' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="collapse" id="errorDetails{{ $index }}">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <h6>Dettagli Errore:</h6>
+                                                        <div class="bg-danger bg-opacity-10 rounded p-3">
+                                                            <code>{{ $error['error'] ?? 'N/D' }}</code>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Dati del Record:</h6>
+                                                        <div class="bg-light rounded p-3">
+                                                            <pre class="mb-0" style="font-size: 0.8rem; max-height: 200px; overflow-y: auto;"><code>{{ json_encode($error['record'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
 
-.stats-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    opacity: 0.1;
-    transform: translate(30px, -30px);
-}
+                        @if (empty($importStats['errors']))
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5>Nessun errore trovato!</h5>
+                                <p class="text-muted">L'importazione è stata completata senza errori.</p>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                            onclick="closeErrorsModal()">Chiudi</button>
+                        <button type="button" class="btn btn-primary" onclick="exportErrors()">
+                            <i class="fas fa-download me-1"></i> Esporta Errori
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
-.stats-card.bg-info::before { background: #17a2b8; }
-.stats-card.bg-success::before { background: #28a745; }
-.stats-card.bg-warning::before { background: #ffc107; }
-.stats-card.bg-danger::before { background: #dc3545; }
+    <!-- Loading Overlay -->
+    <div class="loading-overlay d-none" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Caricamento dati...</p>
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
 
-.stats-icon {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-}
+    <!-- Modal Errori -->
+    @if (!empty($importStats['errors']))
+        <div class="modal fade" id="errorsModal" tabindex="-1" role="dialog" aria-labelledby="errorsModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="errorsModalLabel">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            Errori durante l'importazione ({{ count($importStats['errors']) }})
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close" onclick="closeErrorsModal()">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
 
-.stats-card.bg-info .stats-icon { background: #17a2b8; }
-.stats-card.bg-success .stats-icon { background: #28a745; }
-.stats-card.bg-warning .stats-icon { background: #ffc107; }
-.stats-card.bg-danger .stats-icon { background: #dc3545; }
+                        <!-- Ricerca negli errori -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="errorSearch"
+                                    placeholder="Cerca negli errori...">
+                            </div>
+                        </div>
 
-.stats-content {
-    position: relative;
-    z-index: 1;
-}
+                        <!-- Lista errori -->
+                        <div class="errors-list">
+                            @foreach ($importStats['errors'] as $index => $error)
+                                <div class="error-item mb-3" data-error-text="{{ strtolower($error['error'] ?? '') }}">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>Errore #{{ $index + 1 }}</strong>
+                                                <div>
+                                                    @if (isset($error['line']))
+                                                        <span class="badge bg-secondary">Riga {{ $error['line'] }}</span>
+                                                    @endif
+                                                    <button class="btn btn-sm btn-outline-primary" type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#errorDetails{{ $index }}"
+                                                        aria-expanded="false">
+                                                        <i class="fas fa-chevron-down"></i> Dettagli
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <span
+                                                    class="text-danger">{{ $error['error'] ?? 'Errore sconosciuto' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="collapse" id="errorDetails{{ $index }}">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <h6>Dettagli Errore:</h6>
+                                                        <div class="bg-danger bg-opacity-10 rounded p-3">
+                                                            <code>{{ $error['error'] ?? 'N/D' }}</code>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Dati del Record:</h6>
+                                                        <div class="bg-light rounded p-3">
+                                                            <pre class="mb-0" style="font-size: 0.8rem; max-height: 200px; overflow-y: auto;"><code>{{ json_encode($error['record'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
 
-.stats-number {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    color: #2c3e50;
-}
-
-.stats-label {
-    margin: 0;
-    color: #6c757d;
-    font-weight: 500;
-    text-transform: uppercase;
-    font-size: 0.875rem;
-    letter-spacing: 0.5px;
-}
-
-.table th {
-    border-top: none;
-    font-weight: 600;
-    font-size: 0.875rem;
-    letter-spacing: 0.5px;
-}
-
-.card {
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.accordion-button {
-    font-weight: 500;
-}
-
-.accordion-button:not(.collapsed) {
-    background-color: #f8f9fa;
-    color: #495057;
-}
-
-pre code {
-    font-size: 0.8rem;
-    max-height: 200px;
-    overflow-y: auto;
-}
-</style>
+                        @if (empty($importStats['errors']))
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5>Nessun errore trovato!</h5>
+                                <p class="text-muted">L'importazione è stata completata senza errori.</p>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                            onclick="closeErrorsModal()">Chiudi</button>
+                        <button type="button" class="btn btn-primary" onclick="exportErrors()">
+                            <i class="fas fa-download me-1"></i> Esporta Errori
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection
+@include('admin.assets.css_import_results')
 
 @section('scripts')
-<script>
-$(document).ready(function() {
-    @if(($importStats['total_imported'] ?? 0) > 0)
-    $('#cruisesTable').DataTable({
-        processing: true,
-        serverSide: false,
-        ajax: {
-            url: '{{ route("cruises.import.data") }}',
-            type: 'GET',
-            error: function(xhr, error, code) {
-                console.error('Errore caricamento dati:', error);
-                alert('Errore nel caricamento dei dati. Riprova più tardi.');
+    @parent
+    
+    <!-- Inizializzazione sicura dei dati -->
+    <script>
+        window.importResultsData = {
+            hasResults: {{ ($importStats['total_imported'] ?? 0) > 0 || ($importStats['total_updated'] ?? 0) > 0 ? 'true' : 'false' }},
+            importDataUrl: '{{ route('cruises.import.data') }}',
+            csrf: '{{ csrf_token() }}',
+            errors: []
+        };
+        
+        @php
+            $errors = [];
+            if (isset($importStats['errors']) && is_array($importStats['errors'])) {
+                $errors = $importStats['errors'];
             }
-        },
-        columns: [
-            { data: 'id', name: 'id', width: '50px' },
-            { data: 'ship', name: 'ship' },
-            { data: 'cruise', name: 'cruise' },
-            { data: 'line', name: 'line' },
-            { data: 'duration', name: 'duration', width: '80px' },
-            { data: 'partenza', name: 'partenza', width: '100px' },
-            { data: 'arrivo', name: 'arrivo', width: '100px' },
-            { data: 'interior', name: 'interior', width: '100px' },
-            { data: 'oceanview', name: 'oceanview', width: '100px' },
-            { data: 'balcony', name: 'balcony', width: '100px' },
-            { data: 'minisuite', name: 'minisuite', width: '100px' },
-            { data: 'suite', name: 'suite', width: '100px' },
-            { data: 'created_at', name: 'created_at', width: '130px' }
-        ],
-        language: {
-            processing: "Caricamento...",
-            search: "Cerca:",
-            lengthMenu: "Mostra _MENU_ elementi",
-            info: "Elementi da _START_ a _END_ di _TOTAL_ totali",
-            infoEmpty: "Nessun elemento da visualizzare",
-            infoFiltered: "(filtrati da _MAX_ elementi totali)",
-            infoPostFix: "",
-            loadingRecords: "Caricamento...",
-            zeroRecords: "Nessun elemento trovato",
-            emptyTable: "Nessun dato presente nella tabella",
-            paginate: {
-                first: "Primo",
-                previous: "Precedente",
-                next: "Prossimo",
-                last: "Ultimo"
-            }
-        },
-        pageLength: 25,
-        responsive: true,
-        order: [[0, 'desc']],
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-        drawCallback: function() {
-            // Aggiungi tooltip per le celle con contenuto lungo
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        }
-    });
-    @endif
-});
-</script>
+            $errorsJson = json_encode($errors);
+        @endphp
+        
+        @if(!empty($errorsJson) && $errorsJson !== 'null' && $errorsJson !== 'false')
+            window.importResultsData.errors = {!! $errorsJson !!};
+        @endif
+        
+        // Debug per verificare i dati
+        console.log('ImportResultsData initialized:', window.importResultsData);
+        console.log('Errors count:', window.importResultsData.errors.length);
+    </script>
+    
+    @include('admin.assets.js_import_results')
 @endsection

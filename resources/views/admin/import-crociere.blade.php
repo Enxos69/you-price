@@ -17,6 +17,14 @@
                                 <p>Carica il tuo file CSV per importare le crociere nel sistema</p>
                             </div>
                         </div>
+                        <!-- Link ai risultati se disponibili -->
+                        @if(session('import_stats'))
+                        <div class="header-actions">
+                            <a href="{{ route('cruises.import.results') }}" class="btn btn-success">
+                                <i class="fas fa-chart-bar me-2"></i>Vedi Ultima Importazione
+                            </a>
+                        </div>
+                        @endif
                     </div>
 
                     <!-- Card principale -->
@@ -28,6 +36,13 @@
                                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                                         <i class="fas fa-check-circle me-2"></i>
                                         {{ session('success') }}
+                                        @if(session('import_stats'))
+                                        <div class="mt-2">
+                                            <a href="{{ route('cruises.import.results') }}" class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-eye me-1"></i>Visualizza Risultati Dettagliati
+                                            </a>
+                                        </div>
+                                        @endif
                                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                                     </div>
                                 @endif
@@ -118,7 +133,7 @@
                                                 <input class="form-check-input" type="checkbox" id="skipDuplicates"
                                                     name="skip_duplicates" checked>
                                                 <label class="form-check-label" for="skipDuplicates">
-                                                    Salta record duplicati
+                                                    Aggiorna con prezzi migliori
                                                 </label>
                                             </div>
                                             <div class="form-check">
@@ -166,6 +181,41 @@
                                     ship, cruise, line
                                 </h6>
                             </div>
+
+                            <!-- Quick Stats se disponibili -->
+                            @if(session('import_stats'))
+                            <div class="quick-stats mt-4">
+                                <h6 class="mb-3">
+                                    <i class="fas fa-history me-2"></i>Ultima Importazione
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="quick-stat-item">
+                                            <div class="quick-stat-number">{{ session('import_stats')['total_imported'] ?? 0 }}</div>
+                                            <div class="quick-stat-label">Nuovi</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="quick-stat-item">
+                                            <div class="quick-stat-number">{{ session('import_stats')['total_updated'] ?? 0 }}</div>
+                                            <div class="quick-stat-label">Aggiornati</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="quick-stat-item">
+                                            <div class="quick-stat-number">{{ session('import_stats')['total_skipped'] ?? 0 }}</div>
+                                            <div class="quick-stat-label">Saltati</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="quick-stat-item">
+                                            <div class="quick-stat-number">{{ count(session('import_stats')['errors'] ?? []) }}</div>
+                                            <div class="quick-stat-label">Errori</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -177,6 +227,7 @@
 @include('admin.assets.css_import_crociere')
 
 @section('scripts')
-    @parent
+    @parent    
     @include('admin.assets.js_import_crociere')
 @endsection
+

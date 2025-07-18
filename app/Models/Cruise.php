@@ -50,6 +50,94 @@ class Cruise extends Model
     ];
 
     /**
+     * Sanitizza una stringa rimuovendo caratteri non UTF-8 validi
+     */
+    private function sanitizeString($value)
+    {
+        if (is_null($value) || $value === '') {
+            return $value;
+        }
+
+        // Converte in stringa se non lo è già
+        $value = (string) $value;
+
+        // Rimuove caratteri non UTF-8 validi
+        $cleaned = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+        
+        // Rimuove caratteri di controllo tranne newline, tab e carriage return
+        $cleaned = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/u', '', $cleaned);
+        
+        // Sostituisce caratteri problematici comuni
+        $replacements = [
+            'ü' => 'ue',
+            'ö' => 'oe', 
+            'ä' => 'ae',
+            'ß' => 'ss',
+            'Ü' => 'Ue',
+            'Ö' => 'Oe',
+            'Ä' => 'Ae',
+            'é' => 'e',
+            'è' => 'e',
+            'ê' => 'e',
+            'ë' => 'e',
+            'à' => 'a',
+            'á' => 'a',
+            'â' => 'a',
+            'ã' => 'a',
+            'ç' => 'c',
+            'ñ' => 'n',
+            'ø' => 'o',
+            'å' => 'a',
+        ];
+
+        $cleaned = strtr($cleaned, $replacements);
+        
+        // Rimuove caratteri Windows-1252 problematici usando codici hex
+        $cleaned = preg_replace('/[\x80-\x9F]/', '', $cleaned);
+        
+        // Sostituisce alcuni caratteri specifici problematici
+        $cleaned = str_replace(["\u2018", "\u2019", "\u201C", "\u201D", "\u2013", "\u2014", "\u2026"], ["'", "'", '"', '"', '-', '-', '...'], $cleaned);
+        
+        // Rimuove eventuali caratteri ancora problematici
+        $cleaned = preg_replace('/[^\x20-\x7E\xA0-\xFF]/', '', $cleaned);
+        
+        return trim($cleaned);
+    }
+
+    /**
+     * Mutators per sanitizzare automaticamente i campi stringa
+     */
+    public function setShipAttribute($value)
+    {
+        $this->attributes['ship'] = $this->sanitizeString($value);
+    }
+
+    public function setCruiseAttribute($value)
+    {
+        $this->attributes['cruise'] = $this->sanitizeString($value);
+    }
+
+    public function setLineAttribute($value)
+    {
+        $this->attributes['line'] = $this->sanitizeString($value);
+    }
+
+    public function setFromAttribute($value)
+    {
+        $this->attributes['from'] = $this->sanitizeString($value);
+    }
+
+    public function setToAttribute($value)
+    {
+        $this->attributes['to'] = $this->sanitizeString($value);
+    }
+
+    public function setDetailsAttribute($value)
+    {
+        $this->attributes['details'] = $this->sanitizeString($value);
+    }
+
+    /**
      * Scope per filtrare per compagnia
      */
     public function scopeByLine($query, $line)

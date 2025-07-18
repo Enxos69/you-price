@@ -17,7 +17,7 @@
     padding-top: 90px;
     padding-bottom: 20px;
     background: linear-gradient(135deg, #f8fdfc 0%, #e8f5f3 100%);
-    min-height: 100vh;
+    min-height: 50vh;
 }
 
 /* Header della pagina */
