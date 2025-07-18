@@ -224,10 +224,10 @@
     </div>
 @endsection
 
-@include('admin.assets.css_import_crociere')
+@include('admin.cruises.assets.css_import_crociere')
 
 @section('scripts')
     @parent    
-    @include('admin.assets.js_import_crociere')
+    @include('admin.cruises.assets.js_import_crociere')
 @endsection
 

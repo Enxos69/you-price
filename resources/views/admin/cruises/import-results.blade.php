@@ -476,7 +476,7 @@
         </div>
     @endif
 @endsection
-@include('admin.assets.css_import_results')
+@include('admin.cruises.assets.css_import_results')
 
 @section('scripts')
     @parent
@@ -507,5 +507,5 @@
         console.log('Errors count:', window.importResultsData.errors.length);
     </script>
     
-    @include('admin.assets.js_import_results')
+    @include('admin.cruises.assets.js_import_results')
 @endsection

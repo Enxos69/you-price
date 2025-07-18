@@ -17,7 +17,7 @@ class CruiseImportController extends Controller
 
     public function showForm()
     {
-        return view('admin.import-crociere');
+        return view('admin.cruises.import-crociere');
     }
 
     public function import(Request $request)
@@ -510,7 +510,7 @@ class CruiseImportController extends Controller
         // Assicurati che errors sia sempre un array valido
         $importStats['errors'] = $importStats['errors'] ?? [];
 
-        return view('admin.import-results', ['importStats' => $importStats]);
+        return view('admin.cruises.import-results', ['importStats' => $importStats]);
     }
 
     public function getImportedCruisesData()
