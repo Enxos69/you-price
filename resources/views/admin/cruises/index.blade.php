@@ -138,40 +138,49 @@
                                 <table class="table cruises-table" id="cruises-table">
                                     <thead>
                                         <tr>
+                                            <!-- ✅ Checkbox Selezione -->
                                             <th width="3%">
                                                 <input type="checkbox" id="selectAll" class="form-check-input">
                                             </th>
-                                            <th width="8%">
+
+                                            <!-- ✅ Nave -->
+                                            <th width="18%">
                                                 <i class="fas fa-ship me-2"></i>Nave
                                             </th>
-                                            <th width="15%">
+
+                                            <!-- ✅ Crociera -->
+                                            <th width="25%">
                                                 <i class="fas fa-route me-2"></i>Crociera
                                             </th>
-                                            <th width="10%">
+
+                                            <!-- ✅ Compagnia -->
+                                            <th width="15%">
                                                 <i class="fas fa-building me-2"></i>Compagnia
                                             </th>
+
+                                            <!-- ✅ Durata -->
                                             <th width="8%">
                                                 <i class="fas fa-clock me-2"></i>Durata
                                             </th>
+
+                                            <!-- ✅ Data Partenza (ex Itinerario) -->
                                             <th width="12%">
-                                                <i class="fas fa-calendar me-2"></i>Itinerario
+                                                <i class="fas fa-calendar me-2"></i>Partenza
                                             </th>
+
+                                            <!-- ✅ Prezzo Interior -->
                                             <th width="10%">
-                                                <i class="fas fa-bed me-2"></i>Interna
+                                                <i class="fas fa-bed me-2"></i>Prezzo Min.
                                             </th>
-                                            <th width="10%">
-                                                <i class="fas fa-eye me-2"></i>Vista Mare
-                                            </th>
-                                            <th width="10%">
-                                                <i class="fas fa-home me-2"></i>Balcone
-                                            </th>
-                                            <th width="14%">
+
+                                            <!-- ✅ Azioni -->
+                                            <th width="9%">
                                                 <i class="fas fa-cogs me-2"></i>Azioni
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <!-- Dati caricati via AJAX -->
+                                        <!-- I dati verranno caricati via AJAX da DataTables -->
                                     </tbody>
                                 </table>
                             </div>

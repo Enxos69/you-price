@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Cruise;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Yajra\DataTables\DataTables;
-use Carbon\Carbon;
+use Illuminate\Support\FacadesLog;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CruiseController extends Controller
 {
@@ -97,7 +98,6 @@ class CruiseController extends Controller
                 'message' => 'Crociera creata con successo',
                 'cruise_id' => $cruise->id
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'response' => false,
@@ -197,7 +197,6 @@ class CruiseController extends Controller
                 'response' => true,
                 'message' => 'Crociera aggiornata con successo'
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'response' => false,
@@ -224,7 +223,6 @@ class CruiseController extends Controller
                 'response' => true,
                 'message' => 'Crociera eliminata con successo'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Errore eliminazione crociera: ' . $e->getMessage());
             return response()->json([
@@ -234,96 +232,200 @@ class CruiseController extends Controller
         }
     }
 
-    /**
-     * Get data for DataTables
-     */
-    public function getData()
-    {
+
+public function getData()
+{
+    try {
+        // ✅ Query ottimizzata - solo campi essenziali per ridurre memoria
         $cruises = Cruise::select([
             'id', 'ship', 'cruise', 'line', 'duration', 'night', 
-            'partenza', 'arrivo', 'from', 'to', 'interior', 
-            'oceanview', 'balcony', 'minisuite', 'suite', 'details',
-            'created_at', 'updated_at'
+            'partenza', 'arrivo', 'from', 'to', 'interior'
+            // ✅ Rimosse: 'oceanview', 'balcony', 'minisuite', 'suite', 'details' per performance
         ]);
-
+        
         return DataTables::of($cruises)
+            // ✅ Colonna durata ottimizzata
             ->addColumn('formatted_duration', function (Cruise $cruise) {
-                return $cruise->formatted_duration;
+                if ($cruise->duration) {
+                    return $cruise->duration . ' giorni';
+                }
+                if ($cruise->night) {
+                    return $cruise->night . ' notti';
+                }
+                return 'N/D';
             })
-            ->addColumn('price_range', function (Cruise $cruise) {
-                return $cruise->price_range;
-            })
+            
+            // ✅ Itinerario semplificato 
             ->addColumn('itinerary', function (Cruise $cruise) {
                 $partenza = $cruise->partenza ? $cruise->partenza->format('d/m/Y') : 'N/D';
-                $arrivo = $cruise->arrivo ? $cruise->arrivo->format('d/m/Y') : 'N/D';
-                return $partenza . ' → ' . $arrivo;
+                return '<small class="text-muted">dal</small><br><strong>' . $partenza . '</strong>';
             })
+            
+            // ✅ Azioni semplificate
             ->addColumn('actions', function (Cruise $cruise) {
-                $actions = '<div class="action-buttons">';
+                $actions = '<div class="btn-group btn-group-sm">';
                 
-                // Pulsante Visualizza
                 $actions .= '<a href="' . route('cruises.show', $cruise->id) . '" 
-                    class="btn btn-sm btn-info me-1" 
-                    data-bs-toggle="tooltip" 
-                    title="Visualizza dettagli">
-                    <i class="fas fa-eye"></i>
-                </a>';
+                            class="btn btn-outline-primary btn-sm" title="Visualizza">
+                            <i class="fas fa-eye"></i></a>';
                 
-                // Pulsante Modifica
                 $actions .= '<a href="' . route('cruises.edit', $cruise->id) . '" 
-                    class="btn btn-sm btn-primary me-1" 
-                    data-bs-toggle="tooltip" 
-                    title="Modifica crociera">
-                    <i class="fas fa-edit"></i>
-                </a>';
+                            class="btn btn-outline-warning btn-sm" title="Modifica">
+                            <i class="fas fa-edit"></i></a>';
                 
-                // Pulsante Elimina
-                $actions .= '<button 
-                    data-id="' . $cruise->id . '" 
-                    data-ship="' . htmlspecialchars($cruise->ship) . '"
-                    data-cruise="' . htmlspecialchars($cruise->cruise) . '"
-                    class="btn btn-sm btn-danger deleteButton" 
-                    data-bs-toggle="tooltip" 
-                    title="Elimina crociera">
-                    <i class="fas fa-trash"></i>
-                </button>';
+                $actions .= '<button type="button" class="btn btn-outline-danger btn-sm delete-cruise" 
+                            data-id="' . $cruise->id . '" data-name="' . htmlspecialchars($cruise->ship . ' - ' . $cruise->cruise) . '" 
+                            title="Elimina">
+                            <i class="fas fa-trash"></i></button>';
                 
                 $actions .= '</div>';
+                
                 return $actions;
             })
+            
+            // ✅ Formattazione compagnia con badge
             ->editColumn('line', function (Cruise $cruise) {
+                if (!$cruise->line) return '<span class="badge bg-secondary">N/D</span>';
+                
                 $badgeClass = 'bg-secondary';
-                $line = strtolower($cruise->line);
+                $lineLower = strtolower($cruise->line);
                 
-                if (strpos($line, 'msc') !== false) $badgeClass = 'bg-info';
-                if (strpos($line, 'costa') !== false) $badgeClass = 'bg-success';
-                if (strpos($line, 'royal') !== false) $badgeClass = 'bg-warning';
-                if (strpos($line, 'norwegian') !== false) $badgeClass = 'bg-primary';
+                if (strpos($lineLower, 'msc') !== false) $badgeClass = 'bg-info';
+                elseif (strpos($lineLower, 'costa') !== false) $badgeClass = 'bg-success';
+                elseif (strpos($lineLower, 'royal') !== false) $badgeClass = 'bg-warning';
+                elseif (strpos($lineLower, 'norwegian') !== false) $badgeClass = 'bg-primary';
                 
-                return '<span class="badge ' . $badgeClass . '">' . $cruise->line . '</span>';
+                return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($cruise->line) . '</span>';
             })
+            
+            // ✅ Formattazione prezzo interior
             ->editColumn('interior', function (Cruise $cruise) {
-                return Cruise::formatPrice($cruise->interior);
+                return $cruise->interior ? 
+                    '€' . number_format($cruise->interior, 0, ',', '.') : 
+                    '<span class="text-muted">N/D</span>';
             })
-            ->editColumn('oceanview', function (Cruise $cruise) {
-                return Cruise::formatPrice($cruise->oceanview);
+            
+            // ✅ Formattazione nave in grassetto
+            ->editColumn('ship', function (Cruise $cruise) {
+                return '<div class="fw-bold">' . ($cruise->ship ?: 'N/D') . '</div>';
             })
-            ->editColumn('balcony', function (Cruise $cruise) {
-                return Cruise::formatPrice($cruise->balcony);
-            })
-            ->editColumn('details', function (Cruise $cruise) {
-                if (!$cruise->details) return '-';
+            
+            // ✅ Formattazione crociera con truncate
+            ->editColumn('cruise', function (Cruise $cruise) {
+                if (!$cruise->cruise) return 'N/D';
                 
-                $details = $cruise->details;
-                if (strlen($details) > 50) {
-                    $details = substr($details, 0, 50) . '...';
+                if (strlen($cruise->cruise) > 40) {
+                    return '<span title="' . htmlspecialchars($cruise->cruise) . '">' . 
+                           htmlspecialchars(substr($cruise->cruise, 0, 40)) . '...</span>';
                 }
-                
-                return '<span title="' . htmlspecialchars($cruise->details) . '">' . 
-                       htmlspecialchars($details) . '</span>';
+                return htmlspecialchars($cruise->cruise);
             })
-            ->rawColumns(['line', 'actions', 'details'])
+            
+            // ✅ Permetti HTML nelle colonne specificate
+            ->rawColumns(['line', 'actions', 'itinerary', 'interior', 'ship', 'cruise'])
+            
+            // ✅ Ottimizzazione finale
             ->make(true);
+            
+    } catch (\Exception $e) {
+        Log::error('Errore DataTable crociere: ' . $e->getMessage());
+        
+        // ✅ Ritorna risposta vuota invece di errore 500
+        return response()->json([
+            'draw' => intval(request()->get('draw', 1)),
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => 'Errore nel caricamento dei dati'
+        ]);
+    }
+}
+
+
+    private function formatCompanyBadge($line)
+    {
+        if (!$line) return '<span class="badge bg-secondary">N/D</span>';
+
+        $badgeClass = 'bg-secondary';
+        $lineLower = strtolower($line);
+
+        if (strpos($lineLower, 'msc') !== false) $badgeClass = 'bg-info';
+        if (strpos($lineLower, 'costa') !== false) $badgeClass = 'bg-success';
+        if (strpos($lineLower, 'royal') !== false) $badgeClass = 'bg-warning';
+        if (strpos($lineLower, 'norwegian') !== false) $badgeClass = 'bg-primary';
+
+        return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($line) . '</span>';
+    }
+
+    private function formatDuration($cruise)
+    {
+        if ($cruise->duration) {
+            return $cruise->duration . ' giorni';
+        }
+        if ($cruise->night) {
+            return $cruise->night . ' notti';
+        }
+        return 'N/D';
+    }
+
+    private function formatItinerary($cruise)
+    {
+        $partenza = 'N/D';
+        $arrivo = 'N/D';
+
+        try {
+            if ($cruise->partenza) {
+                $partenza = \Carbon\Carbon::parse($cruise->partenza)->format('d/m/Y');
+            }
+            if ($cruise->arrivo) {
+                $arrivo = \Carbon\Carbon::parse($cruise->arrivo)->format('d/m/Y');
+            }
+        } catch (\Exception $e) {
+            // Ignora errori di parsing date
+        }
+
+        return $partenza . ' → ' . $arrivo;
+    }
+
+    private function formatPrice($price)
+    {
+        if (!$price || $price <= 0) {
+            return '<span class="text-muted">-</span>';
+        }
+
+        return '<span class="text-success fw-bold">€' . number_format($price, 0, ',', '.') . '</span>';
+    }
+
+    private function formatActions($cruise)
+    {
+        $actions = '<div class="action-buttons">';
+
+        $actions .= '<a href="' . route('cruises.show', $cruise->id) . '" 
+        class="btn btn-sm btn-info me-1" 
+        data-bs-toggle="tooltip" 
+        title="Visualizza dettagli">
+        <i class="fas fa-eye"></i>
+    </a>';
+
+        $actions .= '<a href="' . route('cruises.edit', $cruise->id) . '" 
+        class="btn btn-sm btn-primary me-1" 
+        data-bs-toggle="tooltip" 
+        title="Modifica crociera">
+        <i class="fas fa-edit"></i>
+    </a>';
+
+        $actions .= '<button 
+        data-id="' . $cruise->id . '" 
+        data-ship="' . htmlspecialchars($cruise->ship) . '"
+        data-cruise="' . htmlspecialchars($cruise->cruise) . '"
+        class="btn btn-sm btn-danger deleteButton" 
+        data-bs-toggle="tooltip" 
+        title="Elimina crociera">
+        <i class="fas fa-trash"></i>
+    </button>';
+
+        $actions .= '</div>';
+        return $actions;
     }
 
     /**
@@ -372,7 +474,7 @@ class CruiseController extends Controller
     {
         try {
             $ids = $request->input('ids', []);
-            
+
             if (empty($ids)) {
                 return response()->json([
                     'response' => false,
@@ -386,7 +488,6 @@ class CruiseController extends Controller
                 'response' => true,
                 'message' => "Eliminate $deleted crociere con successo"
             ]);
-
         } catch (\Exception $e) {
             Log::error('Errore eliminazione multipla: ' . $e->getMessage());
             return response()->json([
@@ -403,7 +504,7 @@ class CruiseController extends Controller
     {
         try {
             $filename = 'crociere_export_' . date('Ymd_His') . '.csv';
-            
+
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -415,10 +516,23 @@ class CruiseController extends Controller
 
                 // Headers CSV
                 fputcsv($file, [
-                    'ID', 'Nave', 'Crociera', 'Compagnia', 'Durata (giorni)', 
-                    'Notti', 'Data Partenza', 'Data Arrivo', 'Porto Partenza', 
-                    'Porto Arrivo', 'Cabina Interna', 'Vista Mare', 'Balcone', 
-                    'Mini Suite', 'Suite', 'Dettagli', 'Data Creazione'
+                    'ID',
+                    'Nave',
+                    'Crociera',
+                    'Compagnia',
+                    'Durata (giorni)',
+                    'Notti',
+                    'Data Partenza',
+                    'Data Arrivo',
+                    'Porto Partenza',
+                    'Porto Arrivo',
+                    'Cabina Interna',
+                    'Vista Mare',
+                    'Balcone',
+                    'Mini Suite',
+                    'Suite',
+                    'Dettagli',
+                    'Data Creazione'
                 ], ';');
 
                 // Dati

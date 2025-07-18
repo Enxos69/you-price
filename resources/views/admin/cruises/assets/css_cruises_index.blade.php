@@ -1,4 +1,6 @@
 <style>
+/* ✅ CSS OTTIMIZZATO PER CROCIERE - SOLO CLASSI NECESSARIE */
+
 /* Variabili colore you-price */
 :root {
     --youPrice-primary: #84bc00;     
@@ -123,6 +125,7 @@
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    animation: fadeInUp 0.6s ease forwards;
 }
 
 .stat-card:hover {
@@ -140,6 +143,10 @@
     background: var(--youPrice-primary);
 }
 
+.stat-card:nth-child(2) { animation-delay: 0.1s; }
+.stat-card:nth-child(3) { animation-delay: 0.2s; }
+.stat-card:nth-child(4) { animation-delay: 0.3s; }
+
 .stat-icon {
     width: 50px;
     height: 50px;
@@ -152,17 +159,9 @@
     background: var(--youPrice-primary);
 }
 
-.stat-icon.available {
-    background: var(--youPrice-success);
-}
-
-.stat-icon.future {
-    background: var(--youPrice-info);
-}
-
-.stat-icon.companies {
-    background: var(--youPrice-accent);
-}
+.stat-icon.available { background: var(--youPrice-success); }
+.stat-icon.future { background: var(--youPrice-info); }
+.stat-icon.companies { background: var(--youPrice-accent); }
 
 .stat-content {
     flex: 1;
@@ -265,7 +264,7 @@
     box-shadow: 0 0 0 3px rgba(132, 188, 0, 0.1);
 }
 
-/* Table Container */
+/* ✅ TABELLA OTTIMIZZATA - 8 COLONNE */
 .table-container {
     position: relative;
     background: white;
@@ -277,7 +276,18 @@
 .cruises-table {
     margin-bottom: 0;
     width: 100%;
+    table-layout: fixed;
 }
+
+/* Larghezze colonne specifiche */
+.cruises-table th:nth-child(1), .cruises-table td:nth-child(1) { width: 3%; min-width: 40px; text-align: center; }
+.cruises-table th:nth-child(2), .cruises-table td:nth-child(2) { width: 18%; min-width: 140px; text-align: left; }
+.cruises-table th:nth-child(3), .cruises-table td:nth-child(3) { width: 25%; min-width: 180px; text-align: left; }
+.cruises-table th:nth-child(4), .cruises-table td:nth-child(4) { width: 15%; min-width: 120px; text-align: center; }
+.cruises-table th:nth-child(5), .cruises-table td:nth-child(5) { width: 8%; min-width: 80px; text-align: center; }
+.cruises-table th:nth-child(6), .cruises-table td:nth-child(6) { width: 12%; min-width: 100px; text-align: center; }
+.cruises-table th:nth-child(7), .cruises-table td:nth-child(7) { width: 10%; min-width: 90px; text-align: right; }
+.cruises-table th:nth-child(8), .cruises-table td:nth-child(8) { width: 9%; min-width: 85px; text-align: center; }
 
 .cruises-table thead {
     background: var(--youPrice-gradient);
@@ -287,11 +297,10 @@
     color: white;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     letter-spacing: 0.5px;
-    padding: 1rem 0.75rem;
+    padding: 0.75rem 0.5rem;
     border: none;
-    text-align: center;
     vertical-align: middle;
     white-space: nowrap;
 }
@@ -303,23 +312,23 @@
 
 .cruises-table tbody tr:hover {
     background-color: rgba(132, 188, 0, 0.05);
-    transform: scale(1.005);
+    transform: scale(1.002);
 }
 
 .cruises-table tbody td {
-    padding: 0.75rem;
+    padding: 0.5rem 0.5rem;
     vertical-align: middle;
-    text-align: center;
     border: none;
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     word-wrap: break-word;
 }
 
-/* Checkbox Styling */
+/* Form Controls */
 .form-check-input {
     border: 2px solid var(--youPrice-accent);
     border-radius: 4px;
+    transform: scale(0.9);
 }
 
 .form-check-input:checked {
@@ -327,105 +336,93 @@
     border-color: var(--youPrice-primary);
 }
 
-/* Badge Styling per Compagnie */
+/* Badge Compagnie */
 .badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.4rem 0.8rem;
-    border-radius: 15px;
-}
-
-.badge.bg-info {
-    background-color: var(--youPrice-info) !important;
-}
-
-.badge.bg-success {
-    background-color: var(--youPrice-success) !important;
-}
-
-.badge.bg-warning {
-    background-color: var(--youPrice-warning) !important;
-    color: var(--youPrice-dark) !important;
-}
-
-.badge.bg-primary {
-    background-color: var(--youPrice-primary) !important;
-}
-
-.badge.bg-secondary {
-    background-color: #6c757d !important;
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 0.25rem;
-    justify-content: center;
-    flex-wrap: nowrap;
-}
-
-.btn-sm {
-    padding: 0.35rem 0.7rem;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.6rem;
     border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.badge.bg-info { background-color: var(--youPrice-info) !important; }
+.badge.bg-success { background-color: var(--youPrice-success) !important; }
+.badge.bg-warning { background-color: var(--youPrice-warning) !important; color: var(--youPrice-dark) !important; }
+.badge.bg-primary { background-color: var(--youPrice-primary) !important; }
+.badge.bg-secondary { background-color: #6c757d !important; }
+
+/* Pulsanti */
+.btn-group-sm .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
     border: none;
     cursor: pointer;
     text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
+    transition: all 0.3s ease;
 }
 
-.btn-info {
-    background: var(--youPrice-info);
-    color: white;
+.btn-group-sm .btn i {
+    font-size: 0.8rem;
 }
 
-.btn-info:hover {
-    background: #138496;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
-    color: white;
+.btn-outline-primary {
+    color: var(--youPrice-primary);
+    border: 1px solid var(--youPrice-primary);
 }
 
-.btn-primary {
+.btn-outline-primary:hover {
     background: var(--youPrice-primary);
     color: white;
-}
-
-.btn-primary:hover {
-    background: #6a9c00;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(132, 188, 0, 0.3);
-    color: white;
 }
 
-.btn-danger {
+.btn-outline-warning {
+    color: var(--youPrice-warning);
+    border: 1px solid var(--youPrice-warning);
+}
+
+.btn-outline-warning:hover {
+    background: var(--youPrice-warning);
+    color: var(--youPrice-dark);
+    transform: translateY(-1px);
+}
+
+.btn-outline-danger {
+    color: var(--youPrice-danger);
+    border: 1px solid var(--youPrice-danger);
+}
+
+.btn-outline-danger:hover {
     background: var(--youPrice-danger);
     color: white;
-}
-
-.btn-danger:hover {
-    background: #c82333;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-    color: white;
-}
-
-/* Bulk Actions */
-#bulkDeleteBtn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-#bulkDeleteBtn:not(:disabled):hover {
-    background: #c82333;
     transform: translateY(-1px);
 }
 
-/* Loading Overlay */
+/* Testo specifico */
+.fw-bold {
+    font-weight: 700 !important;
+    color: var(--youPrice-dark);
+}
+
+.text-truncate {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cruises-table td:nth-child(7) {
+    font-weight: 600;
+    color: var(--youPrice-primary);
+}
+
+.cruises-table td:nth-child(6) small {
+    font-size: 0.7rem;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* Loading e Stati */
 .loading-overlay {
     position: absolute;
     top: 0;
@@ -455,53 +452,23 @@
     margin: 0 auto 1rem;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Modal Styling */
-.modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header.bg-danger {
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
-}
-
-.cruise-info {
-    background: rgba(220, 53, 69, 0.1);
+.dataTables_processing {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    margin-left: -100px;
+    margin-top: -20px;
+    text-align: center;
     padding: 1rem;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 8px;
-    border-left: 4px solid #dc3545;
-    margin: 1rem 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
+    color: var(--youPrice-primary);
 }
 
-/* Alert Styling */
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.alert-success {
-    background: rgba(40, 167, 69, 0.1);
-    color: #155724;
-    border-left: 4px solid #28a745;
-}
-
-.alert-danger {
-    background: rgba(220, 53, 69, 0.1);
-    color: #721c24;
-    border-left: 4px solid #dc3545;
-}
-
-/* DataTables Custom Styling */
+/* DataTables personalizzazione */
 .dataTables_wrapper {
     padding: 0;
 }
@@ -548,98 +515,11 @@
     border-color: var(--youPrice-accent) !important;
 }
 
-/* Responsive */
-@media (max-width: 1200px) {
-    .cruises-table {
-        font-size: 0.85rem;
-    }
-    
-    .cruises-table th,
-    .cruises-table td {
-        padding: 0.5rem 0.25rem;
-    }
+/* Animazioni */
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-@media (max-width: 768px) {
-    .cruises-page-wrapper {
-        padding-top: 70px;
-    }
-    
-    .page-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-    
-    .header-actions {
-        width: 100%;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .filters-section {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filters-container {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .card-body {
-        padding: 1.5rem;
-    }
-    
-    .stats-row {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .table-container {
-        overflow-x: auto;
-    }
-    
-    .cruises-table {
-        min-width: 900px;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .cruises-table {
-        min-width: 800px;
-        font-size: 0.75rem;
-    }
-    
-    .header-actions {
-        gap: 0.5rem;
-    }
-    
-    .btn-action {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
-    }
-}
-
-/* Tooltip Styling */
-[data-bs-toggle="tooltip"] {
-    cursor: help;
-}
-
-.tooltip {
-    font-size: 0.8rem;
-}
-
-.tooltip-inner {
-    background-color: var(--youPrice-dark);
-    border-radius: 6px;
-    padding: 0.5rem 0.75rem;
-}
-
-/* Animations */
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -651,43 +531,154 @@
     }
 }
 
-.stat-card {
-    animation: fadeInUp 0.6s ease forwards;
+/* Responsive */
+@media (max-width: 1200px) {
+    .cruises-table th:nth-child(3), .cruises-table td:nth-child(3) { width: 20%; min-width: 150px; }
+    .cruises-table th:nth-child(2), .cruises-table td:nth-child(2) { width: 15%; min-width: 120px; }
 }
 
-.stat-card:nth-child(2) {
-    animation-delay: 0.1s;
+@media (max-width: 992px) {
+    .cruises-table { font-size: 0.8rem; }
+    .cruises-table th, .cruises-table td { padding: 0.4rem 0.3rem; }
 }
 
-.stat-card:nth-child(3) {
-    animation-delay: 0.2s;
+@media (max-width: 768px) {
+    .cruises-page-wrapper { padding-top: 70px; }
+    .page-header { flex-direction: column; gap: 1rem; text-align: center; }
+    .header-actions { width: 100%; justify-content: center; flex-wrap: wrap; }
+    .filters-section { flex-direction: column; align-items: stretch; }
+    .filters-container { justify-content: center; flex-wrap: wrap; }
+    .card-body { padding: 1.5rem; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .table-container { overflow-x: auto; }
+    .cruises-table { min-width: 900px; }
 }
 
-.stat-card:nth-child(4) {
-    animation-delay: 0.3s;
+@media (max-width: 480px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .cruises-table { min-width: 800px; font-size: 0.75rem; }
+    .header-actions { gap: 0.5rem; }
+    .btn-action { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+}
+/* ✅ CSS AGGIUNTIVO PER FORZARE LARGHEZZE COLONNE DATATABLE */
+
+/* Forza layout fisso e disabilita auto-resize */
+#cruises-table {
+    table-layout: fixed !important;
+    width: 100% !important;
 }
 
-/* Print Styles */
-@media print {
-    .cruises-page-wrapper {
-        padding: 0;
-        background: white;
+/* Larghezze forzate con !important per sovrascrivere DataTables */
+#cruises-table th:nth-child(1),
+#cruises-table td:nth-child(1) {
+    width: 3% !important;
+    min-width: 40px !important;
+    max-width: 3% !important;
+}
+
+#cruises-table th:nth-child(2),
+#cruises-table td:nth-child(2) {
+    width: 18% !important;
+    min-width: 140px !important;
+    max-width: 18% !important;
+}
+
+#cruises-table th:nth-child(3),
+#cruises-table td:nth-child(3) {
+    width: 25% !important;
+    min-width: 180px !important;
+    max-width: 25% !important;
+}
+
+#cruises-table th:nth-child(4),
+#cruises-table td:nth-child(4) {
+    width: 15% !important;
+    min-width: 120px !important;
+    max-width: 15% !important;
+}
+
+#cruises-table th:nth-child(5),
+#cruises-table td:nth-child(5) {
+    width: 8% !important;
+    min-width: 80px !important;
+    max-width: 8% !important;
+}
+
+#cruises-table th:nth-child(6),
+#cruises-table td:nth-child(6) {
+    width: 12% !important;
+    min-width: 100px !important;
+    max-width: 12% !important;
+}
+
+#cruises-table th:nth-child(7),
+#cruises-table td:nth-child(7) {
+    width: 10% !important;
+    min-width: 90px !important;
+    max-width: 10% !important;
+}
+
+#cruises-table th:nth-child(8),
+#cruises-table td:nth-child(8) {
+    width: 9% !important;
+    min-width: 85px !important;
+    max-width: 9% !important;
+}
+
+/* Disabilita il resize automatico di DataTables */
+.dataTables_wrapper .dataTables_scroll_head table,
+.dataTables_wrapper .dataTables_scroll_body table {
+    table-layout: fixed !important;
+}
+
+/* Forza il contenimento del testo */
+#cruises-table th,
+#cruises-table td {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    padding: 0.5rem 0.25rem !important;
+}
+
+/* Eccezioni per colonne che possono andare a capo */
+#cruises-table th:nth-child(2),
+#cruises-table td:nth-child(2),
+#cruises-table th:nth-child(3),
+#cruises-table td:nth-child(3) {
+    white-space: normal !important;
+}
+
+/* Scroll orizzontale se necessario */
+.table-container {
+    overflow-x: auto !important;
+}
+
+.dataTables_scrollBody {
+    overflow-x: auto !important;
+}
+
+/* Impedisci a DataTables di cambiare le larghezze */
+.dataTables_wrapper table {
+    margin: 0 !important;
+}
+
+/* Responsive fix - mantieni larghezze anche su mobile */
+@media (max-width: 768px) {
+    .table-container {
+        overflow-x: scroll !important;
     }
     
-    .page-header,
-    .filters-section,
-    .header-actions,
-    .action-buttons {
-        display: none !important;
+    #cruises-table {
+        min-width: 900px !important;
     }
     
-    .cruises-card {
-        box-shadow: none;
-        border: 1px solid #ccc;
-    }
-    
-    .cruises-table {
-        font-size: 0.8rem;
+    /* Mantieni le larghezze anche su mobile */
+    #cruises-table th,
+    #cruises-table td {
+        font-size: 0.75rem !important;
+        padding: 0.3rem 0.2rem !important;
     }
 }
+
+
 </style>

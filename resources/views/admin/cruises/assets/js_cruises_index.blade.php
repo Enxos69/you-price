@@ -1,535 +1,760 @@
 <script>
-$(document).ready(function() {
-    // Inizializza il form
-    initializeForm();
-    
-    // Inizializza validazioni
-    initializeValidation();
-    
-    // Inizializza gestori eventi
-    initializeEventHandlers();
-    
-    // Inizializza SweetAlert
-    initializeSweetAlert();
-});
+    // VERSIONE FINALE - Tutte le funzionalità complete e raffinate
 
-function initializeForm() {
-    // Auto-calcolo durata da notti
-    $('#night').on('input', function() {
-        const nights = parseInt($(this).val());
-        if (nights && nights > 0) {
-            $('#duration').val(nights + 1);
-        }
+    let cruisesTable;
+    let selectedCruises = [];
+
+    $(document).ready(function() {
+        console.log('🚀 Inizializzazione Gestione Crociere - Versione Finale');
+
+        // Inizializzazione con delay per stabilità
+        setTimeout(function() {
+            initializeCruisesTable();
+            initializeFilters();
+            initializeSweetAlert();
+            loadCruiseStats();
+        }, 500);
     });
-    
-    // Auto-calcolo notti da durata
-    $('#duration').on('input', function() {
-        const days = parseInt($(this).val());
-        if (days && days > 1) {
-            $('#night').val(days - 1);
+
+    // ✅ CONFIGURAZIONE DATATABLE CON LARGHEZZE FORZATE E FISSE
+    function initializeCruisesTable() {
+        console.log('Inizializzazione DataTable con larghezze fisse...');
+
+        // Distruggi DataTable esistente se presente
+        if ($.fn.DataTable.isDataTable('#cruises-table')) {
+            $('#cruises-table').DataTable().destroy();
         }
-    });
-    
-    // Validazione date
-    $('#partenza').on('change', function() {
-        const departureDate = $(this).val();
-        const arrivalInput = $('#arrivo');
-        
-        if (departureDate) {
-            // Imposta data minima per arrivo
-            arrivalInput.attr('min', departureDate);
-            
-            // Se c'è una durata, calcola automaticamente l'arrivo
-            const duration = parseInt($('#duration').val());
-            if (duration && duration > 0) {
-                const departure = new Date(departureDate);
-                const arrival = new Date(departure);
-                arrival.setDate(departure.getDate() + duration - 1);
-                arrivalInput.val(arrival.toISOString().split('T')[0]);
+
+        const dataUrl = '{{ route('cruises.data') }}';
+
+        cruisesTable = $('#cruises-table').DataTable({
+            // ✅ DISABILITA RESPONSIVE E AUTO-WIDTH
+            responsive: false,
+            autoWidth: false,
+            processing: true,
+            serverSide: true,
+            deferRender: true,
+
+            // ✅ FORZA SCROLL ORIZZONTALE
+            scrollX: true,
+            scrollCollapse: true,
+
+            ajax: {
+                url: dataUrl,
+                type: 'GET',
+                beforeSend: function() {
+                    showLoading(true);
+                },
+                complete: function() {
+                    showLoading(false);
+                },
+                error: function(xhr, error, code) {
+                    console.error('Errore AJAX DataTable:', error);
+                    showToast('Errore nel caricamento dei dati. Riprova più tardi.', 'error');
+                    showLoading(false);
+                }
+            },
+
+            // ✅ LARGHEZZE FORZATE NELLE COLONNE
+            columnDefs: [{
+                    width: "3%",
+                    targets: 0
+                }, // Checkbox
+                {
+                    width: "18%",
+                    targets: 1
+                }, // Nave
+                {
+                    width: "25%",
+                    targets: 2
+                }, // Crociera
+                {
+                    width: "15%",
+                    targets: 3
+                }, // Compagnia
+                {
+                    width: "8%",
+                    targets: 4
+                }, // Durata
+                {
+                    width: "12%",
+                    targets: 5
+                }, // Partenza
+                {
+                    width: "10%",
+                    targets: 6
+                }, // Prezzo
+                {
+                    width: "9%",
+                    targets: 7
+                } // Azioni
+            ],
+
+            columns: [
+                // ✅ CHECKBOX
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: "text-center",
+                    render: function(data, type, row) {
+                        return `<input type="checkbox" class="form-check-input cruise-checkbox" value="${row.id}">`;
+                    }
+                },
+                // ✅ NAVE
+                {
+                    data: 'ship',
+                    name: 'ship',
+                    className: "text-left",
+                    render: function(data, type, row) {
+                        return `<div class="fw-bold">${data || 'N/D'}</div>`;
+                    }
+                },
+                // ✅ CROCIERA
+                {
+                    data: 'cruise',
+                    name: 'cruise',
+                    className: "text-left",
+                    render: function(data, type, row) {
+                        if (data && data.length > 35) {
+                            return `<span title="${data}" class="text-truncate d-block">${data.substring(0, 35)}...</span>`;
+                        }
+                        return data || 'N/D';
+                    }
+                },
+                // ✅ COMPAGNIA
+                {
+                    data: 'line',
+                    name: 'line',
+                    className: "text-center"
+                },
+                // ✅ DURATA
+                {
+                    data: 'formatted_duration',
+                    name: 'duration',
+                    className: "text-center"
+                },
+                // ✅ DATA PARTENZA
+                {
+                    data: 'itinerary',
+                    name: 'partenza',
+                    className: "text-center"
+                },
+                // ✅ PREZZO INTERIOR
+                {
+                    data: 'interior',
+                    name: 'interior',
+                    className: "text-right"
+                },
+                // ✅ AZIONI
+                {
+                    data: 'actions',
+                    name: 'actions',
+                    orderable: false,
+                    searchable: false,
+                    className: "text-center"
+                }
+            ],
+
+            // ✅ IMPOSTAZIONI PERFORMANCE
+            pageLength: 15,
+            lengthMenu: [
+                [10, 15, 25, 50],
+                [10, 15, 25, 50]
+            ],
+
+            language: {
+                processing: "⏳ Caricamento...",
+                search: "",
+                searchPlaceholder: "Cerca crociere...",
+                lengthMenu: "Mostra _MENU_ crociere",
+                info: "_START_-_END_ di _TOTAL_",
+                infoEmpty: "Nessuna crociera",
+                infoFiltered: "(filtrate da _MAX_ totali)",
+                zeroRecords: "Nessun risultato trovato",
+                emptyTable: "Nessuna crociera presente",
+                paginate: {
+                    previous: "‹",
+                    next: "›"
+                }
+            },
+
+            // ✅ DOM SEMPLIFICATO
+            dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>rt<"row"<"col-sm-5"i><"col-sm-7"p>>',
+            order: [
+                [1, 'asc']
+            ],
+
+            // ✅ CALLBACK OTTIMIZZATO
+            drawCallback: function() {
+                setTimeout(() => {
+                    // Forza larghezze dopo il rendering
+                    fixColumnWidths();
+
+                    // Inizializza tooltip
+                    $('[title]').tooltip({
+                        delay: {
+                            show: 500,
+                            hide: 100
+                        }
+                    });
+
+                    // Attach eventi
+                    $('.delete-cruise').off('click').on('click', function() {
+                        const id = $(this).data('id');
+                        const name = $(this).data('name');
+                        confirmDelete(id, name);
+                    });
+
+                    updateSelectedCruises();
+                }, 10);
+            },
+
+            // ✅ INIZIALIZZAZIONE COMPLETATA
+            initComplete: function() {
+                console.log('✅ DataTable inizializzata con larghezze fisse');
+                fixColumnWidths();
             }
-        }
-    });
-    
-    // Auto-suggerimenti per compagnie personalizzate
-    $('#line').on('change', function() {
-        if ($(this).val() === 'Altra') {
-            showCustomCompanyInput();
-        }
-    });
-    
-    // Formattazione prezzi in tempo reale
-    $('.form-control[type="number"]').on('input', function() {
-        const value = $(this).val();
-        if (value && value > 0) {
-            formatPriceInput($(this));
-        }
-    });
-}
+        });
 
-function showCustomCompanyInput() {
-    Swal.fire({
-        title: 'Compagnia Personalizzata',
-        input: 'text',
-        inputLabel: 'Nome della compagnia',
-        inputPlaceholder: 'Inserisci il nome della compagnia...',
-        showCancelButton: true,
-        confirmButtonColor: '#84bc00',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Aggiungi',
-        cancelButtonText: 'Annulla',
-        inputValidator: (value) => {
-            if (!value) {
-                return 'Devi inserire il nome della compagnia!';
+        window.cruisesTable = cruisesTable;
+    }
+
+    // ✅ FUNZIONE PER FORZARE LE LARGHEZZE DOPO IL RENDERING
+    function fixColumnWidths() {
+        const table = $('#cruises-table');
+        const ths = table.find('thead th');
+        const widths = ['3%', '18%', '25%', '15%', '8%', '12%', '10%', '9%'];
+
+        ths.each(function(index) {
+            if (widths[index]) {
+                $(this).css({
+                    'width': widths[index],
+                    'min-width': widths[index],
+                    'max-width': widths[index]
+                });
             }
-            if (value.length < 2) {
-                return 'Il nome deve avere almeno 2 caratteri!';
+        });
+
+        // Forza anche le celle del body
+        table.find('tbody td').each(function(index) {
+            const colIndex = index % 8;
+            if (widths[colIndex]) {
+                $(this).css({
+                    'width': widths[colIndex],
+                    'min-width': widths[colIndex],
+                    'max-width': widths[colIndex]
+                });
             }
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const customCompany = result.value;
-            
-            // Aggiungi l'opzione al select
-            const option = new Option(customCompany, customCompany, true, true);
-            $('#line').append(option);
-            
-            showToast(`Compagnia "${customCompany}" aggiunta con successo!`, 'success');
-        } else {
-            // Ripristina selezione precedente
-            $('#line').val('').trigger('change');
-        }
-    });
-}
-
-function formatPriceInput(input) {
-    // Formattazione visiva dei prezzi (opzionale)
-    const value = parseFloat(input.val());
-    if (!isNaN(value) && value > 0) {
-        input.addClass('is-valid').removeClass('is-invalid');
+        });
     }
-}
 
-function initializeValidation() {
-    // Validazione personalizzata
-    $('#cruiseForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        if (validateForm()) {
-            submitForm();
-        }
-    });
-    
-    // Validazione in tempo reale
-    $('.form-control[required]').on('blur', function() {
-        validateField($(this));
-    });
-    
-    // Validazione prezzi
-    $('.form-control[type="number"]').on('blur', function() {
-        validatePriceField($(this));
-    });
-}
-
-function validateForm() {
-    let isValid = true;
-    const errors = {};
-    
-    // Validazione campi obbligatori
-    const requiredFields = ['ship', 'cruise', 'line'];
-    requiredFields.forEach(field => {
-        const input = $(`#${field}`);
-        if (!input.val().trim()) {
-            errors[field] = 'Questo campo è obbligatorio';
-            isValid = false;
-        }
-    });
-    
-    // Validazione date
-    const departureDate = $('#partenza').val();
-    const arrivalDate = $('#arrivo').val();
-    
-    if (departureDate && arrivalDate) {
-        if (new Date(departureDate) > new Date(arrivalDate)) {
-            errors['arrivo'] = 'La data di arrivo deve essere uguale o successiva alla partenza';
-            isValid = false;
-        }
-    }
-    
-    // Validazione durata/notti
-    const duration = parseInt($('#duration').val());
-    const nights = parseInt($('#night').val());
-    
-    if (duration && nights && Math.abs(duration - nights) > 1) {
-        errors['duration'] = 'Durata e numero di notti non sono coerenti';
-        isValid = false;
-    }
-    
-    // Validazione prezzi
-    const priceFields = ['interior', 'oceanview', 'balcony', 'minisuite', 'suite'];
-    let hasPrices = false;
-    
-    priceFields.forEach(field => {
-        const value = parseFloat($(`#${field}`).val());
-        if (value && value > 0) {
-            hasPrices = true;
-            if (value > 50000) {
-                errors[field] = 'Il prezzo sembra troppo alto (max €50.000)';
-                isValid = false;
+    // ✅ FUNZIONE PER CONFERMA ELIMINAZIONE
+    function confirmDelete(cruiseId, cruiseName) {
+        Swal.fire({
+            title: 'Conferma eliminazione',
+            text: `Sei sicuro di voler eliminare "${cruiseName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteCruise(cruiseId);
             }
+        });
+    }
+
+    // ✅ FUNZIONE PER ELIMINAZIONE AJAX
+    function deleteCruise(cruiseId) {
+        $.ajax({
+            url: `/admin/cruises/${cruiseId}`,
+            type: 'DELETE',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.response) {
+                    showToast(response.message || 'Crociera eliminata con successo', 'success');
+                    cruisesTable.ajax.reload(null, false); // Ricarica senza resettare pagina
+                } else {
+                    showToast(response.message || 'Errore durante l\'eliminazione', 'error');
+                }
+            },
+            error: function(xhr) {
+                console.error('Errore eliminazione:', xhr);
+                showToast('Errore durante l\'eliminazione', 'error');
+            }
+        });
+    }
+
+    // ✅ OTTIMIZZAZIONE CHECKBOX CON THROTTLING
+    function updateSelectedCruises() {
+        clearTimeout(window.checkboxTimeout);
+        window.checkboxTimeout = setTimeout(() => {
+            selectedCruises = $('.cruise-checkbox:checked').map(function() {
+                return this.value;
+            }).get();
+
+            const count = selectedCruises.length;
+            $('#selected-count').text(count);
+            $('#bulk-actions').toggle(count > 0);
+
+            // Aggiorna checkbox "Seleziona tutto"
+            const totalCheckboxes = $('.cruise-checkbox').length;
+            const selectAllCheckbox = $('#selectAll');
+
+            if (count === 0) {
+                selectAllCheckbox.prop('indeterminate', false).prop('checked', false);
+            } else if (count === totalCheckboxes) {
+                selectAllCheckbox.prop('indeterminate', false).prop('checked', true);
+            } else {
+                selectAllCheckbox.prop('indeterminate', true).prop('checked', false);
+            }
+        }, 100);
+    }
+
+    function initializeFilters() {
+        console.log('Inizializzazione filtri...');
+
+        // Search globale personalizzata
+        $('#globalSearch').on('keyup', debounce(function() {
+            if (cruisesTable) {
+                cruisesTable.search(this.value).draw();
+            }
+        }, 300));
+
+        // Filtro per compagnia
+        $('#companyFilter').on('change', function() {
+            if (cruisesTable) {
+                const value = this.value;
+                cruisesTable.column(3).search(value).draw();
+            }
+        });
+
+        // Filtro per disponibilità
+        $('#availabilityFilter').on('change', function() {
+            if (cruisesTable) {
+                const value = this.value;
+                if (value === 'available') {
+                    cruisesTable.columns([6, 7, 8]).search('€', true, false).draw();
+                } else if (value === 'future') {
+                    cruisesTable.search('').draw();
+                } else {
+                    cruisesTable.search('').columns().search('').draw();
+                }
+            }
+        });
+
+        // Checkbox "Seleziona tutto"
+        $('#selectAll').on('change', function() {
+            const isChecked = this.checked;
+            $('.cruise-checkbox:visible').prop('checked', isChecked);
+            updateSelectedCruises();
+        });
+
+        // Gestione checkbox individuali
+        $(document).on('change', '.cruise-checkbox', function() {
+            updateSelectedCruises();
+        });
+
+        console.log('✅ Filtri inizializzati');
+    }
+
+    function updateCheckboxes() {
+        const totalCheckboxes = $('.cruise-checkbox:visible').length;
+        const checkedCheckboxes = $('.cruise-checkbox:visible:checked').length;
+
+        if ($('#selectAll').length > 0) {
+            $('#selectAll').prop('indeterminate', checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes);
+            $('#selectAll').prop('checked', checkedCheckboxes === totalCheckboxes && totalCheckboxes > 0);
         }
-    });
-    
-    if (!hasPrices) {
-        showToast('Inserisci almeno un prezzo per una tipologia di cabina', 'warning');
     }
-    
-    // Mostra errori
-    displayValidationErrors(errors);
-    
-    return isValid;
-}
 
-function validateField(input) {
-    const field = input.attr('name');
-    const value = input.val().trim();
-    
-    clearFieldError(input);
-    
-    if (input.prop('required') && !value) {
-        showFieldError(input, 'Questo campo è obbligatorio');
-        return false;
+    function updateSelectedCruises() {
+        selectedCruises = [];
+        $('.cruise-checkbox:checked').each(function() {
+            selectedCruises.push({
+                id: $(this).val(),
+                name: $(this).data('cruise')
+            });
+        });
+
+        if ($('#bulkDeleteBtn').length > 0) {
+            $('#bulkDeleteBtn').prop('disabled', selectedCruises.length === 0);
+        }
+
+        updateCheckboxes();
     }
-    
-    // Validazioni specifiche per campo
-    switch (field) {
-        case 'ship':
-        case 'cruise':
-            if (value.length < 2) {
-                showFieldError(input, 'Deve contenere almeno 2 caratteri');
-                return false;
+
+    function attachActionEvents() {
+        // Rimuovi event listeners esistenti per evitare duplicati
+        $('.deleteButton').off('click');
+
+        // Eventi per i pulsanti "Elimina"
+        $(document).on('click', '.deleteButton', function() {
+            const cruiseId = $(this).data('id');
+            const shipName = $(this).data('ship');
+            const cruiseName = $(this).data('cruise');
+
+            showDeleteConfirmation(cruiseId, shipName, cruiseName);
+        });
+    }
+
+    function showDeleteConfirmation(cruiseId, shipName, cruiseName) {
+        Swal.fire({
+            title: 'Conferma Eliminazione',
+            html: `Sei sicuro di voler eliminare la crociera:<br><br>
+               <strong>${shipName}</strong><br>
+               <em>${cruiseName}</em>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla',
+            customClass: {
+                popup: 'swal-custom'
             }
-            break;
-            
-        case 'duration':
-        case 'night':
-            const num = parseInt(value);
-            if (value && (isNaN(num) || num < 1 || num > 365)) {
-                showFieldError(input, 'Inserisci un numero valido tra 1 e 365');
-                return false;
+        }).then((result) => {
+            if (result.isConfirmed) {
+                deleteCruise(cruiseId, shipName);
             }
-            break;
+        });
     }
-    
-    input.addClass('is-valid');
-    return true;
-}
 
-function validatePriceField(input) {
-    const value = parseFloat(input.val());
-    
-    clearFieldError(input);
-    
-    if (input.val() && (isNaN(value) || value < 0)) {
-        showFieldError(input, 'Inserisci un prezzo valido');
-        return false;
+
+    function bulkDelete() {
+        if (selectedCruises.length === 0) {
+            showToast('Nessuna crociera selezionata', 'warning');
+            return;
+        }
+
+        const cruiseNames = selectedCruises.map(c => c.name).slice(0, 3).join('<br>');
+        const moreText = selectedCruises.length > 3 ? `<br><small>...e altre ${selectedCruises.length - 3}</small>` :
+            '';
+
+        Swal.fire({
+            title: 'Conferma Eliminazione Multipla',
+            html: `Sei sicuro di voler eliminare ${selectedCruises.length} crociere?<br><br>
+               <small>${cruiseNames}${moreText}</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina Tutte',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                performBulkDelete();
+            }
+        });
     }
-    
-    if (value > 50000) {
-        showFieldError(input, 'Il prezzo sembra troppo alto (max €50.000)');
-        return false;
+
+    function performBulkDelete() {
+        const ids = selectedCruises.map(c => c.id);
+
+        Swal.fire({
+            title: 'Eliminazione in corso...',
+            text: `Eliminando ${ids.length} crociere...`,
+            icon: 'info',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: '{{ route('cruises.bulk-delete') }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                ids: ids
+            },
+            success: function(response) {
+                if (response.response) {
+                    Swal.fire({
+                        title: 'Eliminazione Completata!',
+                        text: response.message,
+                        icon: 'success',
+                        confirmButtonColor: '#84bc00'
+                    });
+
+                    // Reset selezioni
+                    selectedCruises = [];
+                    $('#selectAll').prop('checked', false);
+                    $('#bulkDeleteBtn').prop('disabled', true);
+
+                    // Ricarica tabella e statistiche
+                    cruisesTable.ajax.reload(null, false);
+                    loadCruiseStats();
+                } else {
+                    Swal.fire({
+                        title: 'Errore!',
+                        text: response.message ||
+                            'Si è verificato un errore durante l\'eliminazione.',
+                        icon: 'error',
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    title: 'Errore!',
+                    text: 'Si è verificato un errore durante l\'eliminazione multipla.',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        });
     }
-    
-    if (value > 0) {
-        input.addClass('is-valid');
+
+    function loadCruiseStats() {
+        $.ajax({
+            url: '{{ route('cruises.stats') }}',
+            type: 'GET',
+            success: function(stats) {
+                updateStatsDisplay(stats);
+            },
+            error: function() {
+                console.log('Errore caricamento statistiche, uso dati tabella');
+                updateCruiseStats();
+            }
+        });
     }
-    
-    return true;
-}
 
-function showFieldError(input, message) {
-    input.addClass('is-invalid').removeClass('is-valid');
-    input.siblings('.invalid-feedback').text(message);
-}
-
-function clearFieldError(input) {
-    input.removeClass('is-invalid is-valid');
-    input.siblings('.invalid-feedback').text('');
-}
-
-function displayValidationErrors(errors) {
-    // Pulisci errori precedenti
-    $('.form-control').removeClass('is-invalid');
-    $('.invalid-feedback').text('');
-    
-    // Mostra nuovi errori
-    Object.keys(errors).forEach(field => {
-        const input = $(`#${field}`);
-        showFieldError(input, errors[field]);
-    });
-    
-    // Scrolla al primo errore
-    if (Object.keys(errors).length > 0) {
-        const firstError = $(`#${Object.keys(errors)[0]}`);
-        $('html, body').animate({
-            scrollTop: firstError.offset().top - 100
+    function updateCruiseStats() {
+        setTimeout(() => {
+            if (cruisesTable && cruisesTable.ajax.json()) {
+                const tableData = cruisesTable.ajax.json();
+                updateStatsDisplay({
+                    total_cruises: tableData.recordsTotal || 0,
+                    available_cruises: calculateAvailableCruises(),
+                    future_cruises: calculateFutureCruises(),
+                    companies: calculateUniqueCompanies()
+                });
+            }
         }, 500);
     }
-}
 
-function submitForm() {
-    const submitBtn = $('#submitBtn');
-    const btnText = $('#btnText');
-    const loadingSpinner = $('#loadingSpinner');
-    
-    // Mostra loading
-    submitBtn.prop('disabled', true);
-    loadingSpinner.removeClass('d-none');
-    btnText.html('<i class="fas fa-spinner fa-spin me-2"></i>Salvataggio...');
-    
-    // Prepara dati
-    const formData = new FormData(document.getElementById('cruiseForm'));
-    
-    // Determina URL e metodo
-    const form = $('#cruiseForm');
-    const url = form.attr('action');
-    const method = form.find('input[name="_method"]').val() || 'POST';
-    
-    $.ajax({
-        url: url,
-        method: method === 'PUT' ? 'POST' : method,
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            if (response.response) {
-                // Successo
-                Swal.fire({
-                    title: 'Successo!',
-                    text: response.message || 'Crociera salvata con successo',
-                    icon: 'success',
-                    confirmButtonColor: '#84bc00',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    if (response.cruise_id) {
-                        // Redirect alla pagina di visualizzazione
-                        window.location.href = `/admin/cruises/${response.cruise_id}`;
-                    } else {
-                        // Redirect alla lista
-                        window.location.href = '{{ route("cruises.index") }}';
-                    }
-                });
-            } else {
-                // Errori di validazione
-                handleValidationErrors(response.errors);
-                resetSubmitButton();
-            }
-        },
-        error: function(xhr) {
-            resetSubmitButton();
-            
-            if (xhr.status === 422) {
-                // Errori di validazione
-                const response = xhr.responseJSON;
-                if (response && response.errors) {
-                    handleValidationErrors(response.errors);
-                } else {
-                    showToast('Errori di validazione. Controlla i dati inseriti.', 'error');
+    function calculateAvailableCruises() {
+        let count = 0;
+        if (cruisesTable) {
+            cruisesTable.rows({
+                search: 'applied'
+            }).every(function() {
+                const data = this.data();
+                if ((data.interior && data.interior.includes('€')) ||
+                    (data.oceanview && data.oceanview.includes('€')) ||
+                    (data.balcony && data.balcony.includes('€'))) {
+                    count++;
                 }
-            } else if (xhr.status === 419) {
-                // Token CSRF scaduto
-                showToast('Sessione scaduta. Ricarica la pagina.', 'warning');
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                // Altri errori
-                const message = xhr.responseJSON?.message || 'Si è verificato un errore. Riprova più tardi.';
-                showToast(message, 'error');
-            }
+            });
         }
-    });
-}
-
-function resetSubmitButton() {
-    const submitBtn = $('#submitBtn');
-    const btnText = $('#btnText');
-    const loadingSpinner = $('#loadingSpinner');
-    const isEdit = $('input[name="_method"]').val() === 'PUT';
-    
-    submitBtn.prop('disabled', false);
-    loadingSpinner.addClass('d-none');
-    btnText.html(isEdit ? 
-        '<i class="fas fa-save me-2"></i>Aggiorna Crociera' : 
-        '<i class="fas fa-save me-2"></i>Salva Crociera'
-    );
-}
-
-function handleValidationErrors(errors) {
-    displayValidationErrors(errors);
-    
-    // Mostra toast con riepilogo errori
-    const errorCount = Object.keys(errors).length;
-    showToast(`Trovati ${errorCount} errori. Correggi i campi evidenziati.`, 'error');
-}
-
-function resetForm() {
-    Swal.fire({
-        title: 'Conferma Reset',
-        text: 'Sei sicuro di voler resettare tutti i campi?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sì, resetta',
-        cancelButtonText: 'Annulla'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            document.getElementById('cruiseForm').reset();
-            $('.form-control').removeClass('is-invalid is-valid');
-            $('.invalid-feedback').text('');
-            showToast('Form resettato', 'success');
-        }
-    });
-}
-
-function initializeEventHandlers() {
-    // Gestione tasti di scelta rapida
-    $(document).on('keydown', function(e) {
-        // Ctrl + S per salvare
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            $('#cruiseForm').submit();
-        }
-        
-        // Ctrl + R per resettare
-        if (e.ctrlKey && e.key === 'r') {
-            e.preventDefault();
-            resetForm();
-        }
-        
-        // ESC per annullare
-        if (e.key === 'Escape') {
-            window.history.back();
-        }
-    });
-    
-    // Auto-save draft (opzionale)
-    let autoSaveTimeout;
-    $('.form-control').on('input', function() {
-        clearTimeout(autoSaveTimeout);
-        autoSaveTimeout = setTimeout(saveDraft, 30000); // Salva dopo 30 secondi di inattività
-    });
-    
-    // Avviso prima di uscire con modifiche non salvate
-    let formChanged = false;
-    $('.form-control').on('input change', function() {
-        formChanged = true;
-    });
-    
-    $(window).on('beforeunload', function(e) {
-        if (formChanged) {
-            const message = 'Hai modifiche non salvate. Sei sicuro di voler uscire?';
-            e.returnValue = message;
-            return message;
-        }
-    });
-    
-    // Rimuovi avviso dopo submit
-    $('#cruiseForm').on('submit', function() {
-        formChanged = false;
-    });
-}
-
-function saveDraft() {
-    // Implementazione opzionale per salvare bozze
-    const formData = $('#cruiseForm').serialize();
-    localStorage.setItem('cruise_draft', formData);
-    showToast('Bozza salvata automaticamente', 'info');
-}
-
-function loadDraft() {
-    // Implementazione opzionale per caricare bozze
-    const draft = localStorage.getItem('cruise_draft');
-    if (draft) {
-        // Popola il form con i dati della bozza
-        showToast('Bozza caricata', 'info');
+        return count;
     }
-}
 
-function initializeSweetAlert() {
-    // Personalizza SweetAlert2
-    const swalCustom = document.createElement('style');
-    swalCustom.innerHTML = `
+    function calculateFutureCruises() {
+        let count = 0;
+        if (cruisesTable) {
+            cruisesTable.rows({
+                search: 'applied'
+            }).every(function() {
+                const data = this.data();
+                if (data.itinerary && (data.itinerary.includes('2024') || data.itinerary.includes('2025'))) {
+                    count++;
+                }
+            });
+        }
+        return count;
+    }
+
+    function calculateUniqueCompanies() {
+        const companies = new Set();
+        if (cruisesTable) {
+            cruisesTable.rows({
+                search: 'applied'
+            }).every(function() {
+                const data = this.data();
+                if (data.line) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.line;
+                    const companyText = tempDiv.textContent || tempDiv.innerText || '';
+                    if (companyText.trim()) {
+                        companies.add(companyText.trim());
+                    }
+                }
+            });
+        }
+        return companies.size;
+    }
+
+    function updateStatsDisplay(stats) {
+        $('#totalCruises').text(formatNumber(stats.total_cruises || 0));
+        $('#availableCruises').text(formatNumber(stats.available_cruises || 0));
+        $('#futureCruises').text(formatNumber(stats.future_cruises || 0));
+        $('#totalCompanies').text(formatNumber(stats.companies || 0));
+
+        // Animazione sui numeri
+        $('.stat-number').addClass('animate__animated animate__pulse');
+        setTimeout(() => {
+            $('.stat-number').removeClass('animate__animated animate__pulse');
+        }, 1000);
+    }
+
+    function initializeTooltips() {
+        $('[data-bs-toggle="tooltip"]').tooltip('dispose').tooltip();
+    }
+
+    function initializeSweetAlert() {
+        // Personalizza SweetAlert2
+        const swalCustom = document.createElement('style');
+        swalCustom.innerHTML = `
         .swal-custom {
             border-radius: 15px !important;
         }
         .swal2-popup.swal-custom .swal2-title {
-            color: var(--youPrice-dark) !important;
+            color: var(--youPrice-dark, #2C3E50) !important;
         }
         .swal2-popup.swal-custom .swal2-content {
             color: #6c757d !important;
         }
     `;
-    document.head.appendChild(swalCustom);
-}
-
-function showToast(message, type) {
-    type = type || 'info';
-    
-    const toastContainer = getOrCreateToastContainer();
-    const toastId = 'toast-' + Date.now();
-    
-    let bgClass = 'bg-primary';
-    let iconClass = 'fa-info-circle';
-    
-    switch (type) {
-        case 'success':
-            bgClass = 'bg-success';
-            iconClass = 'fa-check-circle';
-            break;
-        case 'error':
-            bgClass = 'bg-danger';
-            iconClass = 'fa-exclamation-circle';
-            break;
-        case 'warning':
-            bgClass = 'bg-warning';
-            iconClass = 'fa-exclamation-triangle';
-            break;
+        document.head.appendChild(swalCustom);
     }
-    
-    const toastHtml = `<div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="fas ${iconClass} me-2"></i>${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>`;
-    
-    toastContainer.append(toastHtml);
-    
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-        autohide: true,
-        delay: 3000
-    });
-    
-    toast.show();
-    
-    toastElement.addEventListener('hidden.bs.toast', function() {
-        this.remove();
-    });
-}
 
-function getOrCreateToastContainer() {
-    let container = $('#toast-container');
-    if (container.length === 0) {
-        container = $('<div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11;"></div>');
-        $('body').append(container);
+    function showLoading(show) {
+        const overlay = $('#loadingOverlay');
+        if (show && overlay.length > 0) {
+            overlay.removeClass('d-none');
+        } else if (overlay.length > 0) {
+            overlay.addClass('d-none');
+        }
     }
-    return container;
-}
 
-// Esporta funzioni globalmente
-window.resetForm = resetForm;
-window.saveDraft = saveDraft;
-window.loadDraft = loadDraft;
+    function showToast(message, type) {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    }
+
+    function refreshTable() {
+        if (cruisesTable) {
+            showLoading(true);
+            cruisesTable.ajax.reload(function() {
+                showLoading(false);
+                loadCruiseStats();
+
+                // Reset selezioni
+                selectedCruises = [];
+                $('#selectAll').prop('checked', false);
+                $('#bulkDeleteBtn').prop('disabled', true);
+
+                showToast('Tabella aggiornata!', 'success');
+            });
+        }
+    }
+
+    function exportCruises() {
+        Swal.fire({
+            title: 'Esporta Crociere',
+            text: 'Vuoi esportare tutte le crociere in un file CSV?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#84bc00',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-download me-2"></i>Esporta',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '{{ route('cruises.export') }}';
+                showToast('Export avviato! Il download inizierà a breve.', 'success');
+            }
+        });
+    }
+
+    // Utility functions
+    function formatNumber(num) {
+        return new Intl.NumberFormat('it-IT').format(num);
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Event listeners globali
+    $(window).on('resize', debounce(function() {
+        if (cruisesTable) {
+            cruisesTable.columns.adjust().responsive.recalc();
+        }
+    }, 250));
+
+    // Gestione tasti di scelta rapida
+    $(document).on('keydown', function(e) {
+        // Ctrl + N per nuova crociera
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = '{{ route('cruises.create') }}';
+        }
+
+        // Ctrl + R per aggiornare tabella
+        if (e.ctrlKey && e.key === 'r') {
+            e.preventDefault();
+            refreshTable();
+        }
+
+        // ESC per deselezionare tutto
+        if (e.key === 'Escape') {
+            $('.cruise-checkbox').prop('checked', false);
+            $('#selectAll').prop('checked', false);
+            updateSelectedCruises();
+        }
+    });
+
+    // Gestione errori AJAX globali
+    $(document).ajaxError(function(event, xhr, settings, thrownError) {
+        if (xhr.status === 419) {
+            showToast('Sessione scaduta. Ricarica la pagina.', 'warning');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else if (xhr.status === 403) {
+            showToast('Accesso negato. Controlla i tuoi permessi.', 'error');
+        } else if (xhr.status >= 500) {
+            showToast('Errore del server. Riprova più tardi.', 'error');
+        }
+    });
+
+    // Esporta funzioni globalmente
+    window.refreshTable = refreshTable;
+    window.exportCruises = exportCruises;
+    window.bulkDelete = bulkDelete;
+    window.cruisesTable = cruisesTable;
+
+    console.log('✅ Script gestione crociere caricato completamente');
 </script>
