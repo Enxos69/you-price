@@ -289,9 +289,9 @@
     </div>
 @endsection
 
-@include('admin.cruises.assets.css_cruise_form')
+@include('admin.cruises.assets.css_cruises_form')
 
 @section('scripts')
     @parent
-    @include('admin.cruises.assets.js_cruise_form')
+    @include('admin.cruises.assets.js_cruises_form')
 @endsection

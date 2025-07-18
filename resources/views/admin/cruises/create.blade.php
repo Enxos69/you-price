@@ -63,7 +63,7 @@
                                                 <label for="ship" class="form-label required">Nome Nave</label>
                                                 <input type="text" class="form-control" id="ship" name="ship" 
                                                        value="{{ old('ship') }}" required
-                                                       placeholder="Es: MSC Seaside">
+                                                       placeholder="Es: Seaside">
                                                 <div class="invalid-feedback"></div>
                                             </div>
                                         </div>
@@ -260,9 +260,9 @@
     </div>
 @endsection
 
-@include('admin.cruises.assets.css_cruise_form')
+@include('admin.cruises.assets.css_cruises_form')
 
 @section('scripts')
     @parent
-    @include('admin.cruises.assets.js_cruise_form')
+    @include('admin.cruises.assets.js_cruises_form')
 @endsection

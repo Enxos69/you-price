@@ -361,9 +361,9 @@
     </div>
 @endsection
 
-@include('admin.cruises.assets.css_cruise_show')
+@include('admin.cruises.assets.css_cruises_show')
 
 @section('scripts')
     @parent
-    @include('admin.cruises.assets.js_cruise_show')
+    @include('admin.cruises.assets.js_cruises_show')
 @endsection
