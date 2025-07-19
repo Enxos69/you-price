@@ -304,14 +304,20 @@ class CruiseController extends Controller
                 }
             }
 
-            // Filtro stato
+            // Filtro stato con nuova logica
             if (!empty($statusFilter)) {
                 switch ($statusFilter) {
                     case 'available':
-                        $query->whereNotNull('interior');
+                        // Crociere disponibili: non ancora scadute
+                        $query->where(function ($q) {
+                            $q->where('partenza', '>=', now())
+                                ->orWhereNull('partenza');
+                        });
                         break;
-                    case 'future':
-                        $query->where('partenza', '>=', now());
+                    case 'expired':
+                        // Crociere scadute: non più disponibili
+                        $query->where('partenza', '<', now())
+                            ->whereNotNull('partenza');
                         break;
                 }
             }
@@ -362,35 +368,55 @@ class CruiseController extends Controller
     }
 
 
-
     /**
-     * Get statistics for dashboard
+     * Get statistics for dashboard with new logic
      */
     public function getStats()
     {
         try {
+            $now = Carbon::now();
+
             $stats = [
+                // Totale crociere nel database
                 'total_cruises' => Cruise::count(),
-                'available_cruises' => Cruise::available()->count(),
-                'future_cruises' => Cruise::future()->count(),
-                'companies' => Cruise::distinct('line')->count('line'),
+
+                // Disponibili: crociere non ancora scadute (partenza >= oggi O partenza null)
+                'available_cruises' => Cruise::where(function ($query) use ($now) {
+                    $query->where('partenza', '>=', $now)
+                        ->orWhereNull('partenza');
+                })->count(),
+
+                // Non più disponibili: crociere scadute (partenza < oggi)
+                'expired_cruises' => Cruise::where('partenza', '<', $now)
+                    ->whereNotNull('partenza')
+                    ->count(),
+
+                // Numero di compagnie diverse
+                'companies' => Cruise::distinct('line')
+                    ->whereNotNull('line')
+                    ->where('line', '!=', '')
+                    ->count('line'),
+
+                // Statistiche aggiuntive per eventuali usi futuri
                 'avg_price' => Cruise::whereNotNull('interior')->avg('interior'),
                 'min_price' => Cruise::whereNotNull('interior')->min('interior'),
                 'max_price' => Cruise::whereNotNull('interior')->max('interior'),
-                'recent_additions' => Cruise::where('created_at', '>=', Carbon::now()->subDays(7))->count(),
+                'recent_additions' => Cruise::where('created_at', '>=', $now->subDays(7))->count(),
             ];
 
-            // Aggiungi statistiche per compagnia
+            // Aggiungi statistiche per compagnia (top 5)
             $stats['by_company'] = Cruise::selectRaw('line, COUNT(*) as count')
+                ->whereNotNull('line')
+                ->where('line', '!=', '')
                 ->groupBy('line')
                 ->orderBy('count', 'desc')
                 ->limit(5)
                 ->get();
 
-            // Aggiungi statistiche mensili per le partenze
+            // Aggiungi statistiche mensili per le partenze disponibili
             $stats['departures_by_month'] = Cruise::selectRaw('MONTH(partenza) as month, COUNT(*) as count')
                 ->whereNotNull('partenza')
-                ->where('partenza', '>=', Carbon::now())
+                ->where('partenza', '>=', $now)
                 ->groupBy('month')
                 ->orderBy('month')
                 ->get();
@@ -398,7 +424,13 @@ class CruiseController extends Controller
             return response()->json($stats);
         } catch (\Exception $e) {
             Log::error('Errore recupero statistiche: ' . $e->getMessage());
-            return response()->json(['error' => 'Impossibile recuperare le statistiche'], 500);
+            return response()->json([
+                'total_cruises' => 0,
+                'available_cruises' => 0,
+                'expired_cruises' => 0,
+                'companies' => 0,
+                'error' => 'Impossibile recuperare le statistiche'
+            ], 500);
         }
     }
 

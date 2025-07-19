@@ -200,8 +200,8 @@
         background: var(--youPrice-success);
     }
 
-    .stat-icon.future {
-        background: var(--youPrice-info);
+    .stat-icon.expired {
+        background: var(--youPrice-danger);
     }
 
     .stat-icon.companies {

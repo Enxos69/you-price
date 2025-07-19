@@ -76,12 +76,12 @@
                                     </div>
                                 </div>
                                 <div class="stat-card">
-                                    <div class="stat-icon future">
-                                        <i class="fas fa-calendar-plus"></i>
+                                    <div class="stat-icon expired">
+                                        <i class="fas fa-times-circle"></i>
                                     </div>
                                     <div class="stat-content">
-                                        <div class="stat-number" id="futureCruises">-</div>
-                                        <div class="stat-label">Future</div>
+                                        <div class="stat-number" id="expiredCruises">-</div>
+                                        <div class="stat-label">Non più disponibili</div>
                                     </div>
                                 </div>
                                 <div class="stat-card">
@@ -136,8 +136,8 @@
                                         <div class="filter-group-optimized">
                                             <select id="statusFilter" class="filter-select-optimized">
                                                 <option value="">Tutti gli stati</option>
-                                                <option value="available">Disponibili</option>
-                                                <option value="future">Future</option>
+                                                <option value="available">Disponibili (non scadute)</option>
+                                                <option value="expired">Non più disponibili (scadute)</option>
                                             </select>
                                         </div>
                                     </div>

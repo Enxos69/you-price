@@ -101,7 +101,7 @@
                 // Statistiche
                 totalCruises: document.getElementById('totalCruises'),
                 availableCruises: document.getElementById('availableCruises'),
-                futureCruises: document.getElementById('futureCruises'),
+                expiredCruises: document.getElementById('expiredCruises'),
                 totalCompanies: document.getElementById('totalCompanies')
             };
         }
@@ -738,8 +738,8 @@
                     value: stats.available_cruises || 0
                 },
                 {
-                    element: this.elements.futureCruises,
-                    value: stats.future_cruises || 0
+                    element: this.elements.expiredCruises,
+                    value: stats.expired_cruises || 0
                 },
                 {
                     element: this.elements.totalCompanies,
