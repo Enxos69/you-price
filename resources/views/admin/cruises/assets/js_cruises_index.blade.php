@@ -232,6 +232,7 @@
 
                 console.error('Errore caricamento dati:', error);
                 this.showError('Errore nel caricamento dei dati');
+                this.clearTable(); // Pulisci la tabella anche in caso di errore
                 this.showEmptyState();
             } finally {
                 this.state.isLoading = false;
@@ -244,6 +245,7 @@
         renderData(data) {
             if (!data || !data.data) {
                 this.showEmptyState();
+                this.clearTable(); // Pulisci la tabella
                 return;
             }
 
@@ -255,8 +257,11 @@
             this.showLoading(false);
             this.showEmptyState(false);
 
+            // Se non ci sono risultati, pulisci la tabella e mostra empty state
             if (data.data.length === 0) {
+                this.clearTable();
                 this.showEmptyState();
+                this.updatePagination();
                 return;
             }
 
@@ -281,6 +286,20 @@
             requestAnimationFrame(() => {
                 this.elements.tableContainer.scrollTop = 0;
             });
+        }
+
+        // Nuovo metodo per pulire completamente la tabella
+        clearTable() {
+            if (this.elements.tableBody) {
+                this.elements.tableBody.innerHTML = '';
+            }
+
+            // Reset selezioni
+            this.state.selectedIds.clear();
+            this.updateSelectAllState();
+            this.updateBulkActions();
+
+            console.log('📋 Tabella pulita - nessun risultato da mostrare');
         }
 
         // Creazione ottimizzata riga tabella
@@ -411,11 +430,13 @@
 
         handleSearch() {
             this.state.currentPage = 1;
+            this.cache.clear(); // Pulisci cache per ricerca
             this.loadData();
         }
 
         handleFilter() {
             this.state.currentPage = 1;
+            this.cache.clear(); // Pulisci cache per filtri
             this.loadData();
         }
 
@@ -524,16 +545,18 @@
         updatePaginationInfo() {
             if (!this.elements.paginationInfo) return;
 
+            // Se non ci sono risultati filtrati, mostra messaggio appropriato
+            if (this.state.filteredRecords === 0) {
+                this.elements.paginationInfo.textContent = 'Nessun risultato trovato';
+                return;
+            }
+
             const start = Math.min((this.state.currentPage - 1) * this.state.pageSize + 1, this.state
                 .filteredRecords);
             const end = Math.min(this.state.currentPage * this.state.pageSize, this.state.filteredRecords);
 
-            if (this.state.filteredRecords === 0) {
-                this.elements.paginationInfo.textContent = 'Nessun risultato';
-            } else {
-                this.elements.paginationInfo.textContent =
-                    `Mostrando ${start}-${end} di ${this.state.filteredRecords} risultati`;
-            }
+            this.elements.paginationInfo.textContent =
+                `Mostrando ${start}-${end} di ${this.state.filteredRecords} risultati`;
         }
 
         updatePaginationButtons() {
@@ -625,6 +648,28 @@
         // ================== CHECKBOX E SELEZIONI ==================
         initializeCheckboxes() {
             // Event listeners già aggiunti in attachEventListeners
+
+            // Debug: aggiungi classe per test se necessario
+            this.setupCheckboxDebug();
+        }
+
+        setupCheckboxDebug() {
+            // Funzione per testare la visibilità delle checkbox
+            console.log('🔲 Inizializzazione checkbox con spunta visibile');
+
+            // Aggiungi event listener per debug
+            document.addEventListener('change', (e) => {
+                if (e.target.classList.contains('checkbox-optimized')) {
+                    console.log('Checkbox cambiata:', e.target.checked, e.target);
+
+                    // Forza la visibilità della spunta
+                    if (e.target.checked) {
+                        e.target.style.setProperty('--checkmark-visible', '1');
+                    } else {
+                        e.target.style.removeProperty('--checkmark-visible');
+                    }
+                }
+            });
         }
 
         updateSelectAllState() {
@@ -646,6 +691,14 @@
                 this.elements.selectAll.indeterminate = true;
                 this.elements.selectAll.checked = false;
             }
+
+            // Debug: log dello stato per verificare funzionamento
+            console.log('SelectAll state:', {
+                indeterminate: this.elements.selectAll.indeterminate,
+                checked: this.elements.selectAll.checked,
+                visibleCount: visibleCheckboxes.length,
+                checkedCount: checkedCheckboxes.length
+            });
         }
 
         updateBulkActions() {
@@ -810,9 +863,16 @@
 
                 if (result.response) {
                     this.showSuccess(result.message || 'Crociera eliminata con successo');
+
+                    // Rimuovi dalla selezione
                     this.state.selectedIds.delete(cruiseId.toString());
-                    await this.loadData();
-                    await this.loadStats();
+
+                    // IMPORTANTE: Forza il reload della tabella
+                    this.cache.clear(); // Pulisci cache per forzare ricaricamento
+                    await this.loadData(); // Ricarica dati
+                    await this.loadStats(); // Aggiorna statistiche
+
+                    console.log('✅ Crociera eliminata e tabella aggiornata:', cruiseId);
                 } else {
                     this.showError(result.message || 'Errore durante l\'eliminazione');
                 }
@@ -862,9 +922,18 @@
 
                 if (result.response) {
                     this.showSuccess(result.message);
+
+                    // Reset selezioni
                     this.state.selectedIds.clear();
-                    await this.loadData();
-                    await this.loadStats();
+                    this.updateSelectAllState();
+                    this.updateBulkActions();
+
+                    // IMPORTANTE: Forza il reload completo
+                    this.cache.clear(); // Pulisci cache
+                    await this.loadData(); // Ricarica dati
+                    await this.loadStats(); // Aggiorna statistiche
+
+                    console.log('✅ Eliminazione multipla completata e tabella aggiornata');
                 } else {
                     this.showError(result.message || 'Errore durante l\'eliminazione multipla');
                 }
@@ -894,6 +963,13 @@
         showEmptyState(show = true) {
             if (this.elements.tableEmpty) {
                 this.elements.tableEmpty.style.display = show ? 'block' : 'none';
+            }
+
+            // Se mostriamo empty state, nascondi la tabella
+            if (show && this.elements.tableContainer) {
+                this.elements.tableContainer.style.display = 'none';
+            } else if (!show && this.elements.tableContainer) {
+                this.elements.tableContainer.style.display = 'block';
             }
         }
 
@@ -1020,7 +1096,8 @@
 
         // ================== API PUBBLICHE ==================
         async refreshData() {
-            this.cache.clear();
+            this.cache.clear(); // Pulisci sempre la cache
+            this.clearTable(); // Pulisci la tabella prima del reload
             await this.loadData();
             await this.loadStats();
             this.showSuccess('Dati aggiornati!');
@@ -1048,7 +1125,30 @@
             };
         }
 
-        // Setter per filtri esterni
+        // Forza l'aggiornamento della tabella senza cache
+        async forceRefresh() {
+            console.log('🔄 Forzando refresh completo della tabella...');
+
+            // Pulisci tutto
+            this.cache.clear();
+            this.clearTable();
+            this.state.selectedIds.clear();
+
+            // Mostra loading
+            this.showLoading(true, 'Aggiornamento in corso...');
+            this.showEmptyState(false);
+
+            try {
+                // Ricarica tutto
+                await this.loadData();
+                await this.loadStats();
+
+                console.log('✅ Refresh completo completato');
+            } catch (error) {
+                console.error('❌ Errore durante il refresh:', error);
+                this.showError('Errore durante l\'aggiornamento');
+            }
+        }
         setFilter(filterName, value) {
             if (this.state.filters.hasOwnProperty(filterName)) {
                 this.state.filters[filterName] = value;
