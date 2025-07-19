@@ -13,7 +13,7 @@ use Carbon\Carbon;
 class CruiseImportController extends Controller
 {
     // Tassi di cambio - potresti usare un API per valori real-time
-    private const USD_TO_EUR_RATE = 0.92;
+    private const USD_TO_EUR_RATE = 0.86;
 
     public function showForm()
     {
