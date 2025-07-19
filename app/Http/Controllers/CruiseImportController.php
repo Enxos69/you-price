@@ -229,12 +229,13 @@ class CruiseImportController extends Controller
 
         if (strpos($line, 'msc') !== false) {
             return $this->parseMSCCruise($record);
+        } elseif (strpos($line, 'carnival') !== false) {
+            return $this->parseCarnivalCruise($record);
+        } elseif (strpos($line, 'royal caribbean') !== false) {
+            return $this->parseRoyalCaribbeanCruise($record);
+        } elseif (strpos($line, 'costa') !== false) {
+            return $this->parseCostaCruise($record);
         }
-
-        // Aggiungi qui altri parser per altre compagnie
-        // elseif (strpos($line, 'costa') !== false) {
-        //     return $this->parseCostaCruise($record);
-        // }
 
         // Parser generico per altre compagnie
         return $this->parseGenericCruise($record);
@@ -339,6 +340,235 @@ class CruiseImportController extends Controller
         } catch (\Exception $e) {
             Log::warning("Errore parsing MSC cruise: " . $e->getMessage(), ['record' => $record]);
             return $this->parseGenericCruise($record);
+        }
+    }
+
+    private function parseCarnivalCruise($record)
+    {
+        try {
+            // 1. Nome della nave: prendi per intero
+            $ship = trim($record['ship'] ?? '');
+
+            // 2. Pulisci nome della linea: rimuovi "Cruise" e tutto ciò che viene dopo
+            $line = $this->cleanCruiseLineName($record['line'] ?? '');
+
+            // 3. Parse della cruise con nuovo algoritmo
+            $cruiseData = $this->parseGenericCruiseField($record['cruise'] ?? '');
+
+            // 4. Costruisci il record finale
+            $parsedRecord = [
+                'ship' => $ship,
+                'cruise' => $cruiseData['cruise_name'],
+                'line' => $line,
+                'duration' => $cruiseData['duration'] ?: ($record['duration'] ?? null),
+                'night' => $cruiseData['duration'] ?: ($record['night'] ?? null),
+                'from' => $cruiseData['from'] ?: ($record['from'] ?? ''),
+                'to' => $cruiseData['to'] ?: ($record['to'] ?? ''),
+                'details' => $record['details'] ?? '',
+                'partenza' => $this->parseDate($record['partenza'] ?? ''),
+                'arrivo' => $this->parseDate($record['arrivo'] ?? ''),
+                'interior' => $this->parsePrice($record['interior'] ?? ''),
+                'oceanview' => $this->parsePrice($record['oceanview'] ?? ''),
+                'balcony' => $this->parsePrice($record['balcony'] ?? ''),
+                'minisuite' => $this->parsePrice($record['minisuite'] ?? ''),
+                'suite' => $this->parsePrice($record['suite'] ?? ''),
+            ];
+
+            return $parsedRecord;
+        } catch (\Exception $e) {
+            Log::warning("Errore parsing Carnival cruise: " . $e->getMessage(), ['record' => $record]);
+            return $this->parseGenericCruise($record);
+        }
+    }
+
+    private function parseRoyalCaribbeanCruise($record)
+    {
+        try {
+            // 1. Nome della nave: prendi per intero
+            $ship = trim($record['ship'] ?? '');
+
+            // 2. Pulisci nome della linea: rimuovi "Cruise" e tutto ciò che viene dopo
+            $line = $this->cleanCruiseLineName($record['line'] ?? '');
+
+            // 3. Parse della cruise con nuovo algoritmo
+            $cruiseData = $this->parseGenericCruiseField($record['cruise'] ?? '');
+
+            // 4. Costruisci il record finale
+            $parsedRecord = [
+                'ship' => $ship,
+                'cruise' => $cruiseData['cruise_name'],
+                'line' => $line,
+                'duration' => $cruiseData['duration'] ?: ($record['duration'] ?? null),
+                'night' => $cruiseData['duration'] ?: ($record['night'] ?? null),
+                'from' => $cruiseData['from'] ?: ($record['from'] ?? ''),
+                'to' => $cruiseData['to'] ?: ($record['to'] ?? ''),
+                'details' => $record['details'] ?? '',
+                'partenza' => $this->parseDate($record['partenza'] ?? ''),
+                'arrivo' => $this->parseDate($record['arrivo'] ?? ''),
+                'interior' => $this->parsePrice($record['interior'] ?? ''),
+                'oceanview' => $this->parsePrice($record['oceanview'] ?? ''),
+                'balcony' => $this->parsePrice($record['balcony'] ?? ''),
+                'minisuite' => $this->parsePrice($record['minisuite'] ?? ''),
+                'suite' => $this->parsePrice($record['suite'] ?? ''),
+            ];
+
+            return $parsedRecord;
+        } catch (\Exception $e) {
+            Log::warning("Errore parsing Royal Caribbean cruise: " . $e->getMessage(), ['record' => $record]);
+            return $this->parseGenericCruise($record);
+        }
+    }
+
+    private function parseCostaCruise($record)
+    {
+        try {
+            // 1. Nome della nave: rimuovi "Costa" e fai trim
+            $ship = trim($record['ship'] ?? '');
+            if (stripos($ship, 'costa') === 0) {
+                $ship = trim(substr($ship, 5)); // Rimuovi "Costa" (5 caratteri)
+            }
+
+            // 2. Pulisci nome della linea: rimuovi "Cruise" e tutto ciò che viene dopo
+            $line = $this->cleanCruiseLineName($record['line'] ?? '');
+
+            // 3. Parse della cruise con nuovo algoritmo
+            $cruiseData = $this->parseGenericCruiseField($record['cruise'] ?? '');
+
+            // 4. Costruisci il record finale
+            $parsedRecord = [
+                'ship' => $ship,
+                'cruise' => $cruiseData['cruise_name'],
+                'line' => $line,
+                'duration' => $cruiseData['duration'] ?: ($record['duration'] ?? null),
+                'night' => $cruiseData['duration'] ?: ($record['night'] ?? null),
+                'from' => $cruiseData['from'] ?: ($record['from'] ?? ''),
+                'to' => $cruiseData['to'] ?: ($record['to'] ?? ''),
+                'details' => $record['details'] ?? '',
+                'partenza' => $this->parseDate($record['partenza'] ?? ''),
+                'arrivo' => $this->parseDate($record['arrivo'] ?? ''),
+                'interior' => $this->parsePrice($record['interior'] ?? ''),
+                'oceanview' => $this->parsePrice($record['oceanview'] ?? ''),
+                'balcony' => $this->parsePrice($record['balcony'] ?? ''),
+                'minisuite' => $this->parsePrice($record['minisuite'] ?? ''),
+                'suite' => $this->parsePrice($record['suite'] ?? ''),
+            ];
+
+            return $parsedRecord;
+        } catch (\Exception $e) {
+            Log::warning("Errore parsing Costa cruise: " . $e->getMessage(), ['record' => $record]);
+            return $this->parseGenericCruise($record);
+        }
+    }
+
+    /**
+     * Rimuove "Cruise" e tutto ciò che viene dopo dal nome della linea
+     */
+    private function cleanCruiseLineName($lineName)
+    {
+        $line = trim($lineName);
+        
+        // Trova la posizione della parola "Cruise" (case insensitive)
+        $cruisePosition = stripos($line, 'cruise');
+        
+        if ($cruisePosition !== false) {
+            // Taglia tutto da "Cruise" in poi
+            $line = substr($line, 0, $cruisePosition);
+            $line = trim($line);
+        }
+        
+        return $line;
+    }
+
+    /**
+     * Parse generico del campo cruise per tutte le compagnie tranne MSC
+     * Algoritmo: 
+     * - La frase fino al primo numero (escluso) identifica la crociera
+     * - Dal numero fino alla parola "from" (esclusa) identificano la durata in giorni
+     * - Dal "from" in poi abbiamo i porti: from/to = stesso porto, from X to Y = porti diversi
+     */
+    private function parseGenericCruiseField($cruiseField)
+    {
+        $result = [
+            'cruise_name' => '',
+            'duration' => null,
+            'from' => '',
+            'to' => ''
+        ];
+
+        if (empty($cruiseField)) {
+            return $result;
+        }
+
+        $text = trim($cruiseField);
+        
+        // Trova il primo numero nella stringa
+        if (preg_match('/(\d+)/', $text, $matches, PREG_OFFSET_CAPTURE)) {
+            $firstNumberPos = $matches[0][1];
+            $firstNumber = (int)$matches[0][0];
+            
+            // 1. La frase fino al primo numero (escluso) è il nome della crociera
+            $result['cruise_name'] = trim(substr($text, 0, $firstNumberPos));
+            
+            // 2. Il resto del testo (dal numero in poi)
+            $remainingText = substr($text, $firstNumberPos);
+            
+            // 3. Trova la parola "from" nel testo rimanente
+            if (preg_match('/\bfrom\b/i', $remainingText, $fromMatches, PREG_OFFSET_CAPTURE)) {
+                $fromPos = $fromMatches[0][1];
+                
+                // Dal numero fino a "from" (esclusa) è la durata
+                $durationText = trim(substr($remainingText, 0, $fromPos));
+                
+                // Estrai la durata dal testo (cerca un numero seguito da "day", "days", "night", "nights")
+                if (preg_match('/(\d+)\s*(day|days|night|nights)/i', $durationText, $durationMatches)) {
+                    $result['duration'] = (int)$durationMatches[1];
+                } else {
+                    // Se non trova pattern specifici, usa il primo numero trovato
+                    $result['duration'] = $firstNumber;
+                }
+                
+                // Dal "from" in poi sono i porti
+                $portsText = trim(substr($remainingText, $fromPos));
+                $this->parsePortsFromText($portsText, $result);
+                
+            } else {
+                // Se non c'è "from", usa il primo numero come durata
+                $result['duration'] = $firstNumber;
+            }
+        } else {
+            // Se non c'è alcun numero, tutto il testo è il nome della crociera
+            $result['cruise_name'] = $text;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Parse dei porti dal testo che inizia con "from"
+     */
+    private function parsePortsFromText($portsText, &$result)
+    {
+        // Pattern 1: from/to Porto (stesso porto per partenza e arrivo)
+        if (preg_match('/from\/to\s+(.+)$/i', $portsText, $matches)) {
+            $port = trim($matches[1]);
+            $result['from'] = $port;
+            $result['to'] = $port;
+            return;
+        }
+        
+        // Pattern 2: from Porto1 to Porto2 (porti diversi)
+        if (preg_match('/from\s+(.+?)\s+to\s+(.+)$/i', $portsText, $matches)) {
+            $result['from'] = trim($matches[1]);
+            $result['to'] = trim($matches[2]);
+            return;
+        }
+        
+        // Pattern 3: solo "from Porto" (senza "to")
+        if (preg_match('/from\s+(.+)$/i', $portsText, $matches)) {
+            $port = trim($matches[1]);
+            $result['from'] = $port;
+            $result['to'] = $port; // Assume stesso porto
+            return;
         }
     }
 
