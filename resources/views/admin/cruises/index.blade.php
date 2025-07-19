@@ -95,101 +95,157 @@
                                 </div>
                             </div>
 
-                            <!-- Filters Section -->
-                            <div class="filters-section">
-                                <div class="search-container">
-                                    <div class="search-box">
-                                        <i class="fas fa-search"></i>
-                                        <input type="text" class="search-input" id="globalSearch"
-                                            placeholder="Cerca nave, crociera, compagnia...">
+                            <!-- Filtri Ottimizzati -->
+                            <div class="filters-optimized">
+                                <div class="filters-top-row">
+                                    <!-- Ricerca Globale -->
+                                    <div class="search-wrapper">
+                                        <div class="search-input-group">
+                                            <i class="fas fa-search search-icon"></i>
+                                            <input type="text" id="globalSearch" class="search-input-optimized"
+                                                placeholder="Cerca nave, crociera, compagnia..." autocomplete="off">
+                                            <button type="button" class="search-clear" id="clearSearch"
+                                                style="display: none;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Filtri Rapidi -->
+                                    <div class="quick-filters">
+                                        <div class="filter-group-optimized">
+                                            <select id="companyFilter" class="filter-select-optimized">
+                                                <option value="">Tutte le compagnie</option>
+                                                <option value="msc">MSC Cruises</option>
+                                                <option value="costa">Costa Crociere</option>
+                                                <option value="royal">Royal Caribbean</option>
+                                                <option value="norwegian">Norwegian</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="filter-group-optimized">
+                                            <select id="priceFilter" class="filter-select-optimized">
+                                                <option value="">Tutti i prezzi</option>
+                                                <option value="0-500">€0 - €500</option>
+                                                <option value="500-1000">€500 - €1.000</option>
+                                                <option value="1000-2000">€1.000 - €2.000</option>
+                                                <option value="2000+">€2.000+</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="filter-group-optimized">
+                                            <select id="statusFilter" class="filter-select-optimized">
+                                                <option value="">Tutti gli stati</option>
+                                                <option value="available">Disponibili</option>
+                                                <option value="future">Future</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="filters-container">
-                                    <div class="filter-group">
-                                        <label>Compagnia</label>
-                                        <select class="filter-select" id="companyFilter">
-                                            <option value="">Tutte</option>
-                                            <option value="MSC">MSC Cruises</option>
-                                            <option value="Costa">Costa Crociere</option>
-                                            <option value="Royal">Royal Caribbean</option>
-                                            <option value="Norwegian">Norwegian</option>
-                                        </select>
+
+                                <!-- Azioni Multiple -->
+                                <div class="bulk-actions" id="bulkActions" style="display: none;">
+                                    <div class="bulk-info">
+                                        <span class="selected-count">0</span> crociere selezionate
                                     </div>
-                                    <div class="filter-group">
-                                        <label>Disponibilità</label>
-                                        <select class="filter-select" id="availabilityFilter">
-                                            <option value="">Tutte</option>
-                                            <option value="available">Disponibili</option>
-                                            <option value="future">Future</option>
-                                        </select>
-                                    </div>
-                                    <div class="filter-group">
-                                        <label>Azioni Multiple</label>
-                                        <button class="btn btn-sm btn-danger" id="bulkDeleteBtn" onclick="bulkDelete()"
-                                            disabled>
-                                            <i class="fas fa-trash me-1"></i>Elimina Selezionate
+                                    <div class="bulk-buttons">
+                                        <button type="button" class="btn-bulk btn-bulk-danger" onclick="bulkDelete()">
+                                            <i class="fas fa-trash me-1"></i>Elimina
+                                        </button>
+                                        <button type="button" class="btn-bulk btn-bulk-secondary"
+                                            onclick="deselectAll()">
+                                            <i class="fas fa-times me-1"></i>Deseleziona
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Table Container -->
-                            <div class="table-container">
-                                <table class="table cruises-table" id="cruises-table">
-                                    <thead>
-                                        <tr>
-                                            <!-- ✅ Checkbox Selezione -->
-                                            <th width="3%">
-                                                <input type="checkbox" id="selectAll" class="form-check-input">
-                                            </th>
+                            <!-- Tabella Ottimizzata -->
+                            <div class="table-wrapper-optimized">
+                                <div class="table-container-optimized" id="tableContainer">
+                                    <table class="table table-optimized" id="cruisesTable">
+                                        <thead class="table-head-optimized">
+                                            <tr>
+                                                <th class="col-checkbox">
+                                                    <div class="checkbox-wrapper">
+                                                        <input type="checkbox" id="selectAll" class="checkbox-optimized">
+                                                        <label for="selectAll" class="checkbox-label"></label>
+                                                    </div>
+                                                </th>
+                                                <th class="col-ship sortable" data-column="ship">
+                                                    <div class="th-content">
+                                                        <span>Nave</span>
+                                                        <i class="fas fa-sort sort-icon"></i>
+                                                    </div>
+                                                </th>
+                                                <th class="col-cruise sortable" data-column="cruise">
+                                                    <div class="th-content">
+                                                        <span>Crociera</span>
+                                                        <i class="fas fa-sort sort-icon"></i>
+                                                    </div>
+                                                </th>
+                                                <th class="col-company sortable" data-column="line">
+                                                    <div class="th-content">
+                                                        <span>Compagnia</span>
+                                                        <i class="fas fa-sort sort-icon"></i>
+                                                    </div>
+                                                </th>
+                                                <th class="col-duration sortable" data-column="duration">
+                                                    <div class="th-content">
+                                                        <span>Durata</span>
+                                                        <i class="fas fa-sort sort-icon"></i>
+                                                    </div>
+                                                </th>
+                                                <th class="col-price sortable" data-column="interior">
+                                                    <div class="th-content">
+                                                        <span>Prezzo</span>
+                                                        <i class="fas fa-sort sort-icon"></i>
+                                                    </div>
+                                                </th>
+                                                <th class="col-actions">
+                                                    <span>Azioni</span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                            <!-- I dati verranno inseriti via JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
 
-                                            <!-- ✅ Nave -->
-                                            <th width="18%">
-                                                <i class="fas fa-ship me-2"></i>Nave
-                                            </th>
+                                <!-- Loading State -->
+                                <div class="table-loading" id="tableLoading">
+                                    <div class="loading-spinner"></div>
+                                    <div class="loading-text">Caricamento crociere...</div>
+                                </div>
 
-                                            <!-- ✅ Crociera -->
-                                            <th width="25%">
-                                                <i class="fas fa-route me-2"></i>Crociera
-                                            </th>
-
-                                            <!-- ✅ Compagnia -->
-                                            <th width="15%">
-                                                <i class="fas fa-building me-2"></i>Compagnia
-                                            </th>
-
-                                            <!-- ✅ Durata -->
-                                            <th width="8%">
-                                                <i class="fas fa-clock me-2"></i>Durata
-                                            </th>
-
-                                            <!-- ✅ Data Partenza (ex Itinerario) -->
-                                            <th width="12%">
-                                                <i class="fas fa-calendar me-2"></i>Partenza
-                                            </th>
-
-                                            <!-- ✅ Prezzo Interior -->
-                                            <th width="10%">
-                                                <i class="fas fa-bed me-2"></i>Prezzo Min.
-                                            </th>
-
-                                            <!-- ✅ Azioni -->
-                                            <th width="9%">
-                                                <i class="fas fa-cogs me-2"></i>Azioni
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- I dati verranno caricati via AJAX da DataTables -->
-                                    </tbody>
-                                </table>
+                                <!-- Empty State -->
+                                <div class="table-empty" id="tableEmpty" style="display: none;">
+                                    <div class="empty-icon">
+                                        <i class="fas fa-ship"></i>
+                                    </div>
+                                    <div class="empty-title">Nessuna crociera trovata</div>
+                                    <div class="empty-subtitle">Prova a modificare i filtri di ricerca</div>
+                                </div>
                             </div>
 
-                            <!-- Loading Overlay -->
-                            <div class="loading-overlay d-none" id="loadingOverlay">
-                                <div class="loading-content">
-                                    <div class="spinner"></div>
-                                    <p>Caricamento crociere...</p>
+                            <!-- Paginazione Ottimizzata -->
+                            <div class="pagination-wrapper" id="paginationWrapper">
+                                <div class="pagination-info">
+                                    <span class="pagination-text" id="paginationInfo">
+                                        Mostrando 0 di 0 risultati
+                                    </span>
+                                </div>
+                                <div class="pagination-controls">
+                                    <select id="pageSize" class="page-size-select">
+                                        <option value="15">15 per pagina</option>
+                                        <option value="25">25 per pagina</option>
+                                        <option value="50">50 per pagina</option>
+                                        <option value="100">100 per pagina</option>
+                                    </select>
+                                    <div class="pagination-buttons" id="paginationButtons">
+                                        <!-- I pulsanti verranno generati via JavaScript -->
+                                    </div>
                                 </div>
                             </div>
 

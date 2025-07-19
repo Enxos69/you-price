@@ -1,760 +1,1118 @@
 <script>
-    // VERSIONE FINALE - Tutte le funzionalità complete e raffinate
+    // ================== GESTIONE CROCIERE OTTIMIZZATA ==================
+    // Versione ottimizzata per grosse moli di dati con performance migliorate
 
-    let cruisesTable;
-    let selectedCruises = [];
+    class CruiseManager {
+        constructor() {
+            // Configurazioni performance
+            this.config = {
+                pageSize: 15,
+                maxPageSize: 100,
+                debounceDelay: 300,
+                apiDelay: 100,
+                virtualScrollThreshold: 1000,
+                batchSize: 50
+            };
 
-    $(document).ready(function() {
-        console.log('🚀 Inizializzazione Gestione Crociere - Versione Finale');
+            // Stato dell'applicazione
+            this.state = {
+                currentPage: 1,
+                pageSize: this.config.pageSize,
+                totalRecords: 0,
+                filteredRecords: 0,
+                sortColumn: 'ship',
+                sortDirection: 'asc',
+                searchTerm: '',
+                filters: {
+                    company: '',
+                    price: '',
+                    status: ''
+                },
+                selectedIds: new Set(),
+                isLoading: false,
+                data: [],
+                isInitialized: false
+            };
 
-        // Inizializzazione con delay per stabilità
-        setTimeout(function() {
-            initializeCruisesTable();
-            initializeFilters();
-            initializeSweetAlert();
-            loadCruiseStats();
-        }, 500);
-    });
+            // Cache e throttling
+            this.cache = new Map();
+            this.searchTimeout = null;
+            this.filterTimeout = null;
+            this.requestController = null;
 
-    // ✅ CONFIGURAZIONE DATATABLE CON LARGHEZZE FORZATE E FISSE
-    function initializeCruisesTable() {
-        console.log('Inizializzazione DataTable con larghezze fisse...');
+            // Elementi DOM cachati
+            this.elements = {};
 
-        // Distruggi DataTable esistente se presente
-        if ($.fn.DataTable.isDataTable('#cruises-table')) {
-            $('#cruises-table').DataTable().destroy();
+            // Bind dei metodi
+            this.handleSearch = this.debounce(this.handleSearch.bind(this), this.config.debounceDelay);
+            this.handleFilter = this.debounce(this.handleFilter.bind(this), this.config.debounceDelay);
         }
 
-        const dataUrl = '{{ route('cruises.data') }}';
+        // ================== INIZIALIZZAZIONE ==================
+        async init() {
+            console.log('🚀 Inizializzazione CruiseManager ottimizzato...');
 
-        cruisesTable = $('#cruises-table').DataTable({
-            // ✅ DISABILITA RESPONSIVE E AUTO-WIDTH
-            responsive: false,
-            autoWidth: false,
-            processing: true,
-            serverSide: true,
-            deferRender: true,
+            try {
+                this.cacheElements();
+                this.attachEventListeners();
+                this.initializeSearch();
+                this.initializeFilters();
+                this.initializePagination();
+                this.initializeSorting();
+                this.initializeCheckboxes();
 
-            // ✅ FORZA SCROLL ORIZZONTALE
-            scrollX: true,
-            scrollCollapse: true,
+                await this.loadData();
+                await this.loadStats();
 
-            ajax: {
-                url: dataUrl,
-                type: 'GET',
-                beforeSend: function() {
-                    showLoading(true);
-                },
-                complete: function() {
-                    showLoading(false);
-                },
-                error: function(xhr, error, code) {
-                    console.error('Errore AJAX DataTable:', error);
-                    showToast('Errore nel caricamento dei dati. Riprova più tardi.', 'error');
-                    showLoading(false);
-                }
-            },
-
-            // ✅ LARGHEZZE FORZATE NELLE COLONNE
-            columnDefs: [{
-                    width: "3%",
-                    targets: 0
-                }, // Checkbox
-                {
-                    width: "18%",
-                    targets: 1
-                }, // Nave
-                {
-                    width: "25%",
-                    targets: 2
-                }, // Crociera
-                {
-                    width: "15%",
-                    targets: 3
-                }, // Compagnia
-                {
-                    width: "8%",
-                    targets: 4
-                }, // Durata
-                {
-                    width: "12%",
-                    targets: 5
-                }, // Partenza
-                {
-                    width: "10%",
-                    targets: 6
-                }, // Prezzo
-                {
-                    width: "9%",
-                    targets: 7
-                } // Azioni
-            ],
-
-            columns: [
-                // ✅ CHECKBOX
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    className: "text-center",
-                    render: function(data, type, row) {
-                        return `<input type="checkbox" class="form-check-input cruise-checkbox" value="${row.id}">`;
-                    }
-                },
-                // ✅ NAVE
-                {
-                    data: 'ship',
-                    name: 'ship',
-                    className: "text-left",
-                    render: function(data, type, row) {
-                        return `<div class="fw-bold">${data || 'N/D'}</div>`;
-                    }
-                },
-                // ✅ CROCIERA
-                {
-                    data: 'cruise',
-                    name: 'cruise',
-                    className: "text-left",
-                    render: function(data, type, row) {
-                        if (data && data.length > 35) {
-                            return `<span title="${data}" class="text-truncate d-block">${data.substring(0, 35)}...</span>`;
-                        }
-                        return data || 'N/D';
-                    }
-                },
-                // ✅ COMPAGNIA
-                {
-                    data: 'line',
-                    name: 'line',
-                    className: "text-center"
-                },
-                // ✅ DURATA
-                {
-                    data: 'formatted_duration',
-                    name: 'duration',
-                    className: "text-center"
-                },
-                // ✅ DATA PARTENZA
-                {
-                    data: 'itinerary',
-                    name: 'partenza',
-                    className: "text-center"
-                },
-                // ✅ PREZZO INTERIOR
-                {
-                    data: 'interior',
-                    name: 'interior',
-                    className: "text-right"
-                },
-                // ✅ AZIONI
-                {
-                    data: 'actions',
-                    name: 'actions',
-                    orderable: false,
-                    searchable: false,
-                    className: "text-center"
-                }
-            ],
-
-            // ✅ IMPOSTAZIONI PERFORMANCE
-            pageLength: 15,
-            lengthMenu: [
-                [10, 15, 25, 50],
-                [10, 15, 25, 50]
-            ],
-
-            language: {
-                processing: "⏳ Caricamento...",
-                search: "",
-                searchPlaceholder: "Cerca crociere...",
-                lengthMenu: "Mostra _MENU_ crociere",
-                info: "_START_-_END_ di _TOTAL_",
-                infoEmpty: "Nessuna crociera",
-                infoFiltered: "(filtrate da _MAX_ totali)",
-                zeroRecords: "Nessun risultato trovato",
-                emptyTable: "Nessuna crociera presente",
-                paginate: {
-                    previous: "‹",
-                    next: "›"
-                }
-            },
-
-            // ✅ DOM SEMPLIFICATO
-            dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>rt<"row"<"col-sm-5"i><"col-sm-7"p>>',
-            order: [
-                [1, 'asc']
-            ],
-
-            // ✅ CALLBACK OTTIMIZZATO
-            drawCallback: function() {
-                setTimeout(() => {
-                    // Forza larghezze dopo il rendering
-                    fixColumnWidths();
-
-                    // Inizializza tooltip
-                    $('[title]').tooltip({
-                        delay: {
-                            show: 500,
-                            hide: 100
-                        }
-                    });
-
-                    // Attach eventi
-                    $('.delete-cruise').off('click').on('click', function() {
-                        const id = $(this).data('id');
-                        const name = $(this).data('name');
-                        confirmDelete(id, name);
-                    });
-
-                    updateSelectedCruises();
-                }, 10);
-            },
-
-            // ✅ INIZIALIZZAZIONE COMPLETATA
-            initComplete: function() {
-                console.log('✅ DataTable inizializzata con larghezze fisse');
-                fixColumnWidths();
+                this.state.isInitialized = true;
+                console.log('✅ CruiseManager inizializzato con successo');
+            } catch (error) {
+                console.error('❌ Errore inizializzazione:', error);
+                this.showError('Errore durante l\'inizializzazione');
             }
-        });
+        }
 
-        window.cruisesTable = cruisesTable;
-    }
+        // Cachatura elementi DOM per performance
+        cacheElements() {
+            this.elements = {
+                // Tabella
+                table: document.getElementById('cruisesTable'),
+                tableBody: document.getElementById('tableBody'),
+                tableContainer: document.getElementById('tableContainer'),
+                tableLoading: document.getElementById('tableLoading'),
+                tableEmpty: document.getElementById('tableEmpty'),
 
-    // ✅ FUNZIONE PER FORZARE LE LARGHEZZE DOPO IL RENDERING
-    function fixColumnWidths() {
-        const table = $('#cruises-table');
-        const ths = table.find('thead th');
-        const widths = ['3%', '18%', '25%', '15%', '8%', '12%', '10%', '9%'];
+                // Ricerca e filtri
+                globalSearch: document.getElementById('globalSearch'),
+                clearSearch: document.getElementById('clearSearch'),
+                companyFilter: document.getElementById('companyFilter'),
+                priceFilter: document.getElementById('priceFilter'),
+                statusFilter: document.getElementById('statusFilter'),
 
-        ths.each(function(index) {
-            if (widths[index]) {
-                $(this).css({
-                    'width': widths[index],
-                    'min-width': widths[index],
-                    'max-width': widths[index]
+                // Checkbox e azioni
+                selectAll: document.getElementById('selectAll'),
+                bulkActions: document.getElementById('bulkActions'),
+
+                // Paginazione
+                paginationInfo: document.getElementById('paginationInfo'),
+                paginationButtons: document.getElementById('paginationButtons'),
+                pageSize: document.getElementById('pageSize'),
+
+                // Statistiche
+                totalCruises: document.getElementById('totalCruises'),
+                availableCruises: document.getElementById('availableCruises'),
+                futureCruises: document.getElementById('futureCruises'),
+                totalCompanies: document.getElementById('totalCompanies')
+            };
+        }
+
+        // ================== EVENT LISTENERS ==================
+        attachEventListeners() {
+            // Ricerca globale
+            if (this.elements.globalSearch) {
+                this.elements.globalSearch.addEventListener('input', (e) => {
+                    this.state.searchTerm = e.target.value.trim();
+                    this.handleSearch();
+                    this.toggleClearButton();
                 });
             }
-        });
 
-        // Forza anche le celle del body
-        table.find('tbody td').each(function(index) {
-            const colIndex = index % 8;
-            if (widths[colIndex]) {
-                $(this).css({
-                    'width': widths[colIndex],
-                    'min-width': widths[colIndex],
-                    'max-width': widths[colIndex]
+            // Pulsante clear ricerca
+            if (this.elements.clearSearch) {
+                this.elements.clearSearch.addEventListener('click', () => {
+                    this.clearSearch();
                 });
             }
-        });
-    }
 
-    // ✅ FUNZIONE PER CONFERMA ELIMINAZIONE
-    function confirmDelete(cruiseId, cruiseName) {
-        Swal.fire({
-            title: 'Conferma eliminazione',
-            text: `Sei sicuro di voler eliminare "${cruiseName}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                deleteCruise(cruiseId);
-            }
-        });
-    }
-
-    // ✅ FUNZIONE PER ELIMINAZIONE AJAX
-    function deleteCruise(cruiseId) {
-        $.ajax({
-            url: `/admin/cruises/${cruiseId}`,
-            type: 'DELETE',
-            data: {
-                _token: $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.response) {
-                    showToast(response.message || 'Crociera eliminata con successo', 'success');
-                    cruisesTable.ajax.reload(null, false); // Ricarica senza resettare pagina
-                } else {
-                    showToast(response.message || 'Errore durante l\'eliminazione', 'error');
+            // Filtri
+            ['companyFilter', 'priceFilter', 'statusFilter'].forEach(filterId => {
+                const element = this.elements[filterId];
+                if (element) {
+                    element.addEventListener('change', (e) => {
+                        const filterName = filterId.replace('Filter', '');
+                        this.state.filters[filterName] = e.target.value;
+                        this.state.currentPage = 1; // Reset alla prima pagina
+                        this.handleFilter();
+                    });
                 }
-            },
-            error: function(xhr) {
-                console.error('Errore eliminazione:', xhr);
-                showToast('Errore durante l\'eliminazione', 'error');
+            });
+
+            // Page size
+            if (this.elements.pageSize) {
+                this.elements.pageSize.addEventListener('change', (e) => {
+                    this.state.pageSize = parseInt(e.target.value);
+                    this.state.currentPage = 1;
+                    this.loadData();
+                });
             }
-        });
-    }
 
-    // ✅ OTTIMIZZAZIONE CHECKBOX CON THROTTLING
-    function updateSelectedCruises() {
-        clearTimeout(window.checkboxTimeout);
-        window.checkboxTimeout = setTimeout(() => {
-            selectedCruises = $('.cruise-checkbox:checked').map(function() {
-                return this.value;
-            }).get();
+            // Select all checkbox
+            if (this.elements.selectAll) {
+                this.elements.selectAll.addEventListener('change', (e) => {
+                    this.handleSelectAll(e.target.checked);
+                });
+            }
 
-            const count = selectedCruises.length;
-            $('#selected-count').text(count);
-            $('#bulk-actions').toggle(count > 0);
+            // Gestione tasti scorciatoia
+            document.addEventListener('keydown', (e) => {
+                this.handleKeyboardShortcuts(e);
+            });
 
-            // Aggiorna checkbox "Seleziona tutto"
-            const totalCheckboxes = $('.cruise-checkbox').length;
-            const selectAllCheckbox = $('#selectAll');
+            // Resize window per responsive
+            window.addEventListener('resize', this.debounce(() => {
+                this.handleResize();
+            }, 250));
+        }
 
-            if (count === 0) {
-                selectAllCheckbox.prop('indeterminate', false).prop('checked', false);
-            } else if (count === totalCheckboxes) {
-                selectAllCheckbox.prop('indeterminate', false).prop('checked', true);
+        // ================== CARICAMENTO DATI ==================
+        async loadData() {
+            if (this.state.isLoading) return;
+
+            this.state.isLoading = true;
+            this.showLoading(true);
+
+            // Cancella richiesta precedente se in corso
+            if (this.requestController) {
+                this.requestController.abort();
+            }
+            this.requestController = new AbortController();
+
+            try {
+                const cacheKey = this.generateCacheKey();
+
+                // Controlla cache
+                if (this.cache.has(cacheKey)) {
+                    const cachedData = this.cache.get(cacheKey);
+                    this.renderData(cachedData);
+                    this.state.isLoading = false;
+                    this.showLoading(false);
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    draw: Date.now(), // Timestamp per evitare cache browser
+                    start: (this.state.currentPage - 1) * this.state.pageSize,
+                    length: this.state.pageSize,
+                    'search[value]': this.state.searchTerm,
+                    'order[0][column]': this.getColumnIndex(this.state.sortColumn),
+                    'order[0][dir]': this.state.sortDirection,
+                    company: this.state.filters.company,
+                    price: this.state.filters.price,
+                    status: this.state.filters.status
+                });
+
+                const response = await fetch(`{{ route('cruises.data') }}?${params}`, {
+                    signal: this.requestController.signal,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                // Salva in cache (mantieni solo ultime 10 richieste)
+                if (this.cache.size >= 10) {
+                    const firstKey = this.cache.keys().next().value;
+                    this.cache.delete(firstKey);
+                }
+                this.cache.set(cacheKey, data);
+
+                this.renderData(data);
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Richiesta annullata');
+                    return;
+                }
+
+                console.error('Errore caricamento dati:', error);
+                this.showError('Errore nel caricamento dei dati');
+                this.showEmptyState();
+            } finally {
+                this.state.isLoading = false;
+                this.showLoading(false);
+                this.requestController = null;
+            }
+        }
+
+        // ================== RENDERING DATI ==================
+        renderData(data) {
+            if (!data || !data.data) {
+                this.showEmptyState();
+                return;
+            }
+
+            this.state.data = data.data;
+            this.state.totalRecords = data.recordsTotal || 0;
+            this.state.filteredRecords = data.recordsFiltered || 0;
+
+            // Nascondi stati di loading/empty
+            this.showLoading(false);
+            this.showEmptyState(false);
+
+            if (data.data.length === 0) {
+                this.showEmptyState();
+                return;
+            }
+
+            // Rendering ottimizzato con DocumentFragment
+            const fragment = document.createDocumentFragment();
+
+            data.data.forEach((cruise, index) => {
+                const row = this.createTableRow(cruise, index);
+                fragment.appendChild(row);
+            });
+
+            // Svuota e riempie tabella in una sola operazione
+            this.elements.tableBody.innerHTML = '';
+            this.elements.tableBody.appendChild(fragment);
+
+            // Aggiorna componenti UI
+            this.updatePagination();
+            this.updateSelectAllState();
+            this.attachRowEventListeners();
+
+            // Performance: triggera layout una sola volta
+            requestAnimationFrame(() => {
+                this.elements.tableContainer.scrollTop = 0;
+            });
+        }
+
+        // Creazione ottimizzata riga tabella
+        createTableRow(cruise, index) {
+            const row = document.createElement('tr');
+            row.className = 'table-row-optimized';
+            row.dataset.cruiseId = cruise.id;
+
+            const isSelected = this.state.selectedIds.has(cruise.id.toString());
+
+            row.innerHTML = `
+            <td class="col-checkbox">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" 
+                           class="checkbox-optimized cruise-checkbox" 
+                           value="${cruise.id}"
+                           ${isSelected ? 'checked' : ''}
+                           id="cruise-${cruise.id}">
+                    <label for="cruise-${cruise.id}" class="checkbox-label"></label>
+                </div>
+            </td>
+            <td class="col-ship">
+                <div class="ship-name" title="${this.escapeHtml(cruise.ship || '')}">${cruise.ship || 'N/D'}</div>
+            </td>
+            <td class="col-cruise">
+                <div class="cruise-title ${(cruise.cruise || '').length > 40 ? 'truncated' : ''}" 
+                     title="${this.escapeHtml(cruise.cruise || '')}">${this.truncateText(cruise.cruise || 'N/D', 40)}</div>
+            </td>
+            <td class="col-company text-center">
+                ${this.renderCompanyBadge(cruise.line)}
+            </td>
+            <td class="col-duration text-center">
+                <span class="duration-text">${cruise.formatted_duration || 'N/D'}</span>
+            </td>
+            <td class="col-price text-right">
+                ${this.renderPrice(cruise.interior)}
+            </td>
+            <td class="col-actions text-center">
+                ${this.renderActionButtons(cruise)}
+            </td>
+        `;
+
+            return row;
+        }
+
+        // ================== HELPERS RENDERING ==================
+        renderCompanyBadge(company) {
+            if (!company) {
+                return '<span class="company-badge company-default">N/D</span>';
+            }
+
+            const companyText = this.escapeHtml(company);
+            const companyLower = company.toLowerCase();
+            let badgeClass = 'company-default';
+
+            if (companyLower.includes('msc')) badgeClass = 'company-msc';
+            else if (companyLower.includes('costa')) badgeClass = 'company-costa';
+            else if (companyLower.includes('royal')) badgeClass = 'company-royal';
+            else if (companyLower.includes('norwegian')) badgeClass = 'company-norwegian';
+
+            return `<span class="company-badge ${badgeClass}">${companyText}</span>`;
+        }
+
+        renderPrice(price) {
+            if (!price || price === 'N/D') {
+                return '<span class="price-na">N/D</span>';
+            }
+            return `<span class="price-value">${price}</span>`;
+        }
+
+        renderActionButtons(cruise) {
+            return `
+            <div class="actions-group">
+                <a href="/admin/cruises/${cruise.id}" 
+                   class="action-btn action-btn-view" 
+                   title="Visualizza">
+                    <i class="fas fa-eye"></i>
+                </a>
+                <a href="/admin/cruises/${cruise.id}/edit" 
+                   class="action-btn action-btn-edit" 
+                   title="Modifica">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <button type="button" 
+                        class="action-btn action-btn-delete delete-cruise-btn" 
+                        data-cruise-id="${cruise.id}"
+                        data-cruise-name="${this.escapeHtml(cruise.ship + ' - ' + cruise.cruise)}"
+                        title="Elimina">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        }
+
+        // Mappa colonne per ordinamento
+        getColumnIndex(columnName) {
+            const columnMap = {
+                'ship': 1,
+                'cruise': 2,
+                'line': 3,
+                'duration': 4,
+                'interior': 5
+            };
+            return columnMap[columnName] || 1;
+        }
+
+        // ================== EVENT HANDLERS ==================
+        attachRowEventListeners() {
+            // Checkbox delle righe
+            const checkboxes = this.elements.tableBody.querySelectorAll('.cruise-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    this.handleRowSelection(e.target.value, e.target.checked);
+                });
+            });
+
+            // Pulsanti elimina
+            const deleteButtons = this.elements.tableBody.querySelectorAll('.delete-cruise-btn');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const cruiseId = button.dataset.cruiseId;
+                    const cruiseName = button.dataset.cruiseName;
+                    this.confirmDelete(cruiseId, cruiseName);
+                });
+            });
+        }
+
+        handleSearch() {
+            this.state.currentPage = 1;
+            this.loadData();
+        }
+
+        handleFilter() {
+            this.state.currentPage = 1;
+            this.loadData();
+        }
+
+        handleRowSelection(cruiseId, isSelected) {
+            if (isSelected) {
+                this.state.selectedIds.add(cruiseId);
             } else {
-                selectAllCheckbox.prop('indeterminate', true).prop('checked', false);
+                this.state.selectedIds.delete(cruiseId);
             }
-        }, 100);
-    }
 
-    function initializeFilters() {
-        console.log('Inizializzazione filtri...');
+            this.updateSelectAllState();
+            this.updateBulkActions();
+        }
 
-        // Search globale personalizzata
-        $('#globalSearch').on('keyup', debounce(function() {
-            if (cruisesTable) {
-                cruisesTable.search(this.value).draw();
-            }
-        }, 300));
+        handleSelectAll(isSelected) {
+            const checkboxes = this.elements.tableBody.querySelectorAll('.cruise-checkbox');
 
-        // Filtro per compagnia
-        $('#companyFilter').on('change', function() {
-            if (cruisesTable) {
-                const value = this.value;
-                cruisesTable.column(3).search(value).draw();
-            }
-        });
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isSelected;
+                const cruiseId = checkbox.value;
 
-        // Filtro per disponibilità
-        $('#availabilityFilter').on('change', function() {
-            if (cruisesTable) {
-                const value = this.value;
-                if (value === 'available') {
-                    cruisesTable.columns([6, 7, 8]).search('€', true, false).draw();
-                } else if (value === 'future') {
-                    cruisesTable.search('').draw();
+                if (isSelected) {
+                    this.state.selectedIds.add(cruiseId);
                 } else {
-                    cruisesTable.search('').columns().search('').draw();
+                    this.state.selectedIds.delete(cruiseId);
                 }
-            }
-        });
-
-        // Checkbox "Seleziona tutto"
-        $('#selectAll').on('change', function() {
-            const isChecked = this.checked;
-            $('.cruise-checkbox:visible').prop('checked', isChecked);
-            updateSelectedCruises();
-        });
-
-        // Gestione checkbox individuali
-        $(document).on('change', '.cruise-checkbox', function() {
-            updateSelectedCruises();
-        });
-
-        console.log('✅ Filtri inizializzati');
-    }
-
-    function updateCheckboxes() {
-        const totalCheckboxes = $('.cruise-checkbox:visible').length;
-        const checkedCheckboxes = $('.cruise-checkbox:visible:checked').length;
-
-        if ($('#selectAll').length > 0) {
-            $('#selectAll').prop('indeterminate', checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes);
-            $('#selectAll').prop('checked', checkedCheckboxes === totalCheckboxes && totalCheckboxes > 0);
-        }
-    }
-
-    function updateSelectedCruises() {
-        selectedCruises = [];
-        $('.cruise-checkbox:checked').each(function() {
-            selectedCruises.push({
-                id: $(this).val(),
-                name: $(this).data('cruise')
             });
-        });
 
-        if ($('#bulkDeleteBtn').length > 0) {
-            $('#bulkDeleteBtn').prop('disabled', selectedCruises.length === 0);
+            this.updateBulkActions();
         }
 
-        updateCheckboxes();
-    }
-
-    function attachActionEvents() {
-        // Rimuovi event listeners esistenti per evitare duplicati
-        $('.deleteButton').off('click');
-
-        // Eventi per i pulsanti "Elimina"
-        $(document).on('click', '.deleteButton', function() {
-            const cruiseId = $(this).data('id');
-            const shipName = $(this).data('ship');
-            const cruiseName = $(this).data('cruise');
-
-            showDeleteConfirmation(cruiseId, shipName, cruiseName);
-        });
-    }
-
-    function showDeleteConfirmation(cruiseId, shipName, cruiseName) {
-        Swal.fire({
-            title: 'Conferma Eliminazione',
-            html: `Sei sicuro di voler eliminare la crociera:<br><br>
-               <strong>${shipName}</strong><br>
-               <em>${cruiseName}</em>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla',
-            customClass: {
-                popup: 'swal-custom'
+        handleKeyboardShortcuts(e) {
+            // Ctrl/Cmd + F: Focus su ricerca
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                this.elements.globalSearch?.focus();
             }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                deleteCruise(cruiseId, shipName);
+
+            // Escape: Deseleziona tutto
+            if (e.key === 'Escape') {
+                this.deselectAll();
+                this.elements.globalSearch?.blur();
             }
-        });
-    }
 
-
-    function bulkDelete() {
-        if (selectedCruises.length === 0) {
-            showToast('Nessuna crociera selezionata', 'warning');
-            return;
+            // Ctrl/Cmd + R: Refresh
+            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                e.preventDefault();
+                this.refreshData();
+            }
         }
 
-        const cruiseNames = selectedCruises.map(c => c.name).slice(0, 3).join('<br>');
-        const moreText = selectedCruises.length > 3 ? `<br><small>...e altre ${selectedCruises.length - 3}</small>` :
-            '';
+        handleResize() {
+            // Aggiorna layout responsive se necessario
+            this.updateTableLayout();
+        }
 
-        Swal.fire({
-            title: 'Conferma Eliminazione Multipla',
-            html: `Sei sicuro di voler eliminare ${selectedCruises.length} crociere?<br><br>
-               <small>${cruiseNames}${moreText}</small>`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina Tutte',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                performBulkDelete();
-            }
-        });
-    }
+        // ================== SORTING ==================
+        initializeSorting() {
+            const sortableHeaders = this.elements.table.querySelectorAll('.sortable');
 
-    function performBulkDelete() {
-        const ids = selectedCruises.map(c => c.id);
-
-        Swal.fire({
-            title: 'Eliminazione in corso...',
-            text: `Eliminando ${ids.length} crociere...`,
-            icon: 'info',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        $.ajax({
-            url: '{{ route('cruises.bulk-delete') }}',
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                ids: ids
-            },
-            success: function(response) {
-                if (response.response) {
-                    Swal.fire({
-                        title: 'Eliminazione Completata!',
-                        text: response.message,
-                        icon: 'success',
-                        confirmButtonColor: '#84bc00'
-                    });
-
-                    // Reset selezioni
-                    selectedCruises = [];
-                    $('#selectAll').prop('checked', false);
-                    $('#bulkDeleteBtn').prop('disabled', true);
-
-                    // Ricarica tabella e statistiche
-                    cruisesTable.ajax.reload(null, false);
-                    loadCruiseStats();
-                } else {
-                    Swal.fire({
-                        title: 'Errore!',
-                        text: response.message ||
-                            'Si è verificato un errore durante l\'eliminazione.',
-                        icon: 'error',
-                        confirmButtonColor: '#dc3545'
-                    });
-                }
-            },
-            error: function(xhr) {
-                Swal.fire({
-                    title: 'Errore!',
-                    text: 'Si è verificato un errore durante l\'eliminazione multipla.',
-                    icon: 'error',
-                    confirmButtonColor: '#dc3545'
+            sortableHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.dataset.column;
+                    this.handleSort(column);
                 });
-            }
-        });
-    }
-
-    function loadCruiseStats() {
-        $.ajax({
-            url: '{{ route('cruises.stats') }}',
-            type: 'GET',
-            success: function(stats) {
-                updateStatsDisplay(stats);
-            },
-            error: function() {
-                console.log('Errore caricamento statistiche, uso dati tabella');
-                updateCruiseStats();
-            }
-        });
-    }
-
-    function updateCruiseStats() {
-        setTimeout(() => {
-            if (cruisesTable && cruisesTable.ajax.json()) {
-                const tableData = cruisesTable.ajax.json();
-                updateStatsDisplay({
-                    total_cruises: tableData.recordsTotal || 0,
-                    available_cruises: calculateAvailableCruises(),
-                    future_cruises: calculateFutureCruises(),
-                    companies: calculateUniqueCompanies()
-                });
-            }
-        }, 500);
-    }
-
-    function calculateAvailableCruises() {
-        let count = 0;
-        if (cruisesTable) {
-            cruisesTable.rows({
-                search: 'applied'
-            }).every(function() {
-                const data = this.data();
-                if ((data.interior && data.interior.includes('€')) ||
-                    (data.oceanview && data.oceanview.includes('€')) ||
-                    (data.balcony && data.balcony.includes('€'))) {
-                    count++;
-                }
             });
         }
-        return count;
-    }
 
-    function calculateFutureCruises() {
-        let count = 0;
-        if (cruisesTable) {
-            cruisesTable.rows({
-                search: 'applied'
-            }).every(function() {
-                const data = this.data();
-                if (data.itinerary && (data.itinerary.includes('2024') || data.itinerary.includes('2025'))) {
-                    count++;
-                }
-            });
+        handleSort(column) {
+            if (this.state.sortColumn === column) {
+                this.state.sortDirection = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.state.sortColumn = column;
+                this.state.sortDirection = 'asc';
+            }
+
+            this.updateSortIndicators();
+            this.state.currentPage = 1;
+            this.loadData();
         }
-        return count;
-    }
 
-    function calculateUniqueCompanies() {
-        const companies = new Set();
-        if (cruisesTable) {
-            cruisesTable.rows({
-                search: 'applied'
-            }).every(function() {
-                const data = this.data();
-                if (data.line) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data.line;
-                    const companyText = tempDiv.textContent || tempDiv.innerText || '';
-                    if (companyText.trim()) {
-                        companies.add(companyText.trim());
+        updateSortIndicators() {
+            // Rimuovi indicatori esistenti
+            const headers = this.elements.table.querySelectorAll('.sortable');
+            headers.forEach(header => {
+                header.classList.remove('asc', 'desc');
+            });
+
+            // Aggiungi indicatore corrente
+            const currentHeader = this.elements.table.querySelector(`[data-column="${this.state.sortColumn}"]`);
+            if (currentHeader) {
+                currentHeader.classList.add(this.state.sortDirection);
+            }
+        }
+
+        // ================== PAGINAZIONE ==================
+        initializePagination() {
+            // Event listener già aggiunto in attachEventListeners
+        }
+
+        updatePagination() {
+            this.updatePaginationInfo();
+            this.updatePaginationButtons();
+        }
+
+        updatePaginationInfo() {
+            if (!this.elements.paginationInfo) return;
+
+            const start = Math.min((this.state.currentPage - 1) * this.state.pageSize + 1, this.state
+                .filteredRecords);
+            const end = Math.min(this.state.currentPage * this.state.pageSize, this.state.filteredRecords);
+
+            if (this.state.filteredRecords === 0) {
+                this.elements.paginationInfo.textContent = 'Nessun risultato';
+            } else {
+                this.elements.paginationInfo.textContent =
+                    `Mostrando ${start}-${end} di ${this.state.filteredRecords} risultati`;
+            }
+        }
+
+        updatePaginationButtons() {
+            if (!this.elements.paginationButtons) return;
+
+            const totalPages = Math.ceil(this.state.filteredRecords / this.state.pageSize);
+            const currentPage = this.state.currentPage;
+
+            let buttonsHtml = '';
+
+            // Pulsante Previous
+            const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+            buttonsHtml += `
+            <button class="page-btn page-btn-prev ${prevDisabled}" 
+                    onclick="cruiseManager.goToPage(${currentPage - 1})"
+                    ${prevDisabled ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Prec
+            </button>
+        `;
+
+            // Calcola range pagine da mostrare
+            const range = this.calculatePageRange(currentPage, totalPages);
+
+            // Prima pagina
+            if (range.start > 1) {
+                buttonsHtml += `<button class="page-btn" onclick="cruiseManager.goToPage(1)">1</button>`;
+                if (range.start > 2) {
+                    buttonsHtml += `<span class="page-ellipsis">...</span>`;
+                }
+            }
+
+            // Pagine nel range
+            for (let i = range.start; i <= range.end; i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                buttonsHtml += `
+                <button class="page-btn ${activeClass}" 
+                        onclick="cruiseManager.goToPage(${i})">${i}</button>
+            `;
+            }
+
+            // Ultima pagina
+            if (range.end < totalPages) {
+                if (range.end < totalPages - 1) {
+                    buttonsHtml += `<span class="page-ellipsis">...</span>`;
+                }
+                buttonsHtml +=
+                    `<button class="page-btn" onclick="cruiseManager.goToPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            // Pulsante Next
+            const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+            buttonsHtml += `
+            <button class="page-btn page-btn-next ${nextDisabled}" 
+                    onclick="cruiseManager.goToPage(${currentPage + 1})"
+                    ${nextDisabled ? 'disabled' : ''}>
+                Succ <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+
+            this.elements.paginationButtons.innerHTML = buttonsHtml;
+        }
+
+        calculatePageRange(currentPage, totalPages, maxButtons = 5) {
+            const half = Math.floor(maxButtons / 2);
+            let start = Math.max(1, currentPage - half);
+            let end = Math.min(totalPages, start + maxButtons - 1);
+
+            if (end - start + 1 < maxButtons) {
+                start = Math.max(1, end - maxButtons + 1);
+            }
+
+            return {
+                start,
+                end
+            };
+        }
+
+        goToPage(page) {
+            const totalPages = Math.ceil(this.state.filteredRecords / this.state.pageSize);
+
+            if (page < 1 || page > totalPages || page === this.state.currentPage) {
+                return;
+            }
+
+            this.state.currentPage = page;
+            this.loadData();
+        }
+
+        // ================== CHECKBOX E SELEZIONI ==================
+        initializeCheckboxes() {
+            // Event listeners già aggiunti in attachEventListeners
+        }
+
+        updateSelectAllState() {
+            if (!this.elements.selectAll) return;
+
+            const visibleCheckboxes = this.elements.tableBody.querySelectorAll('.cruise-checkbox');
+            const checkedCheckboxes = this.elements.tableBody.querySelectorAll('.cruise-checkbox:checked');
+
+            if (visibleCheckboxes.length === 0) {
+                this.elements.selectAll.indeterminate = false;
+                this.elements.selectAll.checked = false;
+            } else if (checkedCheckboxes.length === 0) {
+                this.elements.selectAll.indeterminate = false;
+                this.elements.selectAll.checked = false;
+            } else if (checkedCheckboxes.length === visibleCheckboxes.length) {
+                this.elements.selectAll.indeterminate = false;
+                this.elements.selectAll.checked = true;
+            } else {
+                this.elements.selectAll.indeterminate = true;
+                this.elements.selectAll.checked = false;
+            }
+        }
+
+        updateBulkActions() {
+            const selectedCount = this.state.selectedIds.size;
+
+            if (this.elements.bulkActions) {
+                if (selectedCount > 0) {
+                    this.elements.bulkActions.style.display = 'flex';
+                    const countElement = this.elements.bulkActions.querySelector('.selected-count');
+                    if (countElement) {
+                        countElement.textContent = selectedCount;
                     }
+                } else {
+                    this.elements.bulkActions.style.display = 'none';
+                }
+            }
+        }
+
+        deselectAll() {
+            this.state.selectedIds.clear();
+
+            const checkboxes = this.elements.tableBody.querySelectorAll('.cruise-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            if (this.elements.selectAll) {
+                this.elements.selectAll.checked = false;
+                this.elements.selectAll.indeterminate = false;
+            }
+
+            this.updateBulkActions();
+        }
+
+        // ================== RICERCA E FILTRI ==================
+        initializeSearch() {
+            this.toggleClearButton();
+        }
+
+        initializeFilters() {
+            // Carica opzioni dinamiche se necessario
+            this.loadFilterOptions();
+        }
+
+        toggleClearButton() {
+            if (this.elements.clearSearch) {
+                this.elements.clearSearch.style.display = this.state.searchTerm ? 'block' : 'none';
+            }
+        }
+
+        clearSearch() {
+            this.state.searchTerm = '';
+            if (this.elements.globalSearch) {
+                this.elements.globalSearch.value = '';
+            }
+            this.toggleClearButton();
+            this.handleSearch();
+        }
+
+        async loadFilterOptions() {
+            // Implementa se necessario caricare opzioni dinamicamente
+        }
+
+        // ================== STATISTICHE ==================
+        async loadStats() {
+            try {
+                const response = await fetch('{{ route('cruises.stats') }}', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    this.updateStats(stats);
+                }
+            } catch (error) {
+                console.error('Errore caricamento statistiche:', error);
+            }
+        }
+
+        updateStats(stats) {
+            const updates = [{
+                    element: this.elements.totalCruises,
+                    value: stats.total_cruises || 0
+                },
+                {
+                    element: this.elements.availableCruises,
+                    value: stats.available_cruises || 0
+                },
+                {
+                    element: this.elements.futureCruises,
+                    value: stats.future_cruises || 0
+                },
+                {
+                    element: this.elements.totalCompanies,
+                    value: stats.companies || 0
+                }
+            ];
+
+            updates.forEach(({
+                element,
+                value
+            }) => {
+                if (element) {
+                    this.animateNumber(element, parseInt(element.textContent) || 0, value);
                 }
             });
         }
-        return companies.size;
-    }
 
-    function updateStatsDisplay(stats) {
-        $('#totalCruises').text(formatNumber(stats.total_cruises || 0));
-        $('#availableCruises').text(formatNumber(stats.available_cruises || 0));
-        $('#futureCruises').text(formatNumber(stats.future_cruises || 0));
-        $('#totalCompanies').text(formatNumber(stats.companies || 0));
+        animateNumber(element, start, end, duration = 1000) {
+            const startTime = performance.now();
+            const difference = end - start;
 
-        // Animazione sui numeri
-        $('.stat-number').addClass('animate__animated animate__pulse');
-        setTimeout(() => {
-            $('.stat-number').removeClass('animate__animated animate__pulse');
-        }, 1000);
-    }
+            const step = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
 
-    function initializeTooltips() {
-        $('[data-bs-toggle="tooltip"]').tooltip('dispose').tooltip();
-    }
+                const currentValue = Math.floor(start + (difference * this.easeOutQuart(progress)));
+                element.textContent = this.formatNumber(currentValue);
 
-    function initializeSweetAlert() {
-        // Personalizza SweetAlert2
-        const swalCustom = document.createElement('style');
-        swalCustom.innerHTML = `
-        .swal-custom {
-            border-radius: 15px !important;
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                }
+            };
+
+            requestAnimationFrame(step);
         }
-        .swal2-popup.swal-custom .swal2-title {
-            color: var(--youPrice-dark, #2C3E50) !important;
-        }
-        .swal2-popup.swal-custom .swal2-content {
-            color: #6c757d !important;
-        }
-    `;
-        document.head.appendChild(swalCustom);
-    }
 
-    function showLoading(show) {
-        const overlay = $('#loadingOverlay');
-        if (show && overlay.length > 0) {
-            overlay.removeClass('d-none');
-        } else if (overlay.length > 0) {
-            overlay.addClass('d-none');
+        easeOutQuart(t) {
+            return 1 - Math.pow(1 - t, 4);
         }
-    }
 
-    function showToast(message, type) {
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer);
-                toast.addEventListener('mouseleave', Swal.resumeTimer);
+        // ================== AZIONI CRUD ==================
+        async confirmDelete(cruiseId, cruiseName) {
+            const result = await this.showConfirmDialog({
+                title: 'Conferma eliminazione',
+                text: `Sei sicuro di voler eliminare "${cruiseName}"?`,
+                icon: 'warning',
+                confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina',
+                confirmButtonColor: '#dc3545'
+            });
+
+            if (result.isConfirmed) {
+                await this.deleteCruise(cruiseId);
             }
-        });
+        }
 
-        Toast.fire({
-            icon: type,
-            title: message
-        });
-    }
+        async deleteCruise(cruiseId) {
+            try {
+                const response = await fetch(`/admin/cruises/${cruiseId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
 
-    function refreshTable() {
-        if (cruisesTable) {
-            showLoading(true);
-            cruisesTable.ajax.reload(function() {
-                showLoading(false);
-                loadCruiseStats();
+                const result = await response.json();
 
-                // Reset selezioni
-                selectedCruises = [];
-                $('#selectAll').prop('checked', false);
-                $('#bulkDeleteBtn').prop('disabled', true);
+                if (result.response) {
+                    this.showSuccess(result.message || 'Crociera eliminata con successo');
+                    this.state.selectedIds.delete(cruiseId.toString());
+                    await this.loadData();
+                    await this.loadStats();
+                } else {
+                    this.showError(result.message || 'Errore durante l\'eliminazione');
+                }
+            } catch (error) {
+                console.error('Errore eliminazione:', error);
+                this.showError('Errore durante l\'eliminazione');
+            }
+        }
 
-                showToast('Tabella aggiornata!', 'success');
+        async bulkDelete() {
+            if (this.state.selectedIds.size === 0) {
+                this.showWarning('Nessuna crociera selezionata');
+                return;
+            }
+
+            const selectedArray = Array.from(this.state.selectedIds);
+            const result = await this.showConfirmDialog({
+                title: 'Conferma eliminazione multipla',
+                text: `Sei sicuro di voler eliminare ${selectedArray.length} crociere?`,
+                icon: 'warning',
+                confirmButtonText: '<i class="fas fa-trash me-2"></i>Elimina tutte',
+                confirmButtonColor: '#dc3545'
+            });
+
+            if (result.isConfirmed) {
+                await this.performBulkDelete(selectedArray);
+            }
+        }
+
+        async performBulkDelete(ids) {
+            try {
+                this.showLoading(true, 'Eliminazione in corso...');
+
+                const response = await fetch('{{ route('cruises.bulk-delete') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        ids
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.response) {
+                    this.showSuccess(result.message);
+                    this.state.selectedIds.clear();
+                    await this.loadData();
+                    await this.loadStats();
+                } else {
+                    this.showError(result.message || 'Errore durante l\'eliminazione multipla');
+                }
+            } catch (error) {
+                console.error('Errore eliminazione multipla:', error);
+                this.showError('Errore durante l\'eliminazione multipla');
+            } finally {
+                this.showLoading(false);
+            }
+        }
+
+        // ================== UI STATES ==================
+        showLoading(show, message = 'Caricamento...') {
+            if (this.elements.tableLoading) {
+                if (show) {
+                    this.elements.tableLoading.style.display = 'flex';
+                    const loadingText = this.elements.tableLoading.querySelector('.loading-text');
+                    if (loadingText) {
+                        loadingText.textContent = message;
+                    }
+                } else {
+                    this.elements.tableLoading.style.display = 'none';
+                }
+            }
+        }
+
+        showEmptyState(show = true) {
+            if (this.elements.tableEmpty) {
+                this.elements.tableEmpty.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        updateTableLayout() {
+            // Aggiorna layout per responsive se necessario
+            if (window.innerWidth < 768) {
+                this.elements.tableContainer?.classList.add('mobile-layout');
+            } else {
+                this.elements.tableContainer?.classList.remove('mobile-layout');
+            }
+        }
+
+        // ================== UTILITY FUNCTIONS ==================
+        debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        generateCacheKey() {
+            return JSON.stringify({
+                page: this.state.currentPage,
+                pageSize: this.state.pageSize,
+                search: this.state.searchTerm,
+                sortColumn: this.state.sortColumn,
+                sortDirection: this.state.sortDirection,
+                filters: this.state.filters,
+                timestamp: Math.floor(Date.now() / 60000) // Cache per 1 minuto
             });
         }
-    }
 
-    function exportCruises() {
-        Swal.fire({
-            title: 'Esporta Crociere',
-            text: 'Vuoi esportare tutte le crociere in un file CSV?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#84bc00',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: '<i class="fas fa-download me-2"></i>Esporta',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Annulla'
-        }).then((result) => {
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        truncateText(text, maxLength) {
+            if (!text || text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        formatNumber(num) {
+            return new Intl.NumberFormat('it-IT').format(num);
+        }
+
+        // ================== NOTIFICHE ==================
+        async showConfirmDialog(options) {
+            // Implementazione con SweetAlert2 se disponibile, altrimenti confirm browser
+            if (typeof Swal !== 'undefined') {
+                return await Swal.fire({
+                    title: options.title,
+                    text: options.text,
+                    icon: options.icon || 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: options.confirmButtonColor || '#007bff',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: options.confirmButtonText || 'Conferma',
+                    cancelButtonText: 'Annulla',
+                    customClass: {
+                        popup: 'swal-optimized'
+                    }
+                });
+            } else {
+                return {
+                    isConfirmed: confirm(`${options.title}\n\n${options.text}`)
+                };
+            }
+        }
+
+        showSuccess(message) {
+            this.showToast(message, 'success');
+        }
+
+        showError(message) {
+            this.showToast(message, 'error');
+        }
+
+        showWarning(message) {
+            this.showToast(message, 'warning');
+        }
+
+        showToast(message, type = 'info') {
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+
+                Toast.fire({
+                    icon: type,
+                    title: message
+                });
+            } else {
+                alert(message);
+            }
+        }
+
+        // ================== API PUBBLICHE ==================
+        async refreshData() {
+            this.cache.clear();
+            await this.loadData();
+            await this.loadStats();
+            this.showSuccess('Dati aggiornati!');
+        }
+
+        async exportData() {
+            const result = await this.showConfirmDialog({
+                title: 'Esporta Crociere',
+                text: 'Vuoi esportare tutte le crociere in un file CSV?',
+                icon: 'question',
+                confirmButtonText: '<i class="fas fa-download me-2"></i>Esporta',
+                confirmButtonColor: '#28a745'
+            });
+
             if (result.isConfirmed) {
                 window.location.href = '{{ route('cruises.export') }}';
-                showToast('Export avviato! Il download inizierà a breve.', 'success');
+                this.showSuccess('Export avviato! Il download inizierà a breve.');
+            }
+        }
+
+        // Getter per stato corrente
+        getState() {
+            return {
+                ...this.state
+            };
+        }
+
+        // Setter per filtri esterni
+        setFilter(filterName, value) {
+            if (this.state.filters.hasOwnProperty(filterName)) {
+                this.state.filters[filterName] = value;
+                const filterElement = this.elements[filterName + 'Filter'];
+                if (filterElement) {
+                    filterElement.value = value;
+                }
+                this.handleFilter();
+            }
+        }
+
+        setSearch(searchTerm) {
+            this.state.searchTerm = searchTerm;
+            if (this.elements.globalSearch) {
+                this.elements.globalSearch.value = searchTerm;
+            }
+            this.toggleClearButton();
+            this.handleSearch();
+        }
+    }
+
+    // ================== INIZIALIZZAZIONE GLOBALE ==================
+    let cruiseManager;
+
+    // Inizializzazione quando DOM è pronto
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🚀 Inizializzazione gestione crociere ottimizzata...');
+
+        try {
+            cruiseManager = new CruiseManager();
+            await cruiseManager.init();
+
+            // Esponi funzioni globali per compatibilità
+            window.cruiseManager = cruiseManager;
+            window.refreshTable = () => cruiseManager.refreshData();
+            window.exportCruises = () => cruiseManager.exportData();
+            window.bulkDelete = () => cruiseManager.bulkDelete();
+            window.deselectAll = () => cruiseManager.deselectAll();
+
+            console.log('✅ Gestione crociere inizializzata con successo');
+        } catch (error) {
+            console.error('❌ Errore inizializzazione gestione crociere:', error);
+        }
+    });
+
+    // Gestione errori globali AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        // Intercetta errori di rete
+        window.addEventListener('unhandledrejection', function(event) {
+            if (event.reason && event.reason.name === 'TypeError' && event.reason.message.includes(
+                    'fetch')) {
+                console.error('Errore di connessione:', event.reason);
+                if (cruiseManager) {
+                    cruiseManager.showError(
+                        'Errore di connessione. Controlla la tua connessione internet.');
+                }
             }
         });
-    }
-
-    // Utility functions
-    function formatNumber(num) {
-        return new Intl.NumberFormat('it-IT').format(num);
-    }
-
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Event listeners globali
-    $(window).on('resize', debounce(function() {
-        if (cruisesTable) {
-            cruisesTable.columns.adjust().responsive.recalc();
-        }
-    }, 250));
-
-    // Gestione tasti di scelta rapida
-    $(document).on('keydown', function(e) {
-        // Ctrl + N per nuova crociera
-        if (e.ctrlKey && e.key === 'n') {
-            e.preventDefault();
-            window.location.href = '{{ route('cruises.create') }}';
-        }
-
-        // Ctrl + R per aggiornare tabella
-        if (e.ctrlKey && e.key === 'r') {
-            e.preventDefault();
-            refreshTable();
-        }
-
-        // ESC per deselezionare tutto
-        if (e.key === 'Escape') {
-            $('.cruise-checkbox').prop('checked', false);
-            $('#selectAll').prop('checked', false);
-            updateSelectedCruises();
-        }
     });
 
-    // Gestione errori AJAX globali
-    $(document).ajaxError(function(event, xhr, settings, thrownError) {
-        if (xhr.status === 419) {
-            showToast('Sessione scaduta. Ricarica la pagina.', 'warning');
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else if (xhr.status === 403) {
-            showToast('Accesso negato. Controlla i tuoi permessi.', 'error');
-        } else if (xhr.status >= 500) {
-            showToast('Errore del server. Riprova più tardi.', 'error');
-        }
-    });
+    // ================== PERFORMANCE MONITORING ==================
+    if (typeof performance !== 'undefined' && performance.mark) {
+        performance.mark('cruise-manager-script-loaded');
+    }
 
-    // Esporta funzioni globalmente
-    window.refreshTable = refreshTable;
-    window.exportCruises = exportCruises;
-    window.bulkDelete = bulkDelete;
-    window.cruisesTable = cruisesTable;
-
-    console.log('✅ Script gestione crociere caricato completamente');
+    console.log('✅ Script CruiseManager ottimizzato caricato completamente');
 </script>

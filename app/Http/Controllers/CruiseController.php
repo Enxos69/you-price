@@ -233,115 +233,135 @@ class CruiseController extends Controller
     }
 
 
-public function getData()
-{
-    try {
-        // ✅ Query ottimizzata - solo campi essenziali per ridurre memoria
-        $cruises = Cruise::select([
-            'id', 'ship', 'cruise', 'line', 'duration', 'night', 
-            'partenza', 'arrivo', 'from', 'to', 'interior'
-            // ✅ Rimosse: 'oceanview', 'balcony', 'minisuite', 'suite', 'details' per performance
-        ]);
-        
-        return DataTables::of($cruises)
-            // ✅ Colonna durata ottimizzata
-            ->addColumn('formatted_duration', function (Cruise $cruise) {
-                if ($cruise->duration) {
-                    return $cruise->duration . ' giorni';
-                }
-                if ($cruise->night) {
-                    return $cruise->night . ' notti';
-                }
-                return 'N/D';
-            })
-            
-            // ✅ Itinerario semplificato 
-            ->addColumn('itinerary', function (Cruise $cruise) {
-                $partenza = $cruise->partenza ? $cruise->partenza->format('d/m/Y') : 'N/D';
-                return '<small class="text-muted">dal</small><br><strong>' . $partenza . '</strong>';
-            })
-            
-            // ✅ Azioni semplificate
-            ->addColumn('actions', function (Cruise $cruise) {
-                $actions = '<div class="btn-group btn-group-sm">';
-                
-                $actions .= '<a href="' . route('cruises.show', $cruise->id) . '" 
-                            class="btn btn-outline-primary btn-sm" title="Visualizza">
-                            <i class="fas fa-eye"></i></a>';
-                
-                $actions .= '<a href="' . route('cruises.edit', $cruise->id) . '" 
-                            class="btn btn-outline-warning btn-sm" title="Modifica">
-                            <i class="fas fa-edit"></i></a>';
-                
-                $actions .= '<button type="button" class="btn btn-outline-danger btn-sm delete-cruise" 
-                            data-id="' . $cruise->id . '" data-name="' . htmlspecialchars($cruise->ship . ' - ' . $cruise->cruise) . '" 
-                            title="Elimina">
-                            <i class="fas fa-trash"></i></button>';
-                
-                $actions .= '</div>';
-                
-                return $actions;
-            })
-            
-            // ✅ Formattazione compagnia con badge
-            ->editColumn('line', function (Cruise $cruise) {
-                if (!$cruise->line) return '<span class="badge bg-secondary">N/D</span>';
-                
-                $badgeClass = 'bg-secondary';
-                $lineLower = strtolower($cruise->line);
-                
-                if (strpos($lineLower, 'msc') !== false) $badgeClass = 'bg-info';
-                elseif (strpos($lineLower, 'costa') !== false) $badgeClass = 'bg-success';
-                elseif (strpos($lineLower, 'royal') !== false) $badgeClass = 'bg-warning';
-                elseif (strpos($lineLower, 'norwegian') !== false) $badgeClass = 'bg-primary';
-                
-                return '<span class="badge ' . $badgeClass . '">' . htmlspecialchars($cruise->line) . '</span>';
-            })
-            
-            // ✅ Formattazione prezzo interior
-            ->editColumn('interior', function (Cruise $cruise) {
-                return $cruise->interior ? 
-                    '€' . number_format($cruise->interior, 0, ',', '.') : 
-                    '<span class="text-muted">N/D</span>';
-            })
-            
-            // ✅ Formattazione nave in grassetto
-            ->editColumn('ship', function (Cruise $cruise) {
-                return '<div class="fw-bold">' . ($cruise->ship ?: 'N/D') . '</div>';
-            })
-            
-            // ✅ Formattazione crociera con truncate
-            ->editColumn('cruise', function (Cruise $cruise) {
-                if (!$cruise->cruise) return 'N/D';
-                
-                if (strlen($cruise->cruise) > 40) {
-                    return '<span title="' . htmlspecialchars($cruise->cruise) . '">' . 
-                           htmlspecialchars(substr($cruise->cruise, 0, 40)) . '...</span>';
-                }
-                return htmlspecialchars($cruise->cruise);
-            })
-            
-            // ✅ Permetti HTML nelle colonne specificate
-            ->rawColumns(['line', 'actions', 'itinerary', 'interior', 'ship', 'cruise'])
-            
-            // ✅ Ottimizzazione finale
-            ->make(true);
-            
-    } catch (\Exception $e) {
-        Log::error('Errore DataTable crociere: ' . $e->getMessage());
-        
-        // ✅ Ritorna risposta vuota invece di errore 500
-        return response()->json([
-            'draw' => intval(request()->get('draw', 1)),
-            'recordsTotal' => 0,
-            'recordsFiltered' => 0,
-            'data' => [],
-            'error' => 'Errore nel caricamento dei dati'
-        ]);
-    }
-}
+    public function getData(Request $request)
+    {
+        try {
+            // Parametri DataTables
+            $draw = $request->get('draw', 1);
+            $start = $request->get('start', 0);
+            $length = $request->get('length', 15);
+            $searchValue = $request->get('search')['value'] ?? '';
 
-   
+            // Parametri ordinamento
+            $orderColumn = $request->get('order')[0]['column'] ?? 1;
+            $orderDir = $request->get('order')[0]['dir'] ?? 'asc';
+
+            // Parametri filtri custom
+            $companyFilter = $request->get('company', '');
+            $priceFilter = $request->get('price', '');
+            $statusFilter = $request->get('status', '');
+
+            // Mappa colonne per ordinamento
+            $columns = ['id', 'ship', 'cruise', 'line', 'duration', 'interior', 'actions'];
+            $orderColumnName = $columns[$orderColumn] ?? 'ship';
+
+            // Query base ottimizzata
+            $query = Cruise::select([
+                'id',
+                'ship',
+                'cruise',
+                'line',
+                'duration',
+                'night',
+                'partenza',
+                'arrivo',
+                'from',
+                'to',
+                'interior'
+            ]);
+
+            // Ricerca globale
+            if (!empty($searchValue)) {
+                $query->where(function ($q) use ($searchValue) {
+                    $q->where('ship', 'like', '%' . $searchValue . '%')
+                        ->orWhere('cruise', 'like', '%' . $searchValue . '%')
+                        ->orWhere('line', 'like', '%' . $searchValue . '%')
+                        ->orWhere('from', 'like', '%' . $searchValue . '%')
+                        ->orWhere('to', 'like', '%' . $searchValue . '%');
+                });
+            }
+
+            // Filtro compagnia
+            if (!empty($companyFilter)) {
+                $query->where('line', 'like', '%' . $companyFilter . '%');
+            }
+
+            // Filtro prezzo
+            if (!empty($priceFilter)) {
+                switch ($priceFilter) {
+                    case '0-500':
+                        $query->where('interior', '>=', 0)->where('interior', '<=', 500);
+                        break;
+                    case '500-1000':
+                        $query->where('interior', '>=', 500)->where('interior', '<=', 1000);
+                        break;
+                    case '1000-2000':
+                        $query->where('interior', '>=', 1000)->where('interior', '<=', 2000);
+                        break;
+                    case '2000+':
+                        $query->where('interior', '>=', 2000);
+                        break;
+                }
+            }
+
+            // Filtro stato
+            if (!empty($statusFilter)) {
+                switch ($statusFilter) {
+                    case 'available':
+                        $query->whereNotNull('interior');
+                        break;
+                    case 'future':
+                        $query->where('partenza', '>=', now());
+                        break;
+                }
+            }
+
+            // Conta totali prima della paginazione
+            $totalRecords = Cruise::count();
+            $filteredRecords = $query->count();
+
+            // Applica ordinamento e paginazione
+            $cruises = $query->orderBy($orderColumnName, $orderDir)
+                ->skip($start)
+                ->take($length)
+                ->get();
+
+            // Trasforma i dati
+            $data = $cruises->map(function ($cruise) {
+                return [
+                    'id' => $cruise->id,
+                    'ship' => $cruise->ship,
+                    'cruise' => $cruise->cruise,
+                    'line' => $cruise->line,
+                    'duration' => $cruise->duration,
+                    'night' => $cruise->night,
+                    'partenza' => $cruise->partenza,
+                    'arrivo' => $cruise->arrivo,
+                    'interior' => $cruise->interior,
+                    'formatted_duration' => $cruise->duration ? $cruise->duration . ' giorni' : ($cruise->night ? $cruise->night . ' notti' : 'N/D')
+                ];
+            });
+
+            return response()->json([
+                'draw' => intval($draw),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore DataTable crociere: ' . $e->getMessage());
+
+            return response()->json([
+                'draw' => intval($request->get('draw', 1)),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Errore nel caricamento dei dati'
+            ]);
+        }
+    }
+
+
 
     /**
      * Get statistics for dashboard
