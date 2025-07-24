@@ -21,7 +21,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/u512107240/domains/enxos.uprice.org/public_html
+            cd /home/u512107240/domains/uprice.org/public_html
             git pull origin main
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
