@@ -2,9 +2,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use App\Models\Cruise;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class CrocieraController extends Controller
 {
@@ -23,211 +23,351 @@ class CrocieraController extends Controller
             'port_end' => 'nullable|string',
         ]);
 
-        // Parse delle date
-        $dateRange = explode(' - ', $data['date_range']);
-        $startDate = Carbon::createFromFormat('d/m/Y', trim($dateRange[0]))->format('Y-m-d');
-        $endDate = isset($dateRange[1]) ? 
-            Carbon::createFromFormat('d/m/Y', trim($dateRange[1]))->format('Y-m-d') : 
-            $startDate;
+        try {
+            // Parse delle date
+            $dateRange = explode(' - ', $data['date_range']);
+            $startDate = Carbon::createFromFormat('d/m/Y', trim($dateRange[0]));
+            $endDate = isset($dateRange[1]) ? 
+                Carbon::createFromFormat('d/m/Y', trim($dateRange[1])) : 
+                $startDate->copy();
 
-        $budgetPerPerson = $data['budget'] / $data['participants'];
-        $participants = $data['participants'];
+            $budgetPerPerson = $data['budget'] / $data['participants'];
+            $participants = $data['participants'];
 
-        // Ricerca crociere compatibili con tutti i parametri
-        $matchesQuery = DB::table('___import_crociere')
-            ->whereNotNull('cruise')
-            ->whereNotNull('interior')
-            ->where('interior', '!=', '')
-            ->whereRaw("CAST(REPLACE(REPLACE(interior, '€', ''), ',', '') AS UNSIGNED) <= ?", [$budgetPerPerson]);
+            // Ricerca crociere compatibili con tutti i parametri
+            $matchesQuery = Cruise::available()
+                ->future()
+                ->whereNotNull('interior')
+                ->where('interior', '>', 0)
+                ->where('interior', '<=', $budgetPerPerson);
 
-        // Applica filtri opzionali
-        if (!empty($data['port_start'])) {
-            $matchesQuery->where('partenza', 'LIKE', '%' . $data['port_start'] . '%');
+            // Applica filtri per date se disponibili
+            if ($startDate && $endDate) {
+                $matchesQuery->whereBetween('partenza', [
+                    $startDate->format('Y-m-d'),
+                    $endDate->addDays(30)->format('Y-m-d') // Flessibilità di 30 giorni
+                ]);
+            }
+
+            // Applica filtri opzionali per porti
+            if (!empty($data['port_start'])) {
+                $matchesQuery->where(function($q) use ($data) {
+                    $q->where('from', 'LIKE', '%' . $data['port_start'] . '%')
+                      ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
+                });
+            }
+
+            if (!empty($data['port_end'])) {
+                $matchesQuery->where(function($q) use ($data) {
+                    $q->where('to', 'LIKE', '%' . $data['port_end'] . '%')
+                      ->orWhere('arrivo', 'LIKE', '%' . $data['port_end'] . '%');
+                });
+            }
+
+            $matches = $matchesQuery
+                ->orderBy('interior', 'ASC')
+                ->take(10)
+                ->get()
+                ->map(function($cruise) use ($budgetPerPerson, $participants) {
+                    return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants);
+                });
+
+            // Calcola soddisfazione attuale
+            $soddisfazioneAttuale = $this->calculateSatisfaction($matches, $data);
+
+            // Ricerca alternative ottimizzate (budget aumentato del 20%, date più flessibili)
+            $alternativeQuery = Cruise::available()
+                ->future()
+                ->whereNotNull('interior')
+                ->where('interior', '>', 0)
+                ->where('interior', '<=', $budgetPerPerson * 1.2);
+
+            // Solo filtro porto di partenza per le alternative
+            if (!empty($data['port_start'])) {
+                $alternativeQuery->where(function($q) use ($data) {
+                    $q->where('from', 'LIKE', '%' . $data['port_start'] . '%')
+                      ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
+                });
+            }
+
+            // Date più flessibili per le alternative (3 mesi)
+            if ($startDate) {
+                $flexibleStart = $startDate->copy()->subMonth();
+                $flexibleEnd = $endDate->copy()->addMonths(2);
+                
+                $alternativeQuery->whereBetween('partenza', [
+                    $flexibleStart->format('Y-m-d'),
+                    $flexibleEnd->format('Y-m-d')
+                ]);
+            }
+
+            $alternative = $alternativeQuery
+                ->orderBy('line', 'ASC')
+                ->orderBy('interior', 'ASC')
+                ->take(10)
+                ->get()
+                ->map(function($cruise) use ($budgetPerPerson, $participants) {
+                    return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants, true);
+                });
+
+            // Calcola soddisfazione ottimale
+            $soddisfazioneOttimale = $this->calculateOptimalSatisfaction($alternative, $data);
+
+            // Genera consigli personalizzati
+            $consigli = $this->generateSuggestions($matches, $alternative, $data);
+
+            // Statistiche aggiuntive
+            $statistiche = $this->getSearchStatistics($data, $matches, $alternative);
+
+            return response()->json([
+                'success' => true,
+                'soddisfazione_attuale' => $soddisfazioneAttuale,
+                'soddisfazione_ottimale' => $soddisfazioneOttimale,
+                'matches' => $matches,
+                'alternative' => $alternative,
+                'consigli' => $consigli,
+                'suggerimento_ottimale' => $this->getOptimalSuggestion($soddisfazioneAttuale, $soddisfazioneOttimale),
+                'statistiche' => $statistiche
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Errore ricerca crociere: ' . $e->getMessage(), [
+                'data' => $data,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Si è verificato un errore durante la ricerca. Riprova più tardi.',
+                'soddisfazione_attuale' => 0,
+                'soddisfazione_ottimale' => 0,
+                'matches' => [],
+                'alternative' => [],
+                'consigli' => ['Si è verificato un errore. Controlla i parametri di ricerca.'],
+                'suggerimento_ottimale' => 'Riprova la ricerca'
+            ], 500);
         }
-
-        if (!empty($data['port_end'])) {
-            $matchesQuery->where('arrivo', 'LIKE', '%' . $data['port_end'] . '%');
-        }
-
-        // Filtro per date (se disponibile nel database)
-        if (Schema::hasColumn('___import_crociere', 'data_partenza')) {
-            $matchesQuery->whereBetween('data_partenza', [$startDate, $endDate]);
-        }
-
-        $matches = $matchesQuery
-            ->orderByRaw("CAST(REPLACE(REPLACE(interior, '€', ''), ',', '') AS UNSIGNED) ASC")
-            ->take(10)
-            ->get()
-            ->map(function($cruise) use ($budgetPerPerson, $participants) {
-                return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants);
-            });
-
-        // Calcola soddisfazione attuale
-        $soddisfazioneAttuale = $this->calculateSatisfaction($matches, $data);
-
-        // Ricerca alternative ottimizzate (rimuovendo alcuni filtri)
-        $alternativeQuery = DB::table('___import_crociere')
-            ->whereNotNull('cruise')
-            ->whereNotNull('interior')
-            ->where('interior', '!=', '')
-            ->whereRaw("CAST(REPLACE(REPLACE(interior, '€', ''), ',', '') AS UNSIGNED) <= ?", [$budgetPerPerson * 1.2]); // Budget leggermente più alto
-
-        // Mantieni solo il filtro del porto di partenza se specificato
-        if (!empty($data['port_start'])) {
-            $alternativeQuery->where('partenza', 'LIKE', '%' . $data['port_start'] . '%');
-        }
-
-        $alternative = $alternativeQuery
-            ->orderBy('line', 'ASC')
-            ->orderByRaw("CAST(REPLACE(REPLACE(interior, '€', ''), ',', '') AS UNSIGNED) ASC")
-            ->take(10)
-            ->get()
-            ->map(function($cruise) use ($budgetPerPerson, $participants) {
-                return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants, true);
-            });
-
-        // Calcola soddisfazione ottimale
-        $soddisfazioneOttimale = $this->calculateOptimalSatisfaction($alternative, $data);
-
-        // Genera consigli personalizzati
-        $consigli = $this->generateSuggestions($matches, $alternative, $data);
-
-        return response()->json([
-            'soddisfazione_attuale' => $soddisfazioneAttuale,
-            'soddisfazione_ottimale' => $soddisfazioneOttimale,
-            'matches' => $matches,
-            'alternative' => $alternative,
-            'consigli' => $consigli,
-            'suggerimento_ottimale' => $this->getOptimalSuggestion($soddisfazioneAttuale, $soddisfazioneOttimale),
-            'statistiche' => [
-                'budget_per_persona' => $budgetPerPerson,
-                'partecipanti' => $participants,
-                'periodo_ricerca' => $data['date_range']
-            ]
-        ]);
     }
 
     private function enrichCruiseData($cruise, $budgetPerPerson, $participants, $isAlternative = false)
     {
-        $pricePerPerson = $this->extractPrice($cruise->interior);
+        $pricePerPerson = (float) $cruise->interior;
         $totalPrice = $pricePerPerson * $participants;
+        $nights = $cruise->night ?: $cruise->duration ?: 1;
+        
+        // Calcolo costo giornaliero
+        $dailyCostPerPerson = $nights > 0 ? round($pricePerPerson / $nights, 2) : 0;
+        $dailyCostTotal = $dailyCostPerPerson * $participants;
         
         $enriched = [
+            'id' => $cruise->id,
             'ship' => $cruise->ship ?? 'N/D',
             'line' => $cruise->line ?? 'N/D',
-            'night' => $cruise->night ?? 'N/D',
+            'night' => $nights,
             'interior' => $cruise->interior ?? 'N/D',
-            'partenza' => $cruise->partenza ?? 'N/D',
-            'arrivo' => $cruise->arrivo ?? 'N/D',
+            'partenza' => $cruise->partenza ? $cruise->partenza->format('Y-m-d') : 'N/D',
+            'arrivo' => $cruise->arrivo ? $cruise->arrivo->format('Y-m-d') : 'N/D',
             'cruise' => $cruise->cruise ?? 'N/D',
+            'from' => $cruise->from ?? 'N/D',
+            'to' => $cruise->to ?? 'N/D',
+            'details' => $cruise->details ?? '',
             'prezzo_totale' => $totalPrice,
             'prezzo_persona' => $pricePerPerson,
-            'match_percentage' => $this->calculateMatchPercentage($cruise, $budgetPerPerson)
+            'costo_giornaliero_persona' => $dailyCostPerPerson,
+            'costo_giornaliero_totale' => $dailyCostTotal,
+            'match_percentage' => $this->calculateMatchPercentage($cruise, $budgetPerPerson),
+            'formatted_price' => '€' . number_format($pricePerPerson, 0, ',', '.'),
+            'formatted_total' => '€' . number_format($totalPrice, 0, ',', '.'),
+            'formatted_daily_cost' => '€' . number_format($dailyCostTotal, 0, ',', '.'),
+            'formatted_daily_per_person' => '€' . number_format($dailyCostPerPerson, 0, ',', '.'),
+            'savings' => $this->calculateSavings($pricePerPerson, $budgetPerPerson),
+            'quality_score' => $this->calculateQualityScore($cruise),
+            'value_rating' => $this->calculateValueRating($pricePerPerson, $budgetPerPerson, $nights)
         ];
 
         if ($isAlternative) {
             $enriched['benefit'] = $this->calculateBenefit($cruise, $budgetPerPerson);
+            $enriched['recommendation_reason'] = $this->getRecommendationReason($cruise, $budgetPerPerson);
         }
 
         return $enriched;
     }
 
-    private function extractPrice($priceString)
-    {
-        if (empty($priceString)) return 0;
-        
-        // Rimuovi simboli e converti in numero
-        $price = preg_replace('/[€,\s]/', '', $priceString);
-        return (int) $price;
-    }
-
     private function calculateMatchPercentage($cruise, $budgetPerPerson)
     {
-        $cruisePrice = $this->extractPrice($cruise->interior);
+        $cruisePrice = (float) $cruise->interior;
+        $priceRatio = $cruisePrice / $budgetPerPerson;
         
-        if ($cruisePrice <= $budgetPerPerson * 0.8) {
-            return mt_rand(85, 95); // Ottimo affare
-        } elseif ($cruisePrice <= $budgetPerPerson * 0.95) {
-            return mt_rand(75, 84); // Buon prezzo
+        // Base score basato sul prezzo
+        if ($priceRatio <= 0.7) {
+            $baseScore = mt_rand(88, 95); // Ottimo affare
+        } elseif ($priceRatio <= 0.85) {
+            $baseScore = mt_rand(78, 87); // Buon prezzo
+        } elseif ($priceRatio <= 0.95) {
+            $baseScore = mt_rand(68, 77); // Prezzo accettabile
         } else {
-            return mt_rand(60, 74); // Prezzo al limite
+            $baseScore = mt_rand(55, 67); // Prezzo al limite
         }
+
+        // Bonus qualità
+        $qualityBonus = 0;
+        if (!empty($cruise->details)) $qualityBonus += 2;
+        if ($cruise->night >= 7) $qualityBonus += 3;
+        if (in_array(strtolower($cruise->line), ['royal caribbean', 'norwegian', 'celebrity'])) {
+            $qualityBonus += 5;
+        }
+
+        return min($baseScore + $qualityBonus, 100);
     }
 
     private function calculateBenefit($cruise, $budgetPerPerson)
     {
-        $cruisePrice = $this->extractPrice($cruise->interior);
+        $cruisePrice = (float) $cruise->interior;
         $benefits = [];
 
+        // Calcola risparmio
         if ($cruisePrice < $budgetPerPerson * 0.8) {
-            $benefits[] = 'Risparmio del ' . round((1 - $cruisePrice / $budgetPerPerson) * 100) . '%';
+            $savings = round((1 - $cruisePrice / $budgetPerPerson) * 100);
+            $benefits[] = "Risparmio {$savings}%";
         }
 
-        if (!empty($cruise->night) && is_numeric($cruise->night) && $cruise->night >= 7) {
-            $benefits[] = 'Itinerario lungo';
+        // Analizza durata
+        if (!empty($cruise->night) && is_numeric($cruise->night)) {
+            if ($cruise->night >= 14) {
+                $benefits[] = 'Crociera lunga';
+            } elseif ($cruise->night >= 7) {
+                $benefits[] = 'Durata ottimale';
+            }
         }
 
-        if (strpos(strtolower($cruise->line ?? ''), 'royal') !== false || 
-            strpos(strtolower($cruise->line ?? ''), 'norwegian') !== false) {
+        // Analizza compagnia
+        $premiumLines = ['royal caribbean', 'norwegian', 'celebrity', 'princess'];
+        if (in_array(strtolower($cruise->line), $premiumLines)) {
             $benefits[] = 'Compagnia premium';
         }
 
-        return empty($benefits) ? 'Buona opzione' : implode(', ', $benefits);
+        // Analizza date
+        if ($cruise->partenza) {
+            $departure = Carbon::parse($cruise->partenza);
+            $now = Carbon::now();
+            $daysUntil = $now->diffInDays($departure, false);
+            
+            if ($daysUntil >= 60 && $daysUntil <= 120) {
+                $benefits[] = 'Anticipo ottimale';
+            }
+        }
+
+        return empty($benefits) ? 'Buona opzione' : implode(', ', array_slice($benefits, 0, 2));
+    }
+
+    private function calculateSavings($cruisePrice, $budgetPerPerson)
+    {
+        if ($cruisePrice >= $budgetPerPerson) return 0;
+        return round((1 - $cruisePrice / $budgetPerPerson) * 100);
+    }
+
+    private function calculateQualityScore($cruise)
+    {
+        $score = 60; // Base score
+
+        // Bonus compagnia
+        $premiumLines = ['royal caribbean', 'norwegian', 'celebrity', 'princess'];
+        if (in_array(strtolower($cruise->line), $premiumLines)) {
+            $score += 15;
+        }
+
+        // Bonus dettagli
+        if (!empty($cruise->details)) $score += 10;
+
+        // Bonus durata
+        if ($cruise->night >= 7) $score += 10;
+        if ($cruise->night >= 14) $score += 5;
+
+        return min($score, 100);
+    }
+
+    private function getRecommendationReason($cruise, $budgetPerPerson)
+    {
+        $cruisePrice = (float) $cruise->interior;
+        $reasons = [];
+
+        if ($cruisePrice < $budgetPerPerson * 0.8) {
+            $reasons[] = 'Prezzo molto conveniente';
+        }
+
+        if ($cruise->night >= 10) {
+            $reasons[] = 'Crociera lunga';
+        }
+
+        $premiumLines = ['royal caribbean', 'norwegian', 'celebrity'];
+        if (in_array(strtolower($cruise->line), $premiumLines)) {
+            $reasons[] = 'Compagnia di alta qualità';
+        }
+
+        return empty($reasons) ? 'Opzione interessante' : implode(' • ', array_slice($reasons, 0, 2));
     }
 
     private function calculateSatisfaction($matches, $searchParams)
     {
-        $baseScore = 30; // Punteggio base
+        $baseScore = 25; // Punteggio base ridotto
         $matchCount = count($matches);
 
         if ($matchCount === 0) {
             return $baseScore;
         }
 
-        // Bonus per numero di risultati
-        $countBonus = min($matchCount * 8, 40);
+        // Bonus per numero di risultati (massimo 30 punti)
+        $countBonus = min($matchCount * 3, 30);
 
-        // Bonus per compatibilità con budget
+        // Bonus per compatibilità budget (massimo 25 punti)
         $budgetBonus = 0;
         $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
         
         foreach ($matches as $match) {
             $price = $match['prezzo_persona'];
-            if ($price <= $budgetPerPerson * 0.8) {
+            if ($price <= $budgetPerPerson * 0.6) {
                 $budgetBonus += 5;
-            } elseif ($price <= $budgetPerPerson * 0.95) {
+            } elseif ($price <= $budgetPerPerson * 0.8) {
                 $budgetBonus += 3;
+            } elseif ($price <= $budgetPerPerson * 0.95) {
+                $budgetBonus += 1;
             }
         }
-        $budgetBonus = min($budgetBonus, 20);
+        $budgetBonus = min($budgetBonus, 25);
 
-        // Bonus per filtri soddisfatti
+        // Bonus qualità media (massimo 15 punti)
+        $avgQuality = collect($matches)->avg('quality_score') ?? 60;
+        $qualityBonus = max(0, ($avgQuality - 60) / 40 * 15);
+
+        // Bonus filtri soddisfatti (massimo 5 punti)
         $filterBonus = 0;
-        if (!empty($searchParams['port_start'])) {
-            $filterBonus += 5;
-        }
-        if (!empty($searchParams['port_end'])) {
-            $filterBonus += 5;
-        }
+        if (!empty($searchParams['port_start'])) $filterBonus += 2;
+        if (!empty($searchParams['port_end'])) $filterBonus += 3;
 
-        return min($baseScore + $countBonus + $budgetBonus + $filterBonus, 100);
+        return min($baseScore + $countBonus + $budgetBonus + $qualityBonus + $filterBonus, 100);
     }
 
     private function calculateOptimalSatisfaction($alternatives, $searchParams)
     {
-        $baseScore = 60; // Punteggio base più alto per alternative
+        $baseScore = 65; // Punteggio base più alto per alternative
         $alternativeCount = count($alternatives);
+        
         if ($alternativeCount === 0) {
             return $baseScore;
         }
-        // Maggiore varietà di opzioni
-        $varietyBonus = min($alternativeCount * 3, 25); 
 
-        // Bonus per diversità di compagnie
-        $companies = array_unique(array_column($alternatives->toArray(), 'line'));
-        $diversityBonus = min(count($companies) * 2, 15);
+        // Bonus varietà (massimo 20 punti)
+        $varietyBonus = min($alternativeCount * 2, 20);
 
-        return min($baseScore + $varietyBonus + $diversityBonus, 100);
+        // Bonus diversità compagnie (massimo 10 punti)
+        $companies = collect($alternatives)->pluck('line')->unique();
+        $diversityBonus = min($companies->count() * 2, 10);
+
+        // Bonus qualità media (massimo 5 punti)
+        $avgQuality = collect($alternatives)->avg('quality_score') ?? 60;
+        $qualityBonus = max(0, ($avgQuality - 60) / 40 * 5);
+
+        return min($baseScore + $varietyBonus + $diversityBonus + $qualityBonus, 100);
     }
 
     private function generateSuggestions($matches, $alternatives, $searchParams)
@@ -236,82 +376,153 @@ class CrocieraController extends Controller
         $matchCount = count($matches);
         $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
 
+        // Analisi risultati
         if ($matchCount === 0) {
-            $suggestions[] = "Non abbiamo trovato crociere con i tuoi parametri esatti. Prova ad espandere le date o rimuovere alcuni filtri.";
-        } elseif ($matchCount < 3) {
-            $suggestions[] = "Hai poche opzioni disponibili. Considera di essere più flessibile sulle date di partenza.";
-        }
-
-        if (!empty($searchParams['port_start']) && !empty($searchParams['port_end'])) {
-            $suggestions[] = "Specificando sia porto di partenza che di arrivo limiti molto le opzioni. Prova a rimuovere uno dei due.";
+            $suggestions[] = "📍 Nessuna crociera trovata con i parametri attuali. Prova ad espandere le date o aumentare il budget.";
+        } elseif ($matchCount <= 2) {
+            $suggestions[] = "🔍 Poche opzioni disponibili. Considera date più flessibili per vedere più offerte.";
+        } elseif ($matchCount >= 8) {
+            $suggestions[] = "🎯 Ottima selezione! Hai molte opzioni tra cui scegliere.";
         }
 
         // Analisi budget
-        $avgPrice = 0;
         if ($matchCount > 0) {
-            $avgPrice = array_sum(array_column($matches->toArray(), 'prezzo_persona')) / $matchCount;
+            $avgPrice = collect($matches)->avg('prezzo_persona');
+            $minPrice = collect($matches)->min('prezzo_persona');
+            
+            if ($avgPrice < $budgetPerPerson * 0.7) {
+                $suggestions[] = "💰 Il tuo budget ti permette crociere premium! Considera upgrade di cabina.";
+            } elseif ($minPrice < $budgetPerPerson * 0.6) {
+                $suggestions[] = "💡 Abbiamo trovato alcune offerte eccezionali sotto budget.";
+            }
         }
 
-        if ($avgPrice > 0 && $avgPrice < $budgetPerPerson * 0.7) {
-            $suggestions[] = "Il tuo budget ti permette di accedere a crociere di categoria superiore!";
-        } elseif ($avgPrice > $budgetPerPerson * 0.95) {
-            $suggestions[] = "Aumentando leggermente il budget potresti avere molte più opzioni.";
+        // Analisi filtri
+        if (!empty($searchParams['port_start']) && !empty($searchParams['port_end'])) {
+            $suggestions[] = "🚢 Specificando entrambi i porti limiti le opzioni. Prova a rimuovere il porto di destinazione.";
         }
 
-        // Suggerimenti stagionali
+        // Analisi stagionale
         $dateRange = $searchParams['date_range'];
-        if (strpos($dateRange, '/07/') !== false || strpos($dateRange, '/08/') !== false) {
-            $suggestions[] = "Stai cercando in alta stagione. Considera periodi come maggio-giugno o settembre per prezzi migliori.";
+        if (preg_match('/\/(07|08)\//', $dateRange)) {
+            $suggestions[] = "☀️ Estate = alta stagione. Considera giugno o settembre per prezzi migliori.";
+        } elseif (preg_match('/\/(12|01|02)\//', $dateRange)) {
+            $suggestions[] = "❄️ Ottimo periodo per Caraibi e destinazioni calde!";
         }
 
-        return array_slice($suggestions, 0, 3); // Massimo 3 suggerimenti
+        // Suggerimenti basati sulle alternative
+        if (count($alternatives) > $matchCount + 3) {
+            $suggestions[] = "🔄 Molte più opzioni disponibili con parametri leggermente diversi.";
+        }
+
+        return array_slice($suggestions, 0, 4); // Massimo 4 suggerimenti
     }
 
     private function getOptimalSuggestion($currentSatisfaction, $optimalSatisfaction)
     {
         $difference = $optimalSatisfaction - $currentSatisfaction;
 
-        if ($difference <= 10) {
-            return 'La tua ricerca è già ottimizzata!';
-        } elseif ($difference <= 25) {
-            return 'Piccole modifiche potrebbero migliorare i risultati';
-        } elseif ($difference <= 40) {
-            return 'Espandi le date per più opzioni';
+        if ($difference <= 5) {
+            return '🎯 Ricerca già ottimizzata perfettamente!';
+        } elseif ($difference <= 15) {
+            return '✨ Piccoli aggiustamenti per risultati migliori';
+        } elseif ($difference <= 30) {
+            return '📅 Espandi le date per il +' . round($difference) . '% di soddisfazione';
         } else {
-            return 'Considera di modificare i parametri di ricerca';
+            return '🔧 Modifica i parametri per sbloccare +' . round($difference) . '% opzioni';
         }
     }
 
-    /**
-     * Metodo di utilità per verificare se una colonna esiste
-     */
-    private function hasColumn($table, $column)
+    private function calculateValueRating($cruisePrice, $budgetPerPerson, $nights)
     {
-        try {
-            return Schema::hasColumn($table, $column);
-        } catch (\Exception $e) {
-            return false;
+        $score = 50; // Base score
+        
+        // Bonus per prezzo conveniente
+        $priceRatio = $cruisePrice / $budgetPerPerson;
+        if ($priceRatio <= 0.7) {
+            $score += 30;
+        } elseif ($priceRatio <= 0.85) {
+            $score += 20;
+        } elseif ($priceRatio <= 0.95) {
+            $score += 10;
         }
+        
+        // Bonus per durata ottimale (7-14 notti)
+        if ($nights >= 7 && $nights <= 14) {
+            $score += 15;
+        } elseif ($nights > 14) {
+            $score += 10;
+        } elseif ($nights >= 5) {
+            $score += 5;
+        }
+        
+        // Calcolo costo giornaliero competitivo
+        $dailyCost = $nights > 0 ? $cruisePrice / $nights : $cruisePrice;
+        $expectedDailyCost = $budgetPerPerson / 7; // Assumiamo 7 notti come baseline
+        
+        if ($dailyCost < $expectedDailyCost * 0.8) {
+            $score += 10;
+        } elseif ($dailyCost < $expectedDailyCost) {
+            $score += 5;
+        }
+        
+        return min($score, 100);
+    }
+
+    private function getSearchStatistics($searchParams, $matches, $alternatives)
+    {
+        $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
+        
+        return [
+            'budget_per_persona' => $budgetPerPerson,
+            'budget_totale' => $searchParams['budget'],
+            'partecipanti' => $searchParams['participants'],
+            'periodo_ricerca' => $searchParams['date_range'],
+            'risultati_trovati' => count($matches),
+            'alternative_disponibili' => count($alternatives),
+            'risparmio_medio' => $matches ? collect($matches)->avg('savings') : 0,
+            'prezzo_medio_trovato' => $matches ? collect($matches)->avg('prezzo_persona') : 0,
+            'compagnie_diverse' => collect($matches)->pluck('line')->unique()->count(),
+            'durata_media' => $matches ? collect($matches)->avg('night') : 0,
+            'costo_giornaliero_medio' => $matches ? collect($matches)->avg('costo_giornaliero_persona') : 0,
+            'value_rating_medio' => $matches ? collect($matches)->avg('value_rating') : 0,
+            'miglior_rapporto_qualita_prezzo' => $this->getBestValueCruise($matches)
+        ];
+    }
+
+    private function getBestValueCruise($matches)
+    {
+        if (empty($matches)) return null;
+        
+        $bestValue = collect($matches)->sortByDesc('value_rating')->first();
+        
+        return [
+            'ship' => $bestValue['ship'] ?? 'N/D',
+            'line' => $bestValue['line'] ?? 'N/D',
+            'value_rating' => $bestValue['value_rating'] ?? 0,
+            'costo_giornaliero' => $bestValue['formatted_daily_per_person'] ?? 'N/D'
+        ];
     }
 
     /**
-     * Metodo per ottenere statistiche generali
+     * Metodo per ottenere statistiche generali del database
      */
     public function getStats()
     {
         try {
             $stats = [
-                'total_cruises' => DB::table('___import_crociere')->whereNotNull('cruise')->count(),
-                'companies' => DB::table('___import_crociere')->whereNotNull('line')->distinct('line')->count(),
-                'avg_price' => DB::table('___import_crociere')
-                    ->whereNotNull('interior')
-                    ->where('interior', '!=', '')
-                    ->avg(DB::raw("CAST(REPLACE(REPLACE(interior, '€', ''), ',', '') AS UNSIGNED)")),
-                'destinations' => DB::table('___import_crociere')->whereNotNull('arrivo')->distinct('arrivo')->count()
+                'total_cruises' => Cruise::count(),
+                'available_cruises' => Cruise::available()->future()->count(),
+                'companies' => Cruise::distinct('line')->whereNotNull('line')->count(),
+                'avg_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->avg('interior'),
+                'min_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->min('interior'),
+                'max_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->max('interior'),
+                'destinations' => Cruise::distinct('to')->whereNotNull('to')->count()
             ];
 
             return response()->json($stats);
         } catch (\Exception $e) {
+            Log::error('Errore statistiche: ' . $e->getMessage());
             return response()->json(['error' => 'Impossibile recuperare le statistiche'], 500);
         }
     }

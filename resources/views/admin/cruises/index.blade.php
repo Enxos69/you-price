@@ -119,7 +119,7 @@
                                                 <option value="msc">MSC Cruises</option>
                                                 <option value="costa">Costa Crociere</option>
                                                 <option value="royal">Royal Caribbean</option>
-                                                <option value="norwegian">Norwegian</option>
+                                                <option value="carnival">Carnival</option>
                                             </select>
                                         </div>
 
