@@ -10,6 +10,7 @@ use App\Http\Controllers\RichiestaController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CruiseImportController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\SearchAnalyticsController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -51,10 +52,10 @@ Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('cr
 
 // Tutte le rotte protette solo da autenticazione
 Route::middleware('auth')->group(function () {
-    
+
     // Rotte admin (senza controllo isAdmin per ora)
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
-    
+
     // CRUD Crociere (Admin)
     Route::get('/admin/cruises', [CruiseController::class, 'index'])->name('cruises.index');
     Route::get('/admin/cruises/create', [CruiseController::class, 'create'])->name('cruises.create');
@@ -63,20 +64,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/cruises/{cruise}/edit', [CruiseController::class, 'edit'])->name('cruises.edit');
     Route::put('/admin/cruises/{cruise}', [CruiseController::class, 'update'])->name('cruises.update');
     Route::delete('/admin/cruises/{cruise}', [CruiseController::class, 'destroy'])->name('cruises.destroy');
-    
+
     // Route aggiuntive per CRUD Crociere
     Route::get('/admin/cruises-data', [CruiseController::class, 'getData'])->name('cruises.data');
     Route::get('/admin/cruises-stats', [CruiseController::class, 'getStats'])->name('cruises.stats');
     Route::post('/admin/cruises/bulk-delete', [CruiseController::class, 'bulkDelete'])->name('cruises.bulk-delete');
     Route::get('/admin/cruises/export', [CruiseController::class, 'export'])->name('cruises.export');
-    
+
     // Import Crociere (come funzionalità aggiuntiva)
     Route::get('/admin/import-crociere', [CruiseImportController::class, 'showForm'])->name('cruises.import.form');
     Route::post('/admin/import-crociere', [CruiseImportController::class, 'import'])->name('cruises.import');
     Route::get('/admin/import-results', [CruiseImportController::class, 'showResults'])->name('cruises.import.results');
     Route::get('/admin/import-data', [CruiseImportController::class, 'getImportedCruisesData'])->name('cruises.import.data');
     Route::get('/admin/download-skipped', [CruiseImportController::class, 'downloadSkippedRecords'])->name('cruises.import.download-skipped');
-    
+
     // Gestione Utenti
     Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/admin/users/data', [UserController::class, 'getUsersData'])->name('users.data');
@@ -101,4 +102,88 @@ Route::middleware('auth')->group(function () {
     Route::get('/richieste/{id}/edit', [RichiestaController::class, 'edit'])->name('richieste.edit');
     Route::post('/richieste/update', [RichiestaController::class, 'update'])->name('richieste.update');
     Route::delete('/richieste/{id}', [RichiestaController::class, 'destroy'])->name('richieste.destroy');
+});
+
+
+// Route per Analytics (solo admin) - Raggruppa tutto sotto middleware auth
+Route::middleware(['auth'])->group(function () {
+
+    // === DASHBOARD PRINCIPALE ===
+    Route::get('/admin/analytics', [SearchAnalyticsController::class, 'index'])
+        ->name('admin.analytics.index');
+
+    // === API STATISTICHE BASE ===
+    Route::prefix('api/analytics')->name('api.analytics.')->group(function () {
+
+        // Statistiche generali
+        Route::get('/general-stats', [SearchAnalyticsController::class, 'getGeneralStats'])
+            ->name('general-stats');
+
+        // Trend e serie temporali
+        Route::get('/search-trends', [SearchAnalyticsController::class, 'getSearchTrends'])
+            ->name('search-trends');
+
+        // Dispositivi e browser
+        Route::get('/device-stats', [SearchAnalyticsController::class, 'getDeviceStats'])
+            ->name('device-stats');
+
+        // Statistiche geografiche
+        Route::get('/geographic-stats', [SearchAnalyticsController::class, 'getGeographicStats'])
+            ->name('geographic-stats');
+
+        // Parametri di ricerca
+        Route::get('/search-parameters', [SearchAnalyticsController::class, 'getSearchParametersStats'])
+            ->name('search-parameters');
+
+        // Performance metrics
+        Route::get('/performance-metrics', [SearchAnalyticsController::class, 'getPerformanceMetrics'])
+            ->name('performance-metrics');
+
+        // Log ricerche con paginazione
+        Route::get('/search-logs', [SearchAnalyticsController::class, 'getSearchLogs'])
+            ->name('search-logs');
+
+        // === API AVANZATE ===
+
+        // Time analytics
+        Route::get('/time-heatmap', [SearchAnalyticsController::class, 'getTimeHeatmap'])
+            ->name('time-heatmap');
+
+        // Conversion funnel
+        Route::get('/advanced-funnel', [SearchAnalyticsController::class, 'getAdvancedFunnel'])
+            ->name('advanced-funnel');
+
+        // Error analytics
+        Route::get('/error-analytics', [SearchAnalyticsController::class, 'getErrorAnalytics'])
+            ->name('error-analytics');
+
+        // Browser compatibility
+        Route::get('/browser-compatibility', [SearchAnalyticsController::class, 'getBrowserCompatibility'])
+            ->name('browser-compatibility');
+
+        // Real-time stats
+        Route::get('/real-time', [SearchAnalyticsController::class, 'getRealTimeStats'])
+            ->name('real-time');
+
+        // Executive summary
+        Route::get('/executive-summary', [SearchAnalyticsController::class, 'getExecutiveSummary'])
+            ->name('executive-summary');
+
+        // === AZIONI AMMINISTRATIVE ===
+
+        // Pulizia log (solo DELETE per sicurezza)
+        Route::delete('/cleanup', [SearchAnalyticsController::class, 'cleanupOldLogs'])
+            ->name('cleanup');
+
+        // Report settimanale
+        Route::get('/weekly-report', [SearchAnalyticsController::class, 'generateWeeklyReport'])
+            ->name('weekly-report');
+    });
+
+    // === EXPORT E DOWNLOAD ===
+    Route::get('/admin/analytics/export', [SearchAnalyticsController::class, 'exportCsv'])
+        ->name('admin.analytics.export');
+
+
+  
 });

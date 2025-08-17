@@ -27,6 +27,11 @@
                             <i class="fas fa-ship me-2"></i>Gestione Crociere
                         </a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="dropdown-item" href="{{ route('admin.analytics.index') }}">
+                                <i class="fas fa-chart-bar me-2"></i>Analytics Ricerche
+                            </a>
+                    </li>
                 @elseif(Auth::user()->isUser())
                     <a class="dropdown-item" href="#">Profilo</a>
                     <a class="dropdown-item" href="{{ route('richieste.index') }}">Le Mie Richieste</a>
