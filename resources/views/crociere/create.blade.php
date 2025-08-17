@@ -73,23 +73,23 @@
                 <div class="card-body">
                     <form id="search-form" class="needs-validation" novalidate>
                         <div class="row">
-                            <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="date-range" class="form-label">Periodo di Viaggio <span class="text-danger">*</span></label>
                                 <input type="text" id="date-range" name="date_range" class="form-control" placeholder="Seleziona periodo" required>
                                 <div class="invalid-feedback">Seleziona un periodo di viaggio</div>
                             </div>
-                            <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="budget" class="form-label">Budget Totale (€) <span class="text-danger">*</span></label>
                                 <input type="number" name="budget" id="budget" class="form-control" placeholder="Es. 2000" required min="100" step="50">
                                 <div class="form-text"><small id="budget-per-person" class="text-muted"></small></div>
                                 <div class="invalid-feedback">Inserisci un budget valido</div>
                             </div>
-                            <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="participants" class="form-label">Numero Partecipanti <span class="text-danger">*</span></label>
                                 <input type="number" name="participants" id="participants" class="form-control" value="2" required min="1" max="10">
                                 <div class="invalid-feedback">Inserisci numero partecipanti (1-10)</div>
                             </div>
-                            <div class="col-md-6 col-lg-6 mb-3">
+                            <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="port_start" class="form-label">Porto di Imbarco</label>
                                 <input type="text" name="port_start" id="port_start" class="form-control" placeholder="Es. Civitavecchia" list="ports-start">
                                 <datalist id="ports-start">
@@ -101,27 +101,16 @@
                                     <option value="Palermo">
                                 </datalist>
                             </div>
-                            <div class="col-md-6 col-lg-6 mb-3">
-                                <label for="port_end" class="form-label">Porto di Destinazione</label>
-                                <input type="text" name="port_end" id="port_end" class="form-control" placeholder="Es. Mediterraneo" list="ports-end">
-                                <datalist id="ports-end">
-                                    <option value="Caraibi">
-                                    <option value="Mediterraneo">
-                                    <option value="Nord Europa">
-                                    <option value="Grecia">
-                                    <option value="Croazia">
-                                    <option value="Spagna">
-                                </datalist>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
+                            <div class="col-md-12 col-lg-12 mb-12 " style="text-align: center">
                                 <button type="submit" class="btn btn-primary me-2">
                                     <i class="fas fa-search me-2"></i>Cerca Crociere
                                     <span class="spinner-border spinner-border-sm ms-2 d-none" id="loading-spinner"></span>
                                 </button>
                                 <button type="reset" class="btn btn-secondary">Reset</button>
                             </div>
+                        </div>
+                        <div class="row">
+                            
                         </div>
                     </form>
                 </div>
