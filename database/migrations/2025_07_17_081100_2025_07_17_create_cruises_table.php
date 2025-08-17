@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
+        if (!Schema::hasTable('cruises')) {
         Schema::create('cruises', function (Blueprint $table) {
             $table->id();
             $table->string('ship');
@@ -24,7 +25,7 @@ return new class extends Migration {
             $table->string('minisuite')->nullable();
             $table->string('suite')->nullable();
             $table->timestamps();
-        });
+        });}
     }
 
     public function down(): void {
