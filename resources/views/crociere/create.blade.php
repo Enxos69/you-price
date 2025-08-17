@@ -75,23 +75,35 @@
                         <div class="row">
                             <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="date-range" class="form-label">Periodo di Viaggio <span class="text-danger">*</span></label>
-                                <input type="text" id="date-range" name="date_range" class="form-control" placeholder="Seleziona periodo" required>
+                                <input type="text" id="date-range" name="date_range" class="form-control" placeholder="Seleziona periodo" required data-field="periodo">
                                 <div class="invalid-feedback">Seleziona un periodo di viaggio</div>
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="budget" class="form-label">Budget Totale (€) <span class="text-danger">*</span></label>
-                                <input type="number" name="budget" id="budget" class="form-control" placeholder="Es. 2000" required min="100" step="50">
+                                <input type="number" name="budget" id="budget" class="form-control" placeholder="Es. 2000" required min="100" step="50" data-field="budget">
                                 <div class="form-text"><small id="budget-per-person" class="text-muted"></small></div>
                                 <div class="invalid-feedback">Inserisci un budget valido</div>
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="participants" class="form-label">Numero Partecipanti <span class="text-danger">*</span></label>
-                                <input type="number" name="participants" id="participants" class="form-control" value="2" required min="1" max="10">
+                                <select name="participants" id="participants" class="form-control" required data-field="partecipanti">
+                                    <option value="">Seleziona partecipanti</option>
+                                    <option value="1">1 persona</option>
+                                    <option value="2" selected>2 persone</option>
+                                    <option value="3">3 persone</option>
+                                    <option value="4">4 persone</option>
+                                    <option value="5">5 persone</option>
+                                    <option value="6">6 persone</option>
+                                    <option value="7">7 persone</option>
+                                    <option value="8">8 persone</option>
+                                    <option value="9">9 persone</option>
+                                    <option value="10">10 persone</option>
+                                </select>
                                 <div class="invalid-feedback">Inserisci numero partecipanti (1-10)</div>
                             </div>
                             <div class="col-md-6 col-lg-3 mb-3">
                                 <label for="port_start" class="form-label">Porto di Imbarco</label>
-                                <input type="text" name="port_start" id="port_start" class="form-control" placeholder="Es. Civitavecchia" list="ports-start">
+                                <input type="text" name="port_start" id="port_start" class="form-control" placeholder="Es. Civitavecchia" list="ports-start" data-field="porto">
                                 <datalist id="ports-start">
                                     <option value="Civitavecchia">
                                     <option value="Barcellona">
@@ -102,17 +114,32 @@
                                 </datalist>
                             </div>
                             <div class="col-md-12 col-lg-12 mb-12 " style="text-align: center">
-                                <button type="submit" class="btn btn-primary me-2">
+                                <button type="submit" class="btn btn-primary me-2" id="search-btn">
                                     <i class="fas fa-search me-2"></i>Cerca Crociere
                                     <span class="spinner-border spinner-border-sm ms-2 d-none" id="loading-spinner"></span>
                                 </button>
                                 <button type="reset" class="btn btn-secondary">Reset</button>
                             </div>
                         </div>
-                        <div class="row">
-                            
-                        </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Dynamic Message Box --}}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="dynamic-message" class="message-box message-default">
+                <div class="text-center">
+                    <i class="fas fa-info-circle icon-large"></i>
+                    <strong>Compila i campi sopra per iniziare la ricerca</strong>
+                    <div class="progress-indicator">
+                        <span class="progress-step" data-step="periodo" title="Periodo di viaggio"></span>
+                        <span class="progress-step" data-step="partecipanti" title="Numero partecipanti"></span>
+                        <span class="progress-step" data-step="budget" title="Budget totale"></span>
+                        <span class="progress-step" data-step="porto" title="Porto di imbarco (opzionale)"></span>
+                    </div>
                 </div>
             </div>
         </div>

@@ -472,7 +472,7 @@
             // Tooltip con info complete
             tr.setAttribute('title',
                 `${item.ship} - ${item.cruise}\n${item.from || ''} → ${item.to || ''}\nPartenza: ${formatDate(item.partenza)}`
-                );
+            );
             tr.setAttribute('data-bs-toggle', 'tooltip');
             tr.setAttribute('data-bs-placement', 'top');
 
@@ -903,4 +903,379 @@
         // Esporta utilità globali
         window.CruiseSearchUtils = Utils;
     });
+    // Aggiungi questo codice al tuo file js.blade.php esistente
+
+    $(function() {
+        // Configurazione DateRangePicker (mantieni quella esistente)
+        $('#date-range').daterangepicker({
+            locale: {
+                format: 'DD/MM/YYYY',
+                applyLabel: "Applica",
+                cancelLabel: "Annulla",
+                fromLabel: "Da",
+                toLabel: "A",
+                customRangeLabel: "Personalizzato",
+                daysOfWeek: ["D", "L", "M", "M", "G", "V", "S"],
+                monthNames: ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+                    "Lug", "Ago", "Set", "Ott", "Nov", "Dic"
+                ],
+                firstDay: 1
+            },
+            ranges: {
+                'Prossimo mese': [moment().add(1, 'month').startOf('month'), moment().add(1, 'month')
+                    .endOf('month')
+                ],
+                'Estate 2025': [moment('2025-06-21'), moment('2025-09-21')],
+                'Autunno 2025': [moment('2025-09-21'), moment('2025-12-21')],
+                'Inverno 2025/26': [moment('2025-12-21'), moment('2026-03-20')],
+                'Primavera 2026': [moment('2026-03-20'), moment('2026-06-21')]
+            },
+            startDate: moment().add(1, 'month'),
+            endDate: moment().add(1, 'month').add(7, 'days'),
+            minDate: moment(),
+            maxDate: moment().add(2, 'years'),
+            opens: 'left',
+            drops: 'down'
+        });
+
+        // NUOVO: Sistema di messaggi dinamici
+        initializeDynamicMessages();
+    });
+
+    function initializeDynamicMessages() {
+        // Oggetto per tracciare i campi compilati
+        let fieldStatus = {
+            periodo: false,
+            partecipanti: false,
+            budget: false,
+            porto: false
+        };
+
+        // Messaggi dinamici coordinati con il design esistente
+        const messages = {
+            empty: {
+                icon: 'fas fa-info-circle',
+                text: 'Compila i campi sopra per iniziare la ricerca',
+                class: 'message-default',
+                buttonState: 'disabled'
+            },
+            partial: {
+                icon: 'fas fa-hourglass-half',
+                text: 'Ottimo inizio! Continua a compilare per risultati migliori',
+                class: 'message-progress',
+                buttonState: 'disabled'
+            },
+            ready: {
+                icon: 'fas fa-check-circle',
+                text: 'Perfetto! Hai fornito tutte le informazioni necessarie',
+                class: 'message-ready',
+                buttonState: 'enabled'
+            },
+            complete: {
+                icon: 'fas fa-star',
+                text: 'Eccellente! Ricerca completa con tutti i filtri attivi',
+                class: 'message-complete',
+                buttonState: 'ready'
+            }
+        };
+
+        // Funzione per aggiornare il messaggio dinamico
+        function updateDynamicMessage() {
+            const filledRequired = fieldStatus.periodo && fieldStatus.partecipanti && fieldStatus.budget;
+            const filledOptional = fieldStatus.porto;
+            const totalFilled = Object.values(fieldStatus).filter(Boolean).length;
+
+            let messageType;
+
+            if (totalFilled === 0) {
+                messageType = 'empty';
+            } else if (!filledRequired) {
+                messageType = 'partial';
+            } else if (filledRequired && !filledOptional) {
+                messageType = 'ready';
+            } else {
+                messageType = 'complete';
+            }
+
+            const message = messages[messageType];
+            const messageBox = $('#dynamic-message');
+            const searchBtn = $('#search-btn');
+
+            // Animazione di transizione migliorata
+            messageBox.addClass('animate');
+
+            setTimeout(() => {
+                messageBox
+                    .removeClass('message-default message-progress message-ready message-complete')
+                    .addClass(message.class)
+                    .html(`
+                    <div class="text-center">
+                        <i class="${message.icon} icon-large"></i>
+                        <strong>${message.text}</strong>
+                        <div class="progress-indicator">
+                            <span class="progress-step ${fieldStatus.periodo ? 'active' : ''}" 
+                                  data-step="periodo" 
+                                  title="Periodo di viaggio"></span>
+                            <span class="progress-step ${fieldStatus.partecipanti ? 'active' : ''}" 
+                                  data-step="partecipanti" 
+                                  title="Numero partecipanti"></span>
+                            <span class="progress-step ${fieldStatus.budget ? 'active' : ''}" 
+                                  data-step="budget" 
+                                  title="Budget totale"></span>
+                            <span class="progress-step ${fieldStatus.porto ? 'active' : ''}" 
+                                  data-step="porto" 
+                                  title="Porto di imbarco (opzionale)"></span>
+                        </div>
+                    </div>
+                `);
+
+                messageBox.removeClass('animate');
+            }, 200);
+
+            // Gestione stato pulsante
+            updateButtonState(searchBtn, message.buttonState, filledRequired);
+
+            // Mostra toast informativi solo per stati importanti
+            if (messageType === 'ready' && !searchBtn.data('ready-shown')) {
+                showDynamicToast('✅ Tutti i campi obbligatori compilati!', 'success');
+                searchBtn.data('ready-shown', true);
+            } else if (messageType === 'complete' && !searchBtn.data('complete-shown')) {
+                showDynamicToast('🌟 Ricerca ottimizzata al massimo!', 'info');
+                searchBtn.data('complete-shown', true);
+            }
+        }
+
+        // Funzione per aggiornare lo stato del pulsante
+        function updateButtonState(button, state, canSearch) {
+            button.removeClass('btn-secondary btn-ready');
+
+            switch (state) {
+                case 'disabled':
+                    button.prop('disabled', true)
+                        .addClass('btn-secondary')
+                        .find('i').removeClass('fa-search fa-rocket').addClass('fa-search');
+                    break;
+                case 'enabled':
+                    button.prop('disabled', false)
+                        .addClass('btn-primary')
+                        .find('i').removeClass('fa-search fa-rocket').addClass('fa-search');
+                    break;
+                case 'ready':
+                    button.prop('disabled', false)
+                        .addClass('btn-primary btn-ready')
+                        .find('i').removeClass('fa-search fa-rocket').addClass('fa-rocket');
+                    break;
+            }
+        }
+
+        // Event listeners per i campi con validazione migliorata
+        $('#date-range').on('apply.daterangepicker input change', function(ev, picker) {
+            const hasValue = $(this).val().trim() !== '';
+            fieldStatus.periodo = hasValue;
+            updateFieldVisualState($(this), hasValue);
+            updateDynamicMessage();
+
+            if (hasValue) {
+                showDynamicToast('📅 Periodo selezionato!', 'success', 1500);
+            }
+        });
+
+        $('#participants').on('change', function() {
+            const hasValue = $(this).val() !== '';
+            fieldStatus.partecipanti = hasValue;
+            updateFieldVisualState($(this), hasValue);
+            updateDynamicMessage();
+            updateBudgetCalculation(); // Ricalcola budget per persona
+
+            if (hasValue) {
+                const count = $(this).val();
+                const text = count === '1' ? 'persona' : 'persone';
+                showDynamicToast(`👥 ${count} ${text} selezionate!`, 'success', 1500);
+            }
+        });
+
+        $('#budget').on('input change', function() {
+            const value = parseFloat($(this).val());
+            const isValid = !isNaN(value) && value >= 100;
+            fieldStatus.budget = isValid;
+            updateFieldVisualState($(this), isValid, !isValid && value > 0);
+            updateDynamicMessage();
+            updateBudgetCalculation();
+
+            if (isValid) {
+                showDynamicToast(`💰 Budget di €${value.toLocaleString('it-IT')} impostato!`, 'success', 1500);
+            } else if (value > 0 && value < 100) {
+                showDynamicToast('⚠️ Budget minimo: €100', 'warning', 2000);
+            }
+        });
+
+        $('#port_start').on('input change', function() {
+            const hasValue = $(this).val().trim() !== '';
+            fieldStatus.porto = hasValue;
+            updateFieldVisualState($(this), hasValue);
+            updateDynamicMessage();
+
+            if (hasValue) {
+                showDynamicToast(`⚓ Porto "${$(this).val()}" selezionato!`, 'info', 1500);
+            }
+        });
+
+        // Funzione per aggiornare lo stato visivo dei campi
+        function updateFieldVisualState(field, isValid, isInvalid = false) {
+            field.removeClass('field-filled field-invalid field-progress is-valid is-invalid');
+
+            if (isInvalid) {
+                field.addClass('field-invalid is-invalid');
+            } else if (isValid) {
+                field.addClass('field-filled is-valid');
+            } else if (field.val().trim() !== '') {
+                field.addClass('field-progress');
+            }
+        }
+
+        // Funzione migliorata per il calcolo budget per persona
+        function updateBudgetCalculation() {
+            const budgetInput = $('#budget');
+            const participantsInput = $('#participants');
+            const budgetPerPersonEl = $('#budget-per-person');
+
+            const budget = parseFloat(budgetInput.val()) || 0;
+            const participants = parseInt(participantsInput.val()) || 0;
+
+            if (budget > 0 && participants > 0) {
+                const perPerson = budget / participants;
+                budgetPerPersonEl.html(`
+                <i class="fas fa-calculator me-1"></i>
+                €${perPerson.toLocaleString('it-IT')} per persona
+            `).addClass('updated');
+
+                setTimeout(() => budgetPerPersonEl.removeClass('updated'), 1000);
+            } else {
+                budgetPerPersonEl.html('').removeClass('updated');
+            }
+        }
+
+        // Sistema di toast migliorato per messaggi dinamici
+        function showDynamicToast(message, type = 'info', duration = 2000) {
+            const toastContainer = $('#toast-container');
+            const toastId = 'dynamic-toast-' + Date.now();
+
+            const iconMap = {
+                success: 'fas fa-check-circle',
+                error: 'fas fa-exclamation-circle',
+                warning: 'fas fa-exclamation-triangle',
+                info: 'fas fa-info-circle'
+            };
+
+            const colorMap = {
+                success: 'toast-success',
+                error: 'toast-error',
+                warning: 'bg-warning text-dark',
+                info: 'toast-info'
+            };
+
+            const toast = $(`
+            <div id="${toastId}" class="toast ${colorMap[type] || colorMap.info} show" role="alert">
+                <div class="toast-body d-flex align-items-center">
+                    <i class="${iconMap[type] || iconMap.info} me-2"></i>
+                    <span class="flex-grow-1">${message}</span>
+                    <button type="button" class="btn-close ms-2" onclick="$(this).closest('.toast').remove()"></button>
+                </div>
+            </div>
+        `);
+
+            toastContainer.append(toast);
+
+            // Auto-remove con animazione
+            setTimeout(() => {
+                toast.css({
+                    'opacity': '0',
+                    'transform': 'translateX(100%)'
+                });
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // Gestione reset form migliorata
+        $('#search-form').on('reset', function() {
+            // Reset stati
+            fieldStatus = {
+                periodo: false,
+                partecipanti: false,
+                budget: false,
+                porto: false
+            };
+
+            // Reset classi visuali
+            $(this).find('.form-control').removeClass(
+                'field-filled field-invalid field-progress is-valid is-invalid');
+
+            // Reset budget per persona
+            $('#budget-per-person').html('').removeClass('updated');
+
+            // Reset data shown flags
+            $('#search-btn').removeData('ready-shown complete-shown');
+
+            // Aggiorna messaggio
+            updateDynamicMessage();
+
+            showDynamicToast('🔄 Form resettato', 'info', 1500);
+        });
+
+        // Inizializzazione con controllo stato partecipanti preselezionato
+        const initialParticipants = $('#participants').val();
+        if (initialParticipants && initialParticipants !== '') {
+            fieldStatus.partecipanti = true;
+            updateFieldVisualState($('#participants'), true);
+            updateBudgetCalculation();
+        }
+
+        // Aggiornamento iniziale
+        updateDynamicMessage();
+
+        // Suggerimenti di auto-completamento per porto
+        const commonPorts = [
+            'Civitavecchia', 'Barcellona', 'Venezia', 'Genova', 'Napoli', 'Palermo',
+            'Marsiglia', 'Savona', 'La Spezia', 'Bari', 'Catania', 'Cagliari',
+            'Miami', 'Fort Lauderdale', 'Southampton', 'Copenhagen'
+        ];
+
+        $('#port_start').on('input', function() {
+            const value = $(this).val().toLowerCase();
+            const suggestions = commonPorts.filter(port =>
+                port.toLowerCase().includes(value)
+            );
+
+            // Aggiorna datalist dinamicamente
+            const datalist = $('#ports-start');
+            datalist.empty();
+            suggestions.forEach(port => {
+                datalist.append(`<option value="${port}">`);
+            });
+        });
+
+        // Keyboard shortcuts migliorati
+        $(document).on('keydown', function(e) {
+            // Tab attraverso i campi obbligatori
+            if (e.altKey && e.key >= '1' && e.key <= '3') {
+                e.preventDefault();
+                const fields = ['#date-range', '#participants', '#budget'];
+                const targetField = fields[parseInt(e.key) - 1];
+                $(targetField).focus();
+                showDynamicToast(`Passaggio al campo ${parseInt(e.key)}`, 'info', 1000);
+            }
+
+            // Enter rapido se tutti i campi obbligatori sono compilati
+            if (e.key === 'Enter' && e.ctrlKey) {
+                if (fieldStatus.periodo && fieldStatus.partecipanti && fieldStatus.budget) {
+                    e.preventDefault();
+                    $('#search-form').trigger('submit');
+                } else {
+                    showDynamicToast('⚠️ Completa i campi obbligatori prima di cercare', 'warning');
+                }
+            }
+        });
+
+        console.log('🎯 Sistema di messaggi dinamici inizializzato!');
+    }
 </script>

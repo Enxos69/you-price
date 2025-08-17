@@ -32,7 +32,8 @@
 
     .container-fluid {
         padding: 1rem 1.5rem;
-        margin-top: 50px; /* Abbassa tutto il contenuto */
+        margin-top: 50px;
+        /* Abbassa tutto il contenuto */
     }
 
     /* Header più compatto */
@@ -297,7 +298,7 @@
     .form-control {
         border: 1px solid #d1d3e2;
         border-radius: var(--border-radius);
-        padding: 0.75rem 1rem;
+        /* padding: 0.75rem 1rem; */
         font-size: 0.875rem;
         transition: var(--transition);
         background-color: var(--color-white);
@@ -602,8 +603,13 @@
     }
 
     @keyframes shimmer {
-        0% { background-position: -200px 0; }
-        100% { background-position: calc(200px + 100%) 0; }
+        0% {
+            background-position: -200px 0;
+        }
+
+        100% {
+            background-position: calc(200px + 100%) 0;
+        }
     }
 
     /* Animation classes */
@@ -620,8 +626,13 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
 
     @keyframes slideInLeft {
@@ -629,6 +640,7 @@
             opacity: 0;
             transform: translateX(-30px);
         }
+
         to {
             opacity: 1;
             transform: translateX(0);
@@ -640,6 +652,7 @@
             opacity: 0;
             transform: translateX(30px);
         }
+
         to {
             opacity: 1;
             transform: translateX(0);
@@ -900,6 +913,7 @@
 
     /* Reduced motion support */
     @media (prefers-reduced-motion: reduce) {
+
         *,
         *::before,
         *::after {
@@ -982,5 +996,413 @@
 
     .table tbody tr:hover .action-btn {
         opacity: 1;
+    }
+
+    /* Aggiungi queste nuove classi al tuo file css.blade.php esistente */
+
+    /* =======================
+   DYNAMIC MESSAGE BOX STYLES
+   ======================= */
+
+    /* Message Box Container */
+    .message-box {
+        margin-top: 20px;
+        padding: 20px;
+        border-radius: var(--border-radius);
+        transition: all 0.5s ease;
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .message-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.8s ease;
+    }
+
+    .message-box.animate::before {
+        left: 100%;
+    }
+
+    /* Message States */
+    .message-default {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border: 2px dashed #6c757d;
+        color: #6c757d;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-progress {
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        border: 2px solid #ffc107;
+        color: #856404;
+        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        animation: pulse-yellow 2s infinite;
+    }
+
+    .message-ready {
+        background: linear-gradient(135deg, #d4edda, #a3d977);
+        border: 2px solid #28a745;
+        color: #155724;
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        animation: pulse-green 2s infinite;
+    }
+
+    .message-complete {
+        background: linear-gradient(135deg, #d1ecf1, #74b9ff);
+        border: 2px solid #17a2b8;
+        color: #0c5460;
+        box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+        animation: pulse-blue 2s infinite;
+    }
+
+    /* Pulse Animations */
+    @keyframes pulse-yellow {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+        }
+    }
+
+    @keyframes pulse-green {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+    }
+
+    @keyframes pulse-blue {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4);
+        }
+    }
+
+    /* Icon Large */
+    .icon-large {
+        font-size: 1.5em;
+        margin-right: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .message-ready .icon-large,
+    .message-complete .icon-large {
+        animation: bounce 1.5s ease infinite;
+    }
+
+    @keyframes bounce {
+
+        0%,
+        20%,
+        50%,
+        80%,
+        100% {
+            transform: translateY(0);
+        }
+
+        40% {
+            transform: translateY(-5px);
+        }
+
+        60% {
+            transform: translateY(-3px);
+        }
+    }
+
+    /* Progress Indicator */
+    .progress-indicator {
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .progress-step {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #6c757d;
+        transition: all 0.4s ease;
+        position: relative;
+        cursor: help;
+    }
+
+    .progress-step::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: white;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+
+    .progress-step.active {
+        background: var(--color-success);
+        transform: scale(1.3);
+        box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    .progress-step.active::before {
+        opacity: 1;
+    }
+
+    @keyframes glow {
+        from {
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+
+        to {
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.8), 0 0 30px rgba(40, 167, 69, 0.6);
+        }
+    }
+
+    /* Tooltip per progress steps */
+    .progress-step:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    .progress-step::after {
+        content: '';
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    /* Form Control Enhancements per messaggi dinamici */
+    .form-control.field-filled {
+        border-color: var(--color-success);
+        background: linear-gradient(135deg, #f8fff9, #f0f9f0);
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.1);
+    }
+
+    .form-control.field-invalid {
+        border-color: var(--color-danger);
+        background: linear-gradient(135deg, #fff8f8, #fef2f2);
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+    }
+
+    .form-control.field-progress {
+        border-color: var(--color-warning);
+        background: linear-gradient(135deg, #fffbf0, #fef8e7);
+        box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.1);
+    }
+
+    /* Button States Enhancement */
+    .btn-primary:disabled {
+        background: linear-gradient(135deg, #6c757d, #545b62);
+        border-color: #6c757d;
+        opacity: 0.7;
+        cursor: not-allowed;
+        animation: none;
+    }
+
+    .btn-primary.btn-ready {
+        background: linear-gradient(135deg, var(--color-success), #20c997);
+        border-color: var(--color-success);
+        animation: ready-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes ready-pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    /* Enhanced Budget Per Person Display */
+    #budget-per-person {
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+
+    #budget-per-person.updated {
+        color: var(--color-success) !important;
+        transform: scale(1.05);
+        text-shadow: 0 1px 3px rgba(40, 167, 69, 0.3);
+    }
+
+    /* Message Text Improvements */
+    .message-box strong {
+        font-weight: 700;
+        font-size: 1.1em;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-progress strong {
+        background: linear-gradient(45deg, #856404, #b8860b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .message-ready strong {
+        background: linear-gradient(45deg, #155724, #28a745);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .message-complete strong {
+        background: linear-gradient(45deg, #0c5460, #17a2b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .message-box {
+            padding: 15px;
+            min-height: 70px;
+        }
+
+        .icon-large {
+            font-size: 1.3em;
+            margin-right: 8px;
+        }
+
+        .progress-indicator {
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .progress-step {
+            width: 14px;
+            height: 14px;
+        }
+
+        .progress-step::before {
+            width: 6px;
+            height: 6px;
+        }
+
+        .message-box strong {
+            font-size: 1em;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .message-box {
+            padding: 12px;
+            min-height: 60px;
+        }
+
+        .progress-indicator {
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .progress-step {
+            width: 12px;
+            height: 12px;
+        }
+    }
+
+    /* Print Styles */
+    @media print {
+        .message-box {
+            background: white !important;
+            border: 1px solid #333 !important;
+            color: #333 !important;
+            box-shadow: none !important;
+            animation: none !important;
+        }
+
+        .progress-step {
+            background: #333 !important;
+            animation: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+        .message-box {
+            border-width: 3px !important;
+        }
+
+        .progress-step {
+            border: 2px solid #000;
+        }
+
+        .progress-step.active {
+            background: #000 !important;
+            border-color: #000 !important;
+        }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+
+        .message-box,
+        .progress-step,
+        .icon-large,
+        #budget-per-person {
+            animation: none !important;
+            transition-duration: 0.01ms !important;
+        }
+
+        .message-box::before {
+            display: none;
+        }
+
+        .btn-primary.btn-ready {
+            animation: none !important;
+        }
     }
 </style>
