@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -33,8 +34,8 @@ class CrocieraController extends Controller
             // Parse delle date
             $dateRange = explode(' - ', $data['date_range']);
             $startDate = Carbon::createFromFormat('d/m/Y', trim($dateRange[0]));
-            $endDate = isset($dateRange[1]) ? 
-                Carbon::createFromFormat('d/m/Y', trim($dateRange[1])) : 
+            $endDate = isset($dateRange[1]) ?
+                Carbon::createFromFormat('d/m/Y', trim($dateRange[1])) :
                 $startDate->copy();
 
             $budgetPerPerson = $data['budget'] / $data['participants'];
@@ -44,8 +45,8 @@ class CrocieraController extends Controller
             $matchesQuery = Cruise::available()
                 ->future()
                 ->whereNotNull('interior')
-                ->where('interior', '>', 0)
-                ->where('interior', '<=', $budgetPerPerson);
+                ->whereRaw('CAST(interior AS DECIMAL(10,2)) >= ?', [$budgetPerPerson * 0.5])
+                ->whereRaw('CAST(interior AS DECIMAL(10,2)) <= ?', [$budgetPerPerson]);
 
             // Applica filtri per date se disponibili
             if ($startDate && $endDate) {
@@ -57,16 +58,16 @@ class CrocieraController extends Controller
 
             // Applica filtri opzionali per porti
             if (!empty($data['port_start'])) {
-                $matchesQuery->where(function($q) use ($data) {
+                $matchesQuery->where(function ($q) use ($data) {
                     $q->where('from', 'LIKE', '%' . $data['port_start'] . '%')
-                      ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
+                        ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
                 });
             }
 
             if (!empty($data['port_end'])) {
-                $matchesQuery->where(function($q) use ($data) {
+                $matchesQuery->where(function ($q) use ($data) {
                     $q->where('to', 'LIKE', '%' . $data['port_end'] . '%')
-                      ->orWhere('arrivo', 'LIKE', '%' . $data['port_end'] . '%');
+                        ->orWhere('arrivo', 'LIKE', '%' . $data['port_end'] . '%');
                 });
             }
 
@@ -74,7 +75,7 @@ class CrocieraController extends Controller
                 ->orderBy('interior', 'ASC')
                 ->take(10)
                 ->get()
-                ->map(function($cruise) use ($budgetPerPerson, $participants) {
+                ->map(function ($cruise) use ($budgetPerPerson, $participants) {
                     return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants);
                 });
 
@@ -85,14 +86,15 @@ class CrocieraController extends Controller
             $alternativeQuery = Cruise::available()
                 ->future()
                 ->whereNotNull('interior')
-                ->where('interior', '>', 0)
-                ->where('interior', '<=', $budgetPerPerson * 1.2);
+                ->whereRaw('CAST(interior AS DECIMAL(10,2)) > 0')
+                ->whereRaw('CAST(interior AS DECIMAL(10,2)) >= ?', [$budgetPerPerson * 0.8])
+                ->whereRaw('CAST(interior AS DECIMAL(10,2)) <= ?', [$budgetPerPerson * 1.2]);
 
             // Solo filtro porto di partenza per le alternative
             if (!empty($data['port_start'])) {
-                $alternativeQuery->where(function($q) use ($data) {
+                $alternativeQuery->where(function ($q) use ($data) {
                     $q->where('from', 'LIKE', '%' . $data['port_start'] . '%')
-                      ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
+                        ->orWhere('partenza', 'LIKE', '%' . $data['port_start'] . '%');
                 });
             }
 
@@ -100,7 +102,7 @@ class CrocieraController extends Controller
             if ($startDate) {
                 $flexibleStart = $startDate->copy()->subMonth();
                 $flexibleEnd = $endDate->copy()->addMonths(2);
-                
+
                 $alternativeQuery->whereBetween('partenza', [
                     $flexibleStart->format('Y-m-d'),
                     $flexibleEnd->format('Y-m-d')
@@ -112,7 +114,7 @@ class CrocieraController extends Controller
                 ->orderBy('interior', 'ASC')
                 ->take(10)
                 ->get()
-                ->map(function($cruise) use ($budgetPerPerson, $participants) {
+                ->map(function ($cruise) use ($budgetPerPerson, $participants) {
                     return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants, true);
                 });
 
@@ -135,7 +137,6 @@ class CrocieraController extends Controller
                 'suggerimento_ottimale' => $this->getOptimalSuggestion($soddisfazioneAttuale, $soddisfazioneOttimale),
                 'statistiche' => $statistiche
             ];
-
         } catch (\Exception $e) {
             Log::error('Errore ricerca crociere: ' . $e->getMessage(), [
                 'data' => $data,
@@ -143,7 +144,7 @@ class CrocieraController extends Controller
             ]);
 
             $errorMessage = 'Si è verificato un errore durante la ricerca. Riprova più tardi.';
-            
+
             $searchResults = [
                 'success' => false,
                 'error' => $errorMessage,
@@ -163,9 +164,9 @@ class CrocieraController extends Controller
         // Registra il log della ricerca
         try {
             SearchLog::createFromRequest(
-                $data, 
-                $searchResults, 
-                $searchDuration, 
+                $data,
+                $searchResults,
+                $searchDuration,
                 $errorMessage
             );
         } catch (\Exception $e) {
@@ -181,18 +182,16 @@ class CrocieraController extends Controller
         return response()->json($searchResults);
     }
 
-    // ... [resto dei metodi rimangono invariati] ...
-
     private function enrichCruiseData($cruise, $budgetPerPerson, $participants, $isAlternative = false)
     {
         $pricePerPerson = (float) $cruise->interior;
         $totalPrice = $pricePerPerson * $participants;
         $nights = $cruise->night ?: $cruise->duration ?: 1;
-        
+
         // Calcolo costo giornaliero
         $dailyCostPerPerson = $nights > 0 ? round($pricePerPerson / $nights, 2) : 0;
         $dailyCostTotal = $dailyCostPerPerson * $participants;
-        
+
         $enriched = [
             'id' => $cruise->id,
             'ship' => $cruise->ship ?? 'N/D',
@@ -231,7 +230,7 @@ class CrocieraController extends Controller
     {
         $cruisePrice = (float) $cruise->interior;
         $priceRatio = $cruisePrice / $budgetPerPerson;
-        
+
         // Base score basato sul prezzo
         if ($priceRatio <= 0.7) {
             $baseScore = mt_rand(88, 95); // Ottimo affare
@@ -285,7 +284,7 @@ class CrocieraController extends Controller
             $departure = Carbon::parse($cruise->partenza);
             $now = Carbon::now();
             $daysUntil = $now->diffInDays($departure, false);
-            
+
             if ($daysUntil >= 60 && $daysUntil <= 120) {
                 $benefits[] = 'Anticipo ottimale';
             }
@@ -356,7 +355,7 @@ class CrocieraController extends Controller
         // Bonus per compatibilità budget (massimo 25 punti)
         $budgetBonus = 0;
         $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
-        
+
         foreach ($matches as $match) {
             $price = $match['prezzo_persona'];
             if ($price <= $budgetPerPerson * 0.6) {
@@ -385,7 +384,7 @@ class CrocieraController extends Controller
     {
         $baseScore = 65; // Punteggio base più alto per alternative
         $alternativeCount = count($alternatives);
-        
+
         if ($alternativeCount === 0) {
             return $baseScore;
         }
@@ -423,7 +422,7 @@ class CrocieraController extends Controller
         if ($matchCount > 0) {
             $avgPrice = collect($matches)->avg('prezzo_persona');
             $minPrice = collect($matches)->min('prezzo_persona');
-            
+
             if ($avgPrice < $budgetPerPerson * 0.7) {
                 $suggestions[] = "💰 Il tuo budget ti permette crociere premium! Considera upgrade di cabina.";
             } elseif ($minPrice < $budgetPerPerson * 0.6) {
@@ -470,7 +469,7 @@ class CrocieraController extends Controller
     private function calculateValueRating($cruisePrice, $budgetPerPerson, $nights)
     {
         $score = 50; // Base score
-        
+
         // Bonus per prezzo conveniente
         $priceRatio = $cruisePrice / $budgetPerPerson;
         if ($priceRatio <= 0.7) {
@@ -480,7 +479,7 @@ class CrocieraController extends Controller
         } elseif ($priceRatio <= 0.95) {
             $score += 10;
         }
-        
+
         // Bonus per durata ottimale (7-14 notti)
         if ($nights >= 7 && $nights <= 14) {
             $score += 15;
@@ -489,24 +488,24 @@ class CrocieraController extends Controller
         } elseif ($nights >= 5) {
             $score += 5;
         }
-        
+
         // Calcolo costo giornaliero competitivo
         $dailyCost = $nights > 0 ? $cruisePrice / $nights : $cruisePrice;
         $expectedDailyCost = $budgetPerPerson / 7; // Assumiamo 7 notti come baseline
-        
+
         if ($dailyCost < $expectedDailyCost * 0.8) {
             $score += 10;
         } elseif ($dailyCost < $expectedDailyCost) {
             $score += 5;
         }
-        
+
         return min($score, 100);
     }
 
     private function getSearchStatistics($searchParams, $matches, $alternatives)
     {
         $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
-        
+
         return [
             'budget_per_persona' => $budgetPerPerson,
             'budget_totale' => $searchParams['budget'],
@@ -527,9 +526,9 @@ class CrocieraController extends Controller
     private function getBestValueCruise($matches)
     {
         if (empty($matches)) return null;
-        
+
         $bestValue = collect($matches)->sortByDesc('value_rating')->first();
-        
+
         return [
             'ship' => $bestValue['ship'] ?? 'N/D',
             'line' => $bestValue['line'] ?? 'N/D',
