@@ -430,7 +430,7 @@
     }
 
     .bg-success {
-        background-color: var(--color-success) !important;
+        background-color: var(--color-success-lighter) !important;
     }
 
     .bg-warning {

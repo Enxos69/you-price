@@ -78,7 +78,8 @@ class CrocieraController extends Controller
                 ->map(function ($cruise) use ($budgetPerPerson, $participants) {
                     return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants);
                 });
-
+            log::info('Matches trovati: ' . count($matches) . '  ');
+            log::info('data: ' . json_encode($data) . '  ');
             // Calcola soddisfazione attuale
             $soddisfazioneAttuale = $this->calculateSatisfaction($matches, $data);
 
@@ -117,6 +118,9 @@ class CrocieraController extends Controller
                 ->map(function ($cruise) use ($budgetPerPerson, $participants) {
                     return $this->enrichCruiseData($cruise, $budgetPerPerson, $participants, true);
                 });
+
+            log::info('alternative trovate: ' . count($alternative) . '  ');
+            log::info('data: ' . json_encode($data) . '  ');
 
             // Calcola soddisfazione ottimale
             $soddisfazioneOttimale = $this->calculateOptimalSatisfaction($alternative, $data);
@@ -342,15 +346,29 @@ class CrocieraController extends Controller
 
     private function calculateSatisfaction($matches, $searchParams)
     {
-        $baseScore = 25; // Punteggio base ridotto
         $matchCount = count($matches);
 
+        // Se non ci sono risultati, la soddisfazione è 0
         if ($matchCount === 0) {
-            return $baseScore;
+            return 0;
         }
 
-        // Bonus per numero di risultati (massimo 30 punti)
-        $countBonus = min($matchCount * 3, 30);
+        // Punteggio base quando ci sono risultati
+        $baseScore = 30;
+
+        // Bonus per numero di risultati (massimo 25 punti)
+        // Più risultati = maggiore soddisfazione fino a un massimo
+        if ($matchCount >= 10) {
+            $countBonus = 25;
+        } elseif ($matchCount >= 5) {
+            $countBonus = 20;
+        } elseif ($matchCount >= 3) {
+            $countBonus = 15;
+        } elseif ($matchCount >= 2) {
+            $countBonus = 10;
+        } else {
+            $countBonus = 5; // Solo 1 risultato
+        }
 
         // Bonus per compatibilità budget (massimo 25 punti)
         $budgetBonus = 0;
@@ -359,12 +377,13 @@ class CrocieraController extends Controller
         foreach ($matches as $match) {
             $price = $match['prezzo_persona'];
             if ($price <= $budgetPerPerson * 0.6) {
-                $budgetBonus += 5;
+                $budgetBonus += 5; // Prezzo molto conveniente
             } elseif ($price <= $budgetPerPerson * 0.8) {
-                $budgetBonus += 3;
+                $budgetBonus += 3; // Prezzo buono
             } elseif ($price <= $budgetPerPerson * 0.95) {
-                $budgetBonus += 1;
+                $budgetBonus += 1; // Prezzo accettabile
             }
+            // Se il prezzo supera il budget, non aggiungiamo bonus
         }
         $budgetBonus = min($budgetBonus, 25);
 
@@ -377,30 +396,120 @@ class CrocieraController extends Controller
         if (!empty($searchParams['port_start'])) $filterBonus += 2;
         if (!empty($searchParams['port_end'])) $filterBonus += 3;
 
-        return min($baseScore + $countBonus + $budgetBonus + $qualityBonus + $filterBonus, 100);
+        // Penalità se tutti i risultati superano il budget
+        $overBudgetPenalty = 0;
+        $overBudgetCount = 0;
+        foreach ($matches as $match) {
+            if ($match['prezzo_persona'] > $budgetPerPerson) {
+                $overBudgetCount++;
+            }
+        }
+
+        // Se più del 50% dei risultati supera il budget, applica penalità
+        if ($overBudgetCount > $matchCount * 0.5) {
+            $overBudgetPenalty = 10;
+        }
+
+        $finalScore = $baseScore + $countBonus + $budgetBonus + $qualityBonus + $filterBonus - $overBudgetPenalty;
+
+        return max(0, min($finalScore, 100));
     }
 
     private function calculateOptimalSatisfaction($alternatives, $searchParams)
     {
-        $baseScore = 65; // Punteggio base più alto per alternative
         $alternativeCount = count($alternatives);
 
+        // Se non ci sono alternative, il potenziale ottimale è basso
         if ($alternativeCount === 0) {
-            return $baseScore;
+            return 15; // Punteggio molto basso ma non zero (indica che c'è sempre margine di miglioramento)
         }
 
-        // Bonus varietà (massimo 20 punti)
-        $varietyBonus = min($alternativeCount * 2, 20);
+        // Punteggio base quando ci sono alternative
+        $baseScore = 50;
 
-        // Bonus diversità compagnie (massimo 10 punti)
+        // Bonus varietà basato sul numero di alternative (massimo 25 punti)
+        if ($alternativeCount >= 15) {
+            $varietyBonus = 25;
+        } elseif ($alternativeCount >= 10) {
+            $varietyBonus = 20;
+        } elseif ($alternativeCount >= 7) {
+            $varietyBonus = 15;
+        } elseif ($alternativeCount >= 5) {
+            $varietyBonus = 12;
+        } elseif ($alternativeCount >= 3) {
+            $varietyBonus = 8;
+        } else {
+            $varietyBonus = 5;
+        }
+
+        // Bonus diversità compagnie (massimo 15 punti)
         $companies = collect($alternatives)->pluck('line')->unique();
-        $diversityBonus = min($companies->count() * 2, 10);
+        $companyCount = $companies->count();
+        if ($companyCount >= 6) {
+            $diversityBonus = 15;
+        } elseif ($companyCount >= 4) {
+            $diversityBonus = 12;
+        } elseif ($companyCount >= 3) {
+            $diversityBonus = 8;
+        } elseif ($companyCount >= 2) {
+            $diversityBonus = 5;
+        } else {
+            $diversityBonus = 2;
+        }
 
-        // Bonus qualità media (massimo 5 punti)
+        // Bonus qualità media delle alternative (massimo 10 punti)
         $avgQuality = collect($alternatives)->avg('quality_score') ?? 60;
-        $qualityBonus = max(0, ($avgQuality - 60) / 40 * 5);
+        $qualityBonus = max(0, min(($avgQuality - 60) / 40 * 10, 10));
 
-        return min($baseScore + $varietyBonus + $diversityBonus + $qualityBonus, 100);
+        // Bonus per flessibilità di budget (massimo 10 punti)
+        $budgetFlexibilityBonus = 0;
+        $budgetPerPerson = $searchParams['budget'] / $searchParams['participants'];
+
+        // Conta quante alternative offrono vantaggi significativi
+        $betterOptionsCount = 0;
+        foreach ($alternatives as $alt) {
+            $altPrice = $alt['prezzo_persona'] ?? 0;
+
+            // Considera "migliore" se:
+            // - Costa meno del 90% del budget E ha qualità alta
+            // - Offre durata superiore a prezzo simile
+            if (($altPrice <= $budgetPerPerson * 0.9 && ($alt['quality_score'] ?? 60) > 75) ||
+                ($altPrice <= $budgetPerPerson * 1.1 && ($alt['night'] ?? 7) > 10)
+            ) {
+                $betterOptionsCount++;
+            }
+        }
+
+        if ($betterOptionsCount >= 5) {
+            $budgetFlexibilityBonus = 10;
+        } elseif ($betterOptionsCount >= 3) {
+            $budgetFlexibilityBonus = 7;
+        } elseif ($betterOptionsCount >= 1) {
+            $budgetFlexibilityBonus = 4;
+        }
+
+        // Bonus per range di prezzi ampio (indica più opzioni) (massimo 5 punti)
+        $prices = collect($alternatives)->pluck('prezzo_persona')->filter();
+        $priceRangeBonus = 0;
+        if ($prices->count() >= 3) {
+            $minPrice = $prices->min();
+            $maxPrice = $prices->max();
+            $priceRange = $maxPrice - $minPrice;
+
+            // Se il range è ampio (più del 50% del budget medio), bonus pieno
+            if ($priceRange > $budgetPerPerson * 0.5) {
+                $priceRangeBonus = 5;
+            } elseif ($priceRange > $budgetPerPerson * 0.3) {
+                $priceRangeBonus = 3;
+            } elseif ($priceRange > $budgetPerPerson * 0.1) {
+                $priceRangeBonus = 2;
+            }
+        }
+
+        $finalScore = $baseScore + $varietyBonus + $diversityBonus + $qualityBonus +
+            $budgetFlexibilityBonus + $priceRangeBonus;
+
+        return min($finalScore, 100);
     }
 
     private function generateSuggestions($matches, $alternatives, $searchParams)
