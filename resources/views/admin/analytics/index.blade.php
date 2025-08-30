@@ -33,9 +33,25 @@
                                     <i class="fas fa-search"></i>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <div class="stats-number" id="total-searches">0</div>
-                                    <div class="stats-label">RICERCHE TOTALI</div>
-                                    <div class="stats-change" id="daily-change">+0%</div>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="main-stat">
+                                            <div class="stats-number" id="total-searches">0</div>
+                                            <div class="stats-label">RICERCHE TOTALI</div>
+                                        </div>
+                                        <div class="daily-comparison">
+                                            <div class="comparison-row">
+                                                <span class="comp-label">Oggi:</span>
+                                                <span class="comp-value" id="today-searches">0</span>
+                                            </div>
+                                            <div class="comparison-row">
+                                                <span class="comp-label">Ieri:</span>
+                                                <span class="comp-value" id="yesterday-searches">0</span>
+                                            </div>
+                                            <div class="comparison-row variation">
+                                                <span class="stats-change" id="daily-change">+0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -599,6 +615,121 @@
                 padding: 0.5rem 0;
             }
         }
+
+        /* CSS per layout orizzontale compatto - sostituisci il CSS daily-stats esistente */
+
+        .main-stat {
+            flex-shrink: 0;
+        }
+
+        .daily-comparison {
+            text-align: right;
+            margin-left: 1rem;
+        }
+
+        .comparison-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-width: 80px;
+            margin-bottom: 0.125rem;
+        }
+
+        .comparison-row.variation {
+            justify-content: flex-end;
+            margin-top: 0.25rem;
+            padding-top: 0.25rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .comp-label {
+            font-size: 0.7rem;
+            color: #6c757d;
+            font-weight: 500;
+            margin-right: 0.5rem;
+        }
+
+        .comp-value {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .stats-change {
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Mantieni altezza standard delle card */
+        .stats-card .card-body {
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Responsive per layout orizzontale */
+        @media (max-width: 992px) {
+            .daily-comparison {
+                margin-left: 0.5rem;
+            }
+
+            .comparison-row {
+                min-width: 70px;
+            }
+
+            .comp-label {
+                font-size: 0.65rem;
+            }
+
+            .comp-value {
+                font-size: 0.7rem;
+            }
+
+            .stats-change {
+                font-size: 0.75rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .daily-comparison {
+                margin-left: 0.4rem;
+            }
+
+            .comparison-row {
+                min-width: 60px;
+                margin-bottom: 0.1rem;
+            }
+
+            .comp-label {
+                font-size: 0.6rem;
+                margin-right: 0.3rem;
+            }
+
+            .comp-value {
+                font-size: 0.65rem;
+            }
+
+            .stats-change {
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .d-flex.justify-content-between.align-items-start {
+                gap: 0.5rem;
+            }
+
+            .daily-comparison {
+                margin-left: 0.25rem;
+            }
+
+            .comparison-row {
+                min-width: 50px;
+            }
+        }
     </style>
 
     <script>
@@ -663,6 +794,12 @@
                 animateCounter('#successful-searches', data.successful_searches || 0);
                 animateCounter('#total-searches-small', data.total_searches || 0);
 
+                // Se stai usando la struttura alternativa, aggiungi anche questi:
+                if (document.getElementById('today-searches')) {
+                    animateCounter('#today-searches', data.today_searches || 0);
+                    animateCounter('#yesterday-searches', data.yesterday_searches || 0);
+                }
+
                 // Calcola tasso di successo
                 const successRate = data.total_searches > 0 ?
                     Math.round((data.successful_searches / data.total_searches) * 100) : 0;
@@ -677,15 +814,31 @@
                 $('#avg-duration').text(Math.round(data.avg_search_duration || 0));
                 $('#avg-satisfaction').text(Math.round(data.avg_satisfaction || 0));
 
-                // Variazione giornaliera
-                const changeClass = data.daily_change_percent >= 0 ? 'text-success' : 'text-danger';
-                const changeIcon = data.daily_change_percent >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
-                $('#daily-change').html(`<i class="fas ${changeIcon}"></i> ${data.daily_change_percent}%`)
-                    .removeClass('text-success text-danger')
+                // Variazione giornaliera con testo più chiaro
+                const changePercent = data.daily_change_percent || 0;
+                const changeClass = changePercent >= 0 ? 'text-success' : 'text-danger';
+                const changeIcon = changePercent >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                const changePrefix = changePercent > 0 ? '+' : '';
+
+                $('#daily-change')
+                    .html(`<i class="fas ${changeIcon}"></i> ${changePrefix}${changePercent}%`)
+                    .removeClass('text-success text-danger text-muted')
                     .addClass(changeClass);
 
                 // Rapporto registrati vs ospiti
                 $('#registered-vs-guest').text(`${data.registered_users_searches} vs ${data.guest_searches}`);
+            }
+
+            // Funzione aggiuntiva per mostrare tooltip esplicativo
+            function addDailyChangeTooltip() {
+                const dailyChangeElement = document.getElementById('daily-change');
+                if (dailyChangeElement && typeof bootstrap !== 'undefined') {
+                    new bootstrap.Tooltip(dailyChangeElement, {
+                        title: 'Variazione percentuale delle ricerche di oggi rispetto a ieri',
+                        placement: 'top',
+                        trigger: 'hover focus'
+                    });
+                }
             }
 
             async function loadCharts() {
@@ -803,6 +956,8 @@
                 }
 
                 const labels = devices.map(d => {
+                    console.log(d.device_type);
+
                     switch (d.device_type) {
                         case 'mobile':
                             return 'Mobile';

@@ -103,26 +103,86 @@ class SearchAnalyticsController extends Controller
     public function getDeviceStats()
     {
         return $this->cacheResponse('device_stats', function () {
-            // Query ottimizzata con una sola chiamata al DB
-            $deviceData = SearchLog::selectRaw('
+            // Query per dispositivi - corretta
+            $devices = SearchLog::selectRaw('
                 device_type,
-                browser,
-                operating_system,
                 COUNT(*) as count,
-                AVG(search_duration_ms) as avg_duration,
-                AVG(satisfaction_score) as avg_satisfaction,
+                ROUND(AVG(COALESCE(search_duration_ms, 0))) as avg_duration,
+                ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
                 COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
             ')
             ->whereNotNull('device_type')
-            ->groupBy('device_type', 'browser', 'operating_system')
+            ->groupBy('device_type')
+            ->orderBy('count', 'desc')
             ->get();
 
+            $devicesFormatted = $devices->map(function ($item) {
+                return [
+                    'device_type' => $item->device_type,
+                    'count' => (int) $item->count,
+                    'avg_duration' => (int) $item->avg_duration,
+                    'avg_satisfaction' => (float) $item->avg_satisfaction,
+                    'success_rate' => $item->count > 0 ? 
+                        round(($item->successful_count / $item->count) * 100, 1) : 0
+                ];
+            });
+
+            // Query per browser
+            $browsers = SearchLog::selectRaw('
+                browser,
+                COUNT(*) as count,
+                ROUND(AVG(COALESCE(search_duration_ms, 0))) as avg_duration,
+                ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
+                COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
+            ')
+            ->whereNotNull('browser')
+            ->groupBy('browser')
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get();
+
+            $browsersFormatted = $browsers->map(function ($item) {
+                return [
+                    'browser' => $item->browser,
+                    'count' => (int) $item->count,
+                    'avg_duration' => (int) $item->avg_duration,
+                    'avg_satisfaction' => (float) $item->avg_satisfaction,
+                    'success_rate' => $item->count > 0 ? 
+                        round(($item->successful_count / $item->count) * 100, 1) : 0
+                ];
+            });
+
+            // Query per sistemi operativi
+            $operatingSystems = SearchLog::selectRaw('
+                operating_system,
+                COUNT(*) as count,
+                ROUND(AVG(COALESCE(search_duration_ms, 0))) as avg_duration,
+                ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
+                COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
+            ')
+            ->whereNotNull('operating_system')
+            ->groupBy('operating_system')
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get();
+
+            $osFormatted = $operatingSystems->map(function ($item) {
+                return [
+                    'operating_system' => $item->operating_system,
+                    'count' => (int) $item->count,
+                    'avg_duration' => (int) $item->avg_duration,
+                    'avg_satisfaction' => (float) $item->avg_satisfaction,
+                    'success_rate' => $item->count > 0 ? 
+                        round(($item->successful_count / $item->count) * 100, 1) : 0
+                ];
+            });
+
             return [
-                'devices' => $this->aggregateByField($deviceData, 'device_type'),
-                'browsers' => $this->aggregateByField($deviceData, 'browser', 10),
-                'operating_systems' => $this->aggregateByField($deviceData, 'operating_system', 10)
+                'devices' => $devicesFormatted->toArray(),
+                'browsers' => $browsersFormatted->toArray(),
+                'operating_systems' => $osFormatted->toArray()
             ];
-        }, 900); // Cache per 15 minuti
+        }, 900);
     }
 
     /**
@@ -169,12 +229,12 @@ class SearchAnalyticsController extends Controller
     }
 
     /**
-     * Performance metrics avanzate
+     * Performance metrics avanzate - CORRETTO
      */
     public function getPerformanceMetrics()
     {
         return $this->cacheResponse('performance_metrics', function () {
-            // Usa query SQL ottimizzata per calcolare percentili
+            // Query base per metriche generali
             $metrics = DB::selectOne('
                 SELECT 
                     AVG(search_duration_ms) as avg_duration,
@@ -182,15 +242,26 @@ class SearchAnalyticsController extends Controller
                     MAX(search_duration_ms) as max_duration,
                     COUNT(CASE WHEN search_duration_ms > 3000 THEN 1 END) as slow_searches,
                     COUNT(CASE WHEN search_successful = 0 THEN 1 END) as failed_searches,
-                    COUNT(*) as total_searches,
-                    (SELECT search_duration_ms FROM search_logs 
-                     WHERE search_duration_ms IS NOT NULL 
-                     ORDER BY search_duration_ms 
-                     LIMIT 1 OFFSET (SELECT COUNT(*) * 0.95 FROM search_logs WHERE search_duration_ms IS NOT NULL)
-                    ) as p95_duration
+                    COUNT(*) as total_searches
                 FROM search_logs 
                 WHERE search_duration_ms IS NOT NULL
             ');
+
+            // Calcolo del 95° percentile compatibile con MySQL
+            $totalCount = DB::table('search_logs')->whereNotNull('search_duration_ms')->count();
+            $skipCount = (int) floor($totalCount * 0.95);
+            
+            $p95Duration = DB::table('search_logs')
+                ->whereNotNull('search_duration_ms')
+                ->orderBy('search_duration_ms')
+                ->skip($skipCount)
+                ->take(1)
+                ->value('search_duration_ms') ?? 0;
+
+            // Aggiunge il 95° percentile ai risultati
+            if ($metrics) {
+                $metrics->p95_duration = $p95Duration;
+            }
 
             $devicePerformance = SearchLog::selectRaw('
                 device_type,
@@ -207,7 +278,7 @@ class SearchAnalyticsController extends Controller
             $commonErrors = SearchLog::selectRaw('
                 error_message,
                 COUNT(*) as occurrences,
-                DATE(search_date) as last_occurrence
+                MAX(DATE(search_date)) as last_occurrence
             ')
             ->whereNotNull('error_message')
             ->where('search_successful', false)
@@ -416,8 +487,9 @@ class SearchAnalyticsController extends Controller
      */
     private function aggregateByField($collection, $field, $limit = null)
     {
-        $aggregated = $collection->groupBy($field)->map(function ($group) {
+        $aggregated = $collection->groupBy($field)->map(function ($group, $key) use ($field) {
             return [
+                $field => $key, // Mantiene il campo originale
                 'count' => $group->sum('count'),
                 'avg_duration' => round($group->avg('avg_duration') ?? 0),
                 'avg_satisfaction' => round($group->avg('avg_satisfaction') ?? 0, 1),
@@ -796,6 +868,276 @@ class SearchAnalyticsController extends Controller
                 'type' => 'error',
                 'message' => 'Tasso di errore elevato: ' . round($errorRate, 1) . '%'
             ];
+        }
+
+        return $alerts;
+    }
+
+    /**
+     * Calcola tasso di successo
+     */
+    private function calculateSuccessRate()
+    {
+        $total = SearchLog::count();
+        if ($total == 0) return 100;
+        
+        $successful = SearchLog::where('search_successful', true)->count();
+        return round(($successful / $total) * 100, 1);
+    }
+
+    /**
+     * Calcola percentuale dispositivo specifico
+     */
+    private function calculateDevicePercentage($deviceType)
+    {
+        $total = SearchLog::whereNotNull('device_type')->count();
+        if ($total == 0) return 0;
+        
+        $deviceCount = SearchLog::where('device_type', $deviceType)->count();
+        return round(($deviceCount / $total) * 100, 1);
+    }
+
+    /**
+     * Calcola tasso di crescita per periodo
+     */
+    private function calculateGrowthRate($period)
+    {
+        $now = Carbon::now();
+        
+        switch ($period) {
+            case 'day':
+                $current = SearchLog::whereDate('search_date', $now->toDateString())->count();
+                $previous = SearchLog::whereDate('search_date', $now->subDay()->toDateString())->count();
+                break;
+            case 'week':
+                $current = SearchLog::whereBetween('search_date', [
+                    $now->startOfWeek(), $now->endOfWeek()
+                ])->count();
+                $previous = SearchLog::whereBetween('search_date', [
+                    $now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek()
+                ])->count();
+                break;
+            case 'month':
+                $current = SearchLog::whereBetween('search_date', [
+                    $now->startOfMonth(), $now->endOfMonth()
+                ])->count();
+                $previous = SearchLog::whereBetween('search_date', [
+                    $now->subMonth()->startOfMonth(), $now->subMonth()->endOfMonth()
+                ])->count();
+                break;
+            default:
+                return 0;
+        }
+
+        return $this->calculatePercentageChange($current, $previous);
+    }
+
+    /**
+     * Ottiene percentuale query lente
+     */
+    private function getSlowQueriesPercentage()
+    {
+        $total = SearchLog::whereNotNull('search_duration_ms')->count();
+        if ($total == 0) return 0;
+        
+        $slow = SearchLog::where('search_duration_ms', '>', 3000)->count();
+        return round(($slow / $total) * 100, 1);
+    }
+
+    /**
+     * Ottiene ora di picco
+     */
+    private function getPeakHour()
+    {
+        $result = SearchLog::selectRaw('HOUR(search_date) as hour, COUNT(*) as count')
+            ->groupBy('hour')
+            ->orderBy('count', 'desc')
+            ->first();
+            
+        return $result ? $result->hour . ':00' : 'N/D';
+    }
+
+    /**
+     * Ottiene paese principale
+     */
+    private function getTopCountry()
+    {
+        $result = SearchLog::selectRaw('country, COUNT(*) as count')
+            ->whereNotNull('country')
+            ->where('country', '!=', 'Local')
+            ->groupBy('country')
+            ->orderBy('count', 'desc')
+            ->first();
+            
+        return $result ? $result->country : 'N/D';
+    }
+
+    /**
+     * METODO TEMPORANEO - Pulisce cache per test
+     */
+    public function clearAnalyticsCache()
+    {
+        $this->clearCache();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Cache analytics pulita'
+        ]);
+    }
+
+    /**
+     * METODO TEMPORANEO - Debug device data
+     * Rimuovi dopo aver testato
+     */
+    public function debugDeviceData()
+    {
+        $rawData = SearchLog::selectRaw('
+            device_type,
+            COUNT(*) as count
+        ')
+        ->whereNotNull('device_type')
+        ->groupBy('device_type')
+        ->get();
+
+        $allDeviceTypes = SearchLog::select('device_type')
+            ->whereNotNull('device_type')
+            ->get()
+            ->pluck('device_type')
+            ->toArray();
+
+        return response()->json([
+            'raw_grouped_data' => $rawData,
+            'all_device_types' => array_count_values($allDeviceTypes),
+            'total_records' => SearchLog::count(),
+            'records_with_device_type' => SearchLog::whereNotNull('device_type')->count(),
+            'sample_records' => SearchLog::select('id', 'device_type', 'browser', 'operating_system')
+                ->whereNotNull('device_type')
+                ->limit(10)
+                ->get()
+        ]);
+    }
+
+    /**
+     * METODO TEMPORANEO - Crea dati di test per analytics
+     * Rimuovi dopo aver testato
+     */
+    public function createTestData()
+    {
+        try {
+            // Crea alcuni log di test solo se la tabella è vuota
+            if (SearchLog::count() === 0) {
+                $testLogs = [
+                    [
+                        'user_id' => Auth::id(),
+                        'search_date' => now()->subHours(2),
+                        'date_range' => '15/09/2025 - 22/09/2025',
+                        'budget' => 2000,
+                        'participants' => 2,
+                        'port_start' => 'Civitavecchia',
+                        'total_matches' => 5,
+                        'total_alternatives' => 8,
+                        'satisfaction_score' => 85.5,
+                        'search_duration_ms' => 1250,
+                        'search_successful' => true,
+                        'device_type' => 'desktop',
+                        'operating_system' => 'Windows 10',
+                        'browser' => 'Chrome',
+                        'browser_version' => '120.0',
+                        'country' => 'Italy',
+                        'city' => 'Roma',
+                        'isp' => 'TIM',
+                        'is_guest' => false
+                    ],
+                    [
+                        'user_id' => null,
+                        'search_date' => now()->subHour(),
+                        'date_range' => '01/10/2025 - 07/10/2025',
+                        'budget' => 1500,
+                        'participants' => 4,
+                        'port_start' => 'Barcellona',
+                        'total_matches' => 3,
+                        'total_alternatives' => 12,
+                        'satisfaction_score' => 72.0,
+                        'search_duration_ms' => 890,
+                        'search_successful' => true,
+                        'device_type' => 'mobile',
+                        'operating_system' => 'iOS',
+                        'browser' => 'Safari',
+                        'browser_version' => '17.0',
+                        'country' => 'Spain',
+                        'city' => 'Barcelona',
+                        'isp' => 'Vodafone',
+                        'is_guest' => true
+                    ],
+                    [
+                        'user_id' => null,
+                        'search_date' => now()->subMinutes(30),
+                        'date_range' => '20/11/2025 - 27/11/2025',
+                        'budget' => 3500,
+                        'participants' => 2,
+                        'port_start' => 'Venezia',
+                        'total_matches' => 0,
+                        'total_alternatives' => 2,
+                        'satisfaction_score' => 45.0,
+                        'search_duration_ms' => 3200,
+                        'search_successful' => false,
+                        'error_message' => 'Nessuna crociera disponibile per i parametri richiesti',
+                        'device_type' => 'tablet',
+                        'operating_system' => 'Android',
+                        'browser' => 'Chrome',
+                        'browser_version' => '119.0',
+                        'country' => 'Italy',
+                        'city' => 'Milano',
+                        'isp' => 'Fastweb',
+                        'is_guest' => true
+                    ]
+                ];
+
+                foreach ($testLogs as $logData) {
+                    SearchLog::create($logData);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Creati ' . count($testLogs) . ' log di test',
+                    'count' => count($testLogs)
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La tabella contiene già dati (' . SearchLog::count() . ' record)'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Errore creazione dati test: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Pulisce cache analytics
+     */
+    private function clearCache()
+    {
+        $keys = [
+            'general_stats',
+            'device_stats', 
+            'geographic_stats',
+            'search_parameters',
+            'performance_metrics',
+            'executive_summary'
+        ];
+
+        foreach ($keys as $key) {
+            Cache::forget("analytics_{$key}");
+        }
+
+        // Pulisce anche cache dei trend per vari periodi
+        for ($days = 7; $days <= 365; $days += 7) {
+            Cache::forget("analytics_search_trends_{$days}");
         }
     }
 }

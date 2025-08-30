@@ -185,5 +185,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('admin.analytics.export');
 
 
-  
+
+    // PULIZIA CACHE ANALYTICS
+    Route::get('/admin/analytics/clear-cache', [SearchAnalyticsController::class, 'clearAnalyticsCache'])
+        ->name('analytics.clear-cache');
 });
