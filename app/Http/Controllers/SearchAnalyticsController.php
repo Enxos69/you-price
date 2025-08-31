@@ -49,17 +49,17 @@ class SearchAnalyticsController extends Controller
                 'successful_searches' => SearchLog::where('search_successful', true)->count(),
                 'registered_users_searches' => SearchLog::whereNotNull('user_id')->count(),
                 'guest_searches' => SearchLog::whereNull('user_id')->count(),
-                
+
                 // Metriche qualitative
                 'avg_satisfaction' => round(SearchLog::avg('satisfaction_score') ?? 0, 1),
                 'avg_search_duration' => round(SearchLog::avg('search_duration_ms') ?? 0),
                 'total_matches_found' => SearchLog::sum('total_matches') ?? 0,
                 'avg_budget' => round(SearchLog::avg('budget') ?? 0, 2),
-                
+
                 // Statistiche giornaliere
                 'today_searches' => SearchLog::whereDate('search_date', $today)->count(),
                 'yesterday_searches' => SearchLog::whereDate('search_date', $yesterday)->count(),
-                
+
                 // Partecipanti più comuni
                 'most_popular_participants' => $this->getMostPopularParticipants(),
             ];
@@ -80,7 +80,7 @@ class SearchAnalyticsController extends Controller
     public function getSearchTrends(Request $request)
     {
         $days = min(max($request->get('days', 30), 1), 365); // Limita tra 1 e 365 giorni
-        
+
         return $this->cacheResponse("search_trends_{$days}", function () use ($days) {
             return SearchLog::selectRaw('
                 DATE(search_date) as date,
@@ -90,10 +90,10 @@ class SearchAnalyticsController extends Controller
                 ROUND(AVG(search_duration_ms)) as avg_duration,
                 COUNT(DISTINCT user_id) as unique_users
             ')
-            ->where('search_date', '>=', Carbon::now()->subDays($days))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+                ->where('search_date', '>=', Carbon::now()->subDays($days))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
         }, 600); // Cache per 10 minuti
     }
 
@@ -111,10 +111,10 @@ class SearchAnalyticsController extends Controller
                 ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
                 COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
             ')
-            ->whereNotNull('device_type')
-            ->groupBy('device_type')
-            ->orderBy('count', 'desc')
-            ->get();
+                ->whereNotNull('device_type')
+                ->groupBy('device_type')
+                ->orderBy('count', 'desc')
+                ->get();
 
             $devicesFormatted = $devices->map(function ($item) {
                 return [
@@ -122,7 +122,7 @@ class SearchAnalyticsController extends Controller
                     'count' => (int) $item->count,
                     'avg_duration' => (int) $item->avg_duration,
                     'avg_satisfaction' => (float) $item->avg_satisfaction,
-                    'success_rate' => $item->count > 0 ? 
+                    'success_rate' => $item->count > 0 ?
                         round(($item->successful_count / $item->count) * 100, 1) : 0
                 ];
             });
@@ -135,11 +135,11 @@ class SearchAnalyticsController extends Controller
                 ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
                 COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
             ')
-            ->whereNotNull('browser')
-            ->groupBy('browser')
-            ->orderBy('count', 'desc')
-            ->limit(10)
-            ->get();
+                ->whereNotNull('browser')
+                ->groupBy('browser')
+                ->orderBy('count', 'desc')
+                ->limit(10)
+                ->get();
 
             $browsersFormatted = $browsers->map(function ($item) {
                 return [
@@ -147,7 +147,7 @@ class SearchAnalyticsController extends Controller
                     'count' => (int) $item->count,
                     'avg_duration' => (int) $item->avg_duration,
                     'avg_satisfaction' => (float) $item->avg_satisfaction,
-                    'success_rate' => $item->count > 0 ? 
+                    'success_rate' => $item->count > 0 ?
                         round(($item->successful_count / $item->count) * 100, 1) : 0
                 ];
             });
@@ -160,11 +160,11 @@ class SearchAnalyticsController extends Controller
                 ROUND(AVG(COALESCE(satisfaction_score, 0)), 1) as avg_satisfaction,
                 COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_count
             ')
-            ->whereNotNull('operating_system')
-            ->groupBy('operating_system')
-            ->orderBy('count', 'desc')
-            ->limit(10)
-            ->get();
+                ->whereNotNull('operating_system')
+                ->groupBy('operating_system')
+                ->orderBy('count', 'desc')
+                ->limit(10)
+                ->get();
 
             $osFormatted = $operatingSystems->map(function ($item) {
                 return [
@@ -172,7 +172,7 @@ class SearchAnalyticsController extends Controller
                     'count' => (int) $item->count,
                     'avg_duration' => (int) $item->avg_duration,
                     'avg_satisfaction' => (float) $item->avg_satisfaction,
-                    'success_rate' => $item->count > 0 ? 
+                    'success_rate' => $item->count > 0 ?
                         round(($item->successful_count / $item->count) * 100, 1) : 0
                 ];
             });
@@ -186,31 +186,93 @@ class SearchAnalyticsController extends Controller
     }
 
     /**
-     * Statistiche geografiche ottimizzate
+     * Statistiche geografiche ottimizzate - CORRETTO
      */
     public function getGeographicStats()
     {
         return $this->cacheResponse('geographic_stats', function () {
-            $geoData = SearchLog::selectRaw('
-                country,
-                city,
-                isp,
-                COUNT(*) as searches,
-                AVG(search_duration_ms) as avg_duration,
-                COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_searches
-            ')
-            ->whereNotNull('country')
-            ->where('country', '!=', 'Local')
-            ->groupBy('country', 'city', 'isp')
-            ->get();
+            // Ottieni dati geografici grezzi con aggregazione corretta
+            $countriesData = SearchLog::selectRaw('
+            country,
+            COUNT(*) as searches,
+            AVG(COALESCE(search_duration_ms, 0)) as avg_duration,
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction,
+            COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_searches
+        ')
+                ->whereNotNull('country')
+                ->where('country', '!=', '')
+                ->where('country', '!=', 'Local')
+                ->groupBy('country')
+                ->orderBy('searches', 'desc')
+                ->limit(15)
+                ->get();
+
+            $citiesData = SearchLog::selectRaw('
+            city,
+            country,
+            COUNT(*) as searches,
+            AVG(COALESCE(search_duration_ms, 0)) as avg_duration,
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction,
+            COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_searches
+        ')
+                ->whereNotNull('city')
+                ->whereNotNull('country')
+                ->where('city', '!=', '')
+                ->where('country', '!=', 'Local')
+                ->groupBy('city', 'country')
+                ->orderBy('searches', 'desc')
+                ->limit(10)
+                ->get();
+
+            $ispsData = SearchLog::selectRaw('
+            isp,
+            COUNT(*) as searches,
+            AVG(COALESCE(search_duration_ms, 0)) as avg_duration,
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction
+        ')
+                ->whereNotNull('isp')
+                ->where('isp', '!=', '')
+                ->groupBy('isp')
+                ->orderBy('searches', 'desc')
+                ->limit(10)
+                ->get();
 
             return [
-                'countries' => $this->aggregateByField($geoData, 'country', 15),
-                'cities' => $this->aggregateTopCities($geoData, 10),
-                'isps' => $this->aggregateByField($geoData, 'isp', 10)
+                'countries' => $countriesData->map(function ($item) {
+                    return [
+                        'country' => $item->country,
+                        'searches' => (int) $item->searches, // IMPORTANTE: 'searches', non 'count'
+                        'avg_duration' => round($item->avg_duration ?? 0),
+                        'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1),
+                        'success_rate' => $item->searches > 0 ?
+                            round(($item->successful_searches / $item->searches) * 100, 1) : 0
+                    ];
+                })->toArray(),
+
+                'cities' => $citiesData->map(function ($item) {
+                    return [
+                        'city' => $item->city,
+                        'country' => $item->country,
+                        'searches' => (int) $item->searches,
+                        'avg_duration' => round($item->avg_duration ?? 0),
+                        'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1),
+                        'success_rate' => $item->searches > 0 ?
+                            round(($item->successful_searches / $item->searches) * 100, 1) : 0
+                    ];
+                })->toArray(),
+
+                'isps' => $ispsData->map(function ($item) {
+                    return [
+                        'isp' => $item->isp,
+                        'searches' => (int) $item->searches,
+                        'avg_duration' => round($item->avg_duration ?? 0),
+                        'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
+                    ];
+                })->toArray()
             ];
         }, 1800); // Cache per 30 minuti
     }
+
 
     /**
      * Statistiche parametri di ricerca
@@ -250,7 +312,7 @@ class SearchAnalyticsController extends Controller
             // Calcolo del 95° percentile compatibile con MySQL
             $totalCount = DB::table('search_logs')->whereNotNull('search_duration_ms')->count();
             $skipCount = (int) floor($totalCount * 0.95);
-            
+
             $p95Duration = DB::table('search_logs')
                 ->whereNotNull('search_duration_ms')
                 ->orderBy('search_duration_ms')
@@ -270,22 +332,22 @@ class SearchAnalyticsController extends Controller
                 AVG(satisfaction_score) as avg_satisfaction,
                 COUNT(CASE WHEN search_successful = 1 THEN 1 END) as successful_searches
             ')
-            ->whereNotNull('device_type')
-            ->whereNotNull('search_duration_ms')
-            ->groupBy('device_type')
-            ->get();
+                ->whereNotNull('device_type')
+                ->whereNotNull('search_duration_ms')
+                ->groupBy('device_type')
+                ->get();
 
             $commonErrors = SearchLog::selectRaw('
                 error_message,
                 COUNT(*) as occurrences,
                 MAX(DATE(search_date)) as last_occurrence
             ')
-            ->whereNotNull('error_message')
-            ->where('search_successful', false)
-            ->groupBy('error_message')
-            ->orderBy('occurrences', 'desc')
-            ->limit(5)
-            ->get();
+                ->whereNotNull('error_message')
+                ->where('search_successful', false)
+                ->groupBy('error_message')
+                ->orderBy('occurrences', 'desc')
+                ->limit(5)
+                ->get();
 
             return [
                 'overall_metrics' => $metrics,
@@ -303,11 +365,28 @@ class SearchAnalyticsController extends Controller
     {
         $query = SearchLog::with(['user:id,name,surname,email'])
             ->select([
-                'id', 'user_id', 'search_date', 'date_range', 'budget', 'participants',
-                'port_start', 'total_matches', 'total_alternatives', 'satisfaction_score',
-                'device_type', 'operating_system', 'browser', 'browser_version',
-                'country', 'city', 'isp', 'ip_address', 'search_duration_ms',
-                'search_successful', 'error_message', 'is_guest'
+                'id',
+                'user_id',
+                'search_date',
+                'date_range',
+                'budget',
+                'participants',
+                'port_start',
+                'total_matches',
+                'total_alternatives',
+                'satisfaction_score',
+                'device_type',
+                'operating_system',
+                'browser',
+                'browser_version',
+                'country',
+                'city',
+                'isp',
+                'ip_address',
+                'search_duration_ms',
+                'search_successful',
+                'error_message',
+                'is_guest'
             ])
             ->orderBy('search_date', 'desc');
 
@@ -316,7 +395,7 @@ class SearchAnalyticsController extends Controller
 
         try {
             $logs = $query->paginate($request->get('per_page', 25));
-            
+
             // Trasforma i dati per ottimizzare la response
             $logs->getCollection()->transform(function ($log) {
                 return $this->transformLogForResponse($log);
@@ -352,7 +431,6 @@ class SearchAnalyticsController extends Controller
             return response()->stream(function () use ($query) {
                 $this->generateCsvStream($query);
             }, 200, $headers);
-
         } catch (\Exception $e) {
             Log::error('Errore export CSV: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Errore durante l\'export: ' . $e->getMessage());
@@ -373,16 +451,16 @@ class SearchAnalyticsController extends Controller
             $summary = [
                 // KPI principali
                 'kpis' => $this->getMainKPIs($today, $lastWeek, $lastMonth),
-                
+
                 // Trend crescita
                 'growth_trends' => $this->getGrowthTrends($today, $lastWeek, $lastMonth),
-                
+
                 // Performance indicators
                 'performance_indicators' => $this->getPerformanceIndicators(),
-                
+
                 // Top insights
                 'top_insights' => $this->getTopInsights(),
-                
+
                 // Alerting
                 'alerts' => $this->getSystemAlerts()
             ];
@@ -403,10 +481,10 @@ class SearchAnalyticsController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             $cutoffDate = Carbon::now()->subDays($request->days);
             $toDeleteCount = SearchLog::where('search_date', '<', $cutoffDate)->count();
-            
+
             // Controllo di sicurezza: non eliminare più del 70% dei dati
             $totalRecords = SearchLog::count();
             if ($toDeleteCount > ($totalRecords * 0.7)) {
@@ -414,12 +492,12 @@ class SearchAnalyticsController extends Controller
             }
 
             $deletedCount = SearchLog::where('search_date', '<', $cutoffDate)->delete();
-            
+
             DB::commit();
-            
+
             // Invalida cache
             $this->clearCache();
-            
+
             Log::info("Pulizia log completata: eliminati {$deletedCount} record più vecchi di {$request->days} giorni", [
                 'admin_user' => Auth::id(),
                 'deleted_count' => $deletedCount,
@@ -432,11 +510,10 @@ class SearchAnalyticsController extends Controller
                 'deleted_count' => $deletedCount,
                 'remaining_count' => $totalRecords - $deletedCount
             ]);
-
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Errore pulizia logs: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
@@ -483,25 +560,6 @@ class SearchAnalyticsController extends Controller
     }
 
     /**
-     * Aggrega dati per campo specifico
-     */
-    private function aggregateByField($collection, $field, $limit = null)
-    {
-        $aggregated = $collection->groupBy($field)->map(function ($group, $key) use ($field) {
-            return [
-                $field => $key, // Mantiene il campo originale
-                'count' => $group->sum('count'),
-                'avg_duration' => round($group->avg('avg_duration') ?? 0),
-                'avg_satisfaction' => round($group->avg('avg_satisfaction') ?? 0, 1),
-                'success_rate' => $group->sum('count') > 0 ? 
-                    round(($group->sum('successful_count') / $group->sum('count')) * 100, 1) : 0
-            ];
-        })->sortByDesc('count');
-
-        return $limit ? $aggregated->take($limit)->values() : $aggregated->values();
-    }
-
-    /**
      * Aggrega top città con paese
      */
     private function aggregateTopCities($geoData, $limit)
@@ -513,7 +571,7 @@ class SearchAnalyticsController extends Controller
                 'country' => $country,
                 'searches' => $group->sum('searches'),
                 'avg_duration' => round($group->avg('avg_duration') ?? 0),
-                'success_rate' => $group->sum('searches') > 0 ? 
+                'success_rate' => $group->sum('searches') > 0 ?
                     round(($group->sum('successful_searches') / $group->sum('searches')) * 100, 1) : 0
             ];
         })->sortByDesc('searches')->take($limit)->values();
@@ -535,16 +593,16 @@ class SearchAnalyticsController extends Controller
             COUNT(*) as count,
             AVG(satisfaction_score) as avg_satisfaction
         ')
-        ->whereNotNull('budget')
-        ->groupBy('budget_range')
-        ->orderByRaw('MIN(budget)')
-        ->get()
-        ->mapWithKeys(function ($item) {
-            return [$item->budget_range => [
-                'count' => $item->count,
-                'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
-            ]];
-        });
+            ->whereNotNull('budget')
+            ->groupBy('budget_range')
+            ->orderByRaw('MIN(budget)')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                return [$item->budget_range => [
+                    'count' => $item->count,
+                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
+                ]];
+            });
     }
 
     /**
@@ -558,10 +616,10 @@ class SearchAnalyticsController extends Controller
             AVG(budget) as avg_budget,
             AVG(satisfaction_score) as avg_satisfaction
         ')
-        ->whereNotNull('participants')
-        ->groupBy('participants')
-        ->orderBy('participants')
-        ->get();
+            ->whereNotNull('participants')
+            ->groupBy('participants')
+            ->orderBy('participants')
+            ->get();
     }
 
     /**
@@ -575,12 +633,12 @@ class SearchAnalyticsController extends Controller
             AVG(satisfaction_score) as avg_satisfaction,
             COUNT(CASE WHEN total_matches > 0 THEN 1 END) as searches_with_results
         ')
-        ->whereNotNull('port_start')
-        ->where('port_start', '!=', '')
-        ->groupBy('port_start')
-        ->orderBy('searches', 'desc')
-        ->limit(10)
-        ->get();
+            ->whereNotNull('port_start')
+            ->where('port_start', '!=', '')
+            ->groupBy('port_start')
+            ->orderBy('searches', 'desc')
+            ->limit(10)
+            ->get();
     }
 
     /**
@@ -607,10 +665,10 @@ class SearchAnalyticsController extends Controller
             COUNT(*) as searches,
             AVG(budget) as avg_budget
         ')
-        ->whereNotNull('date_range')
-        ->groupBy('month')
-        ->orderBy('searches', 'desc')
-        ->get();
+            ->whereNotNull('date_range')
+            ->groupBy('month')
+            ->orderBy('searches', 'desc')
+            ->get();
     }
 
     /**
@@ -624,11 +682,11 @@ class SearchAnalyticsController extends Controller
             COUNT(*) as searches,
             AVG(satisfaction_score) as avg_satisfaction
         ')
-        ->groupBy('quarter', 'year')
-        ->orderBy('year', 'desc')
-        ->orderBy('quarter', 'desc')
-        ->limit(8) // Ultimi 2 anni
-        ->get();
+            ->groupBy('quarter', 'year')
+            ->orderBy('year', 'desc')
+            ->orderBy('quarter', 'desc')
+            ->limit(8) // Ultimi 2 anni
+            ->get();
     }
 
     /**
@@ -639,16 +697,16 @@ class SearchAnalyticsController extends Controller
         if (!$metrics) return 0;
 
         $score = 100;
-        
+
         // Penalizza per durata alta
         if ($metrics->avg_duration > 2000) $score -= 20;
         elseif ($metrics->avg_duration > 1500) $score -= 10;
-        
+
         // Penalizza per ricerche lente
         $slowPercentage = ($metrics->slow_searches / $metrics->total_searches) * 100;
         if ($slowPercentage > 10) $score -= 30;
         elseif ($slowPercentage > 5) $score -= 15;
-        
+
         // Penalizza per fallimenti
         $failureRate = ($metrics->failed_searches / $metrics->total_searches) * 100;
         if ($failureRate > 5) $score -= 25;
@@ -745,18 +803,34 @@ class SearchAnalyticsController extends Controller
 
         // Header CSV
         fputcsv($file, [
-            'ID', 'Data Ricerca', 'Utente', 'Tipo Utente', 'Periodo Ricerca',
-            'Budget', 'Partecipanti', 'Porto Partenza', 'Risultati Trovati',
-            'Alternative', 'Soddisfazione %', 'Dispositivo', 'Sistema Operativo',
-            'Browser', 'Paese', 'Città', 'ISP', 'IP', 'Durata (ms)',
-            'Successo', 'Messaggio Errore'
+            'ID',
+            'Data Ricerca',
+            'Utente',
+            'Tipo Utente',
+            'Periodo Ricerca',
+            'Budget',
+            'Partecipanti',
+            'Porto Partenza',
+            'Risultati Trovati',
+            'Alternative',
+            'Soddisfazione %',
+            'Dispositivo',
+            'Sistema Operativo',
+            'Browser',
+            'Paese',
+            'Città',
+            'ISP',
+            'IP',
+            'Durata (ms)',
+            'Successo',
+            'Messaggio Errore'
         ], ';');
 
         // Dati in chunks per ottimizzare memoria
         $query->chunk(500, function ($logs) use ($file) {
             foreach ($logs as $log) {
-                $userName = $log->user ? 
-                    trim($log->user->name . ' ' . $log->user->surname) . ' (' . $log->user->email . ')' : 
+                $userName = $log->user ?
+                    trim($log->user->name . ' ' . $log->user->surname) . ' (' . $log->user->email . ')' :
                     'Ospite';
 
                 fputcsv($file, [
@@ -823,7 +897,7 @@ class SearchAnalyticsController extends Controller
     {
         $avgDuration = SearchLog::avg('search_duration_ms') ?? 0;
         $successRate = $this->calculateSuccessRate();
-        
+
         return [
             'response_time_status' => $avgDuration < 1500 ? 'excellent' : ($avgDuration < 3000 ? 'good' : 'poor'),
             'success_rate_status' => $successRate > 95 ? 'excellent' : ($successRate > 90 ? 'good' : 'poor'),
@@ -851,7 +925,7 @@ class SearchAnalyticsController extends Controller
     private function getSystemAlerts()
     {
         $alerts = [];
-        
+
         // Alert per performance
         $avgDuration = SearchLog::avg('search_duration_ms') ?? 0;
         if ($avgDuration > 3000) {
@@ -860,7 +934,7 @@ class SearchAnalyticsController extends Controller
                 'message' => 'Tempo di risposta medio elevato: ' . round($avgDuration) . 'ms'
             ];
         }
-        
+
         // Alert per tasso di errore
         $errorRate = 100 - $this->calculateSuccessRate();
         if ($errorRate > 5) {
@@ -880,7 +954,7 @@ class SearchAnalyticsController extends Controller
     {
         $total = SearchLog::count();
         if ($total == 0) return 100;
-        
+
         $successful = SearchLog::where('search_successful', true)->count();
         return round(($successful / $total) * 100, 1);
     }
@@ -892,7 +966,7 @@ class SearchAnalyticsController extends Controller
     {
         $total = SearchLog::whereNotNull('device_type')->count();
         if ($total == 0) return 0;
-        
+
         $deviceCount = SearchLog::where('device_type', $deviceType)->count();
         return round(($deviceCount / $total) * 100, 1);
     }
@@ -903,7 +977,7 @@ class SearchAnalyticsController extends Controller
     private function calculateGrowthRate($period)
     {
         $now = Carbon::now();
-        
+
         switch ($period) {
             case 'day':
                 $current = SearchLog::whereDate('search_date', $now->toDateString())->count();
@@ -911,18 +985,22 @@ class SearchAnalyticsController extends Controller
                 break;
             case 'week':
                 $current = SearchLog::whereBetween('search_date', [
-                    $now->startOfWeek(), $now->endOfWeek()
+                    $now->startOfWeek(),
+                    $now->endOfWeek()
                 ])->count();
                 $previous = SearchLog::whereBetween('search_date', [
-                    $now->subWeek()->startOfWeek(), $now->subWeek()->endOfWeek()
+                    $now->subWeek()->startOfWeek(),
+                    $now->subWeek()->endOfWeek()
                 ])->count();
                 break;
             case 'month':
                 $current = SearchLog::whereBetween('search_date', [
-                    $now->startOfMonth(), $now->endOfMonth()
+                    $now->startOfMonth(),
+                    $now->endOfMonth()
                 ])->count();
                 $previous = SearchLog::whereBetween('search_date', [
-                    $now->subMonth()->startOfMonth(), $now->subMonth()->endOfMonth()
+                    $now->subMonth()->startOfMonth(),
+                    $now->subMonth()->endOfMonth()
                 ])->count();
                 break;
             default:
@@ -939,7 +1017,7 @@ class SearchAnalyticsController extends Controller
     {
         $total = SearchLog::whereNotNull('search_duration_ms')->count();
         if ($total == 0) return 0;
-        
+
         $slow = SearchLog::where('search_duration_ms', '>', 3000)->count();
         return round(($slow / $total) * 100, 1);
     }
@@ -953,7 +1031,7 @@ class SearchAnalyticsController extends Controller
             ->groupBy('hour')
             ->orderBy('count', 'desc')
             ->first();
-            
+
         return $result ? $result->hour . ':00' : 'N/D';
     }
 
@@ -968,7 +1046,7 @@ class SearchAnalyticsController extends Controller
             ->groupBy('country')
             ->orderBy('count', 'desc')
             ->first();
-            
+
         return $result ? $result->country : 'N/D';
     }
 
@@ -978,7 +1056,7 @@ class SearchAnalyticsController extends Controller
     public function clearAnalyticsCache()
     {
         $this->clearCache();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Cache analytics pulita'
@@ -995,9 +1073,9 @@ class SearchAnalyticsController extends Controller
             device_type,
             COUNT(*) as count
         ')
-        ->whereNotNull('device_type')
-        ->groupBy('device_type')
-        ->get();
+            ->whereNotNull('device_type')
+            ->groupBy('device_type')
+            ->get();
 
         $allDeviceTypes = SearchLog::select('device_type')
             ->whereNotNull('device_type')
@@ -1124,7 +1202,7 @@ class SearchAnalyticsController extends Controller
     {
         $keys = [
             'general_stats',
-            'device_stats', 
+            'device_stats',
             'geographic_stats',
             'search_parameters',
             'performance_metrics',
