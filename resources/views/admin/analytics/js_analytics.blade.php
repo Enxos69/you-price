@@ -298,41 +298,6 @@
                 });
             }
 
-            /* async function loadSearchParameters() {
-                try {
-                    const response = await fetch('/api/analytics/search-parameters');
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        updatePortsList(data.popular_ports);
-                        updateBudgetChart(data.budget_ranges);
-                        updateParticipantsChart(data.participants);
-                    }
-                } catch (error) {
-                    console.error('Errore caricamento parametri ricerca:', error);
-                }
-            } */
-
-            /*  function updatePortsList(ports) {
-                     const container = $('#ports-list');
-                     container.empty();
-
-                     if (ports.length === 0) {
-                         container.html('<div class="text-center py-3 text-muted">Nessun dato disponibile</div>');
-                         return;
-                     }
-
-                     ports.forEach(port => {
-                         container.append(`
-         <div class="list-group-item">
-             <div class="country-item">
-                 <span class="country-name">🏖️ ${port.port_start}</span>
-                 <span class="country-count">${port.searches}</span>
-             </div>
-         </div>
-          `);
-                     });
-                 } */
 
             async function loadSearchParameters() {
                 try {
@@ -496,19 +461,79 @@
                     budgetChart.destroy();
                 }
 
-                const labels = Object.keys(budgetRanges).map(range => `€${range}`);
-                const values = Object.values(budgetRanges);
+                console.log('📊 Dati budget ricevuti:', budgetRanges);
 
+                // Controllo se i dati sono una Collection Laravel (hanno la proprietà *items)
+                let budgetData = budgetRanges;
+                if (budgetRanges && typeof budgetRanges === 'object' && budgetRanges['*items']) {
+                    budgetData = budgetRanges['*items'];
+                    console.log('🔄 Convertiti dati Collection Laravel:', budgetData);
+                }
+
+                // Controlla se abbiamo dati validi
+                if (!budgetData || typeof budgetData !== 'object' || Object.keys(budgetData).length === 0) {
+                    console.warn('⚠️ Nessun dato budget valido:', budgetData);
+                    showBudgetChartError();
+                    return;
+                }
+
+                // Prepara i dati per Chart.js
+                const labels = [];
+                const values = [];
+                const satisfactionData = [];
+                const backgroundColors = [
+                    'rgba(40, 167, 69, 0.8)', // Verde per budget bassi
+                    'rgba(0, 123, 255, 0.8)', // Blu per budget medi
+                    'rgba(255, 193, 7, 0.8)', // Giallo per budget medio-alti
+                    'rgba(255, 99, 132, 0.8)', // Rosa per budget alti
+                    'rgba(153, 102, 255, 0.8)' // Viola per budget molto alti
+                ];
+                const borderColors = [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(0, 123, 255, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(153, 102, 255, 1)'
+                ];
+
+                // Ordine predefinito per i range
+                const rangeOrder = ['0-999', '1000-1999', '2000-2999', '3000-4999', '5000+'];
+
+                rangeOrder.forEach((range, index) => {
+                    const rangeData = budgetData[range];
+                    if (rangeData && rangeData.count > 0) {
+                        labels.push(`€${range}`);
+                        values.push(rangeData.count || 0);
+                        satisfactionData.push(rangeData.avg_satisfaction || 0);
+                    }
+                });
+
+                console.log('📈 Dati elaborati per grafico budget:', {
+                    labels,
+                    values,
+                    satisfactionData
+                });
+
+                // Se non abbiamo dati da visualizzare
+                if (labels.length === 0 || values.every(v => v === 0)) {
+                    console.warn('⚠️ Nessun dato budget da visualizzare');
+                    showBudgetChartEmpty();
+                    return;
+                }
+
+                // Crea il grafico con i dati reali
                 budgetChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Ricerche',
+                            label: 'Numero Ricerche',
                             data: values,
-                            backgroundColor: '#007bff',
-                            borderColor: '#0056b3',
-                            borderWidth: 1
+                            backgroundColor: backgroundColors.slice(0, labels.length),
+                            borderColor: borderColors.slice(0, labels.length),
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            borderSkipped: false,
                         }]
                     },
                     options: {
@@ -516,16 +541,128 @@
                         maintainAspectRatio: false,
                         scales: {
                             y: {
-                                beginAtZero: true
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Ricerche',
+                                    font: {
+                                        weight: 600,
+                                        size: 12
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 11
+                                    },
+                                    stepSize: 1 // Per valori piccoli
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Range Budget',
+                                    font: {
+                                        weight: 600,
+                                        size: 12
+                                    }
+                                },
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 11
+                                    }
+                                }
                             }
                         },
                         plugins: {
                             legend: {
                                 display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                borderWidth: 1,
+                                cornerRadius: 8,
+                                titleFont: {
+                                    weight: 600
+                                },
+                                callbacks: {
+                                    title: function(context) {
+                                        return `Budget ${context[0].label}`;
+                                    },
+                                    label: function(context) {
+                                        return `Ricerche: ${context.raw}`;
+                                    },
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const satisfaction = satisfactionData[index];
+                                        return [
+                                            '',
+                                            `💯 Soddisfazione media: ${satisfaction}%`,
+                                            satisfaction > 70 ? '✨ Range ad alta soddisfazione' :
+                                            '📈 Potenziale di miglioramento'
+                                        ];
+                                    }
+                                }
                             }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeOutQuart'
+                        },
+                        onHover: (event, activeElements) => {
+                            event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' :
+                                'default';
                         }
                     }
                 });
+
+                console.log('✅ Grafico budget creato con successo con', labels.length, 'range');
+            }
+
+
+            // Funzioni per gestire stati vuoti
+            function showBudgetChartEmpty() {
+                const ctx = document.getElementById('budget-chart').getContext('2d');
+
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#6c757d';
+                ctx.textAlign = 'center';
+
+                // Disegna icona e testo
+                ctx.fillText('📊', ctx.canvas.width / 2, ctx.canvas.height / 2 - 20);
+                ctx.font = '14px Arial';
+                ctx.fillText('Nessun dato budget disponibile', ctx.canvas.width / 2, ctx.canvas.height / 2 + 5);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#007bff';
+                ctx.fillText('I dati verranno mostrati dopo le prime ricerche', ctx.canvas.width / 2, ctx.canvas
+                    .height / 2 + 25);
+            }
+
+            function showParticipantsChartEmpty() {
+                const ctx = document.getElementById('participants-chart').getContext('2d');
+
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#6c757d';
+                ctx.textAlign = 'center';
+
+                ctx.fillText('👥', ctx.canvas.width / 2, ctx.canvas.height / 2 - 20);
+                ctx.font = '14px Arial';
+                ctx.fillText('Nessun dato partecipanti disponibile', ctx.canvas.width / 2, ctx.canvas.height / 2 +
+                    5);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#007bff';
+                ctx.fillText('I dati verranno mostrati dopo le prime ricerche', ctx.canvas.width / 2, ctx.canvas
+                    .height / 2 + 25);
             }
 
             function updateParticipantsChart(participants) {
@@ -535,20 +672,59 @@
                     participantsChart.destroy();
                 }
 
-                const labels = participants.map(p =>
-                    `${p.participants} ${p.participants === 1 ? 'persona' : 'persone'}`);
-                const values = participants.map(p => p.count);
+                console.log('👥 Dati partecipanti ricevuti:', participants);
+
+                // Controllo se i dati sono una Collection Laravel
+                let participantsData = participants;
+                if (participants && typeof participants === 'object' && participants['*items']) {
+                    participantsData = participants['*items'];
+                    console.log('🔄 Convertiti dati Collection partecipanti:', participantsData);
+                }
+
+                // Se è un array normale, usalo direttamente
+                if (Array.isArray(participantsData)) {
+                    console.log('📊 Usando array normale per partecipanti');
+                } else if (participantsData && typeof participantsData === 'object') {
+                    // Se è un oggetto, convertilo in array
+                    participantsData = Object.values(participantsData);
+                    console.log('🔄 Convertito oggetto in array per partecipanti:', participantsData);
+                } else {
+                    console.warn('⚠️ Dati partecipanti non validi:', participantsData);
+                    showParticipantsChartEmpty();
+                    return;
+                }
+
+                if (!participantsData || participantsData.length === 0) {
+                    console.warn('⚠️ Nessun dato partecipanti disponibile');
+                    showParticipantsChartEmpty();
+                    return;
+                }
+
+                // Prepara dati per Chart.js
+                const labels = participantsData.map(p =>
+                    `${p.participants} ${p.participants === 1 ? 'persona' : 'persone'}`
+                );
+                const values = participantsData.map(p => p.count || 0);
+                const budgetData = participantsData.map(p => p.avg_budget || 0);
+
+                console.log('📈 Dati elaborati per grafico partecipanti:', {
+                    labels,
+                    values,
+                    budgetData
+                });
 
                 participantsChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Ricerche',
+                            label: 'Numero Ricerche',
                             data: values,
-                            backgroundColor: '#28a745',
-                            borderColor: '#1e7e34',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            borderSkipped: false,
                         }]
                     },
                     options: {
@@ -556,17 +732,58 @@
                         maintainAspectRatio: false,
                         scales: {
                             y: {
-                                beginAtZero: true
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Numero di Ricerche',
+                                    font: {
+                                        weight: 600,
+                                        size: 12
+                                    }
+                                },
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Numero Partecipanti',
+                                    font: {
+                                        weight: 600,
+                                        size: 12
+                                    }
+                                }
                             }
                         },
                         plugins: {
                             legend: {
                                 display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                callbacks: {
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const avgBudget = budgetData[index];
+                                        const satisfaction = participantsData[index].avg_satisfaction;
+                                        return [
+                                            '',
+                                            `💰 Budget medio: €${Math.round(avgBudget)}`,
+                                            `😊 Soddisfazione: ${satisfaction}%`
+                                        ];
+                                    }
+                                }
                             }
                         }
                     }
                 });
+
+                console.log('✅ Grafico partecipanti creato con successo');
             }
+
 
             async function loadPerformanceMetrics() {
                 try {
@@ -600,23 +817,30 @@
 
             async function loadSearchLogs() {
                 try {
+                    console.log('📋 Caricamento log ricerche...');
+
                     const params = new URLSearchParams({
                         page: currentPage,
-                        per_page: 25,
-                        user_type: $('#filter-user-type').val(),
-                        device_type: $('#filter-device').val(),
-                        successful_only: $('#filter-success').val()
+                        per_page: 10,
+                        user_type: $('#filter-user-type').val() || '',
+                        device_type: $('#filter-device').val() || '',
+                        successful_only: $('#filter-success').val() || ''
                     });
 
                     const response = await fetch(`/api/analytics/search-logs?${params}`);
                     const data = await response.json();
 
-                    if (response.ok) {
+                    console.log('📊 Dati log ricevuti:', data);
+
+                    if (response.ok && data.data) {
                         updateSearchLogsTable(data.data);
                         updatePagination(data);
+                    } else {
+                        throw new Error(data.error || 'Errore caricamento log');
                     }
                 } catch (error) {
-                    console.error('Errore caricamento log:', error);
+                    console.error('❌ Errore caricamento log:', error);
+                    showSearchLogsError(error.message);
                 }
             }
 
@@ -624,51 +848,157 @@
                 const tbody = $('#search-logs-table tbody');
                 tbody.empty();
 
-                if (logs.length === 0) {
-                    tbody.html('<tr><td colspan="8" class="text-center py-4">Nessun log trovato</td></tr>');
+                console.log('🔍 Aggiornamento tabella con', logs.length, 'log');
+
+                if (!logs || logs.length === 0) {
+                    tbody.html(`
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4">
+                                            <i class="fas fa-search fa-2x text-muted mb-3"></i><br>
+                                            <h6 class="text-muted">Nessun log trovato</h6>
+                                            <p class="text-muted mb-0">Prova a modificare i filtri o controlla se ci sono ricerche registrate.</p>
+                                        </td>
+                                    </tr>
+                                `);
                     return;
                 }
 
-                logs.forEach(log => {
-                    const userName = log.user ?
-                        `${log.user.name} ${log.user.surname}` :
-                        'Ospite';
+                logs.forEach((log, index) => {
+                    console.log(`📝 Elaborando log ${index + 1}:`, log);
 
-                    const userBadge = log.user ?
+                    // Gestione utente con fallback sicuri
+                    const userName = log.user_name || 'Ospite';
+                    const userType = log.user_type || 'Ospite';
+                    const userBadge = log.is_guest === false ?
                         '<span class="user-type-badge">Registrato</span>' :
                         '<span class="user-type-badge" style="background: #fff3cd; color: #856404;">Ospite</span>';
 
-                    const deviceIcon = getDeviceIcon(log.device_type);
-                    const statusBadge = log.search_successful ?
-                        '<span class="status-badge status-success">Successo</span>' :
-                        '<span class="status-badge status-error">Errore</span>';
+                    // Gestione device con fallback
+                    const deviceType = log.device_type || 'N/D';
+                    const deviceIcon = getDeviceIcon(deviceType);
+                    const operatingSystem = log.operating_system || '';
+                    const browser = log.browser || '';
 
-                    const parameters = `${log.date_range || 'N/D'}<br>
-                               €${log.budget || 0} (${log.participants || 0} pers.)`;
+                    // Gestione parametri ricerca
+                    const dateRange = log.date_range || 'N/D';
+                    const budget = log.budget || 0;
+                    const participants = log.participants || 0;
+                    const portStart = log.port_start || '';
 
-                    const results = `${log.total_matches || 0} match<br>
-                           ${log.total_alternatives || 0} alternative`;
+                    const parameters = `
+                                            <div class="search-params">
+                                                <div><strong>${dateRange}</strong></div>
+                                                <div class="text-muted small">€${budget.toLocaleString('it-IT')} (${participants} pers.)</div>
+                                                ${portStart ? `<div class="text-info small">📍 ${portStart}</div>` : ''}
+                                            </div>
+                                        `;
 
-                    const performance = `${Math.round(log.search_duration_ms || 0)}ms<br>
-                               Soddisf: ${Math.round(log.satisfaction_score || 0)}%`;
+                    // Gestione risultati
+                    const totalMatches = log.total_matches || 0;
+                    const totalAlternatives = log.total_alternatives || 0;
+                    const satisfactionScore = log.satisfaction_score || 0;
 
-                    const location = `${getCountryFlag(log.country)} ${log.country || 'N/D'}<br>
-                            <small class="text-muted">${log.city || ''}</small>`;
+                    const results = `
+                                        <div class="search-results">
+                                            <div><strong>${totalMatches}</strong> match</div>
+                                            <div><strong>${totalAlternatives}</strong> alternative</div>
+                                        </div>
+                                    `;
 
-                    tbody.append(`
-                <tr>
-                    <td>${moment(log.search_date).format('DD/MM/YY HH:mm')}</td>
-                    <td>${userName}<br>${userBadge}</td>
-                    <td>${deviceIcon} <span class="device-badge">${log.device_type || 'N/D'}</span><br>
-                        <small class="text-muted">${log.operating_system || ''}</small></td>
-                    <td>${parameters}</td>
-                    <td>${results}</td>
-                    <td>${performance}</td>
-                    <td>${location}</td>
-                    <td>${statusBadge}</td>
-                </tr>
-            `);
+                    // Gestione performance
+                    const searchDuration = log.search_duration_ms || 0;
+                    const performance = `
+                                            <div class="search-performance">
+                                                <div><strong>${searchDuration}ms</strong></div>
+                                                <div class="text-muted small">Soddisf: ${Math.round(satisfactionScore)}%</div>
+                                            </div>
+                                        `;
+
+                    // Gestione location
+                    const country = log.country || 'N/D';
+                    const city = log.city || '';
+                    const location = `
+                                        <div class="search-location">
+                                            <div>${getCountryFlag(country)} <strong>${country}</strong></div>
+                                            ${city ? `<div class="text-muted small">${city}</div>` : ''}
+                                        </div>
+                                    `;
+
+                    // Gestione stato
+                    const searchSuccessful = log.search_successful;
+                    const statusBadge = searchSuccessful ?
+                        '<span class="status-badge status-success"><i class="fas fa-check-circle"></i> Successo</span>' :
+                        '<span class="status-badge status-error"><i class="fas fa-times-circle"></i> Errore</span>';
+
+                    // Gestione device display
+                    const deviceDisplay = `
+                                            <div class="device-info">
+                                                <div>${deviceIcon} <span class="device-badge">${deviceType}</span></div>
+                                                ${operatingSystem ? `<div class="text-muted small">${operatingSystem}</div>` : ''}
+                                                ${browser ? `<div class="text-muted small">${browser}</div>` : ''}
+                                            </div>
+                                            `;
+
+                    // Creazione riga tabella
+                    const row = $(`
+                                    <tr class="log-row" data-log-id="${log.id}">
+                                        <td class="text-nowrap">
+                                            <div class="log-date">${log.search_date}</div>
+                                        </td>
+                                        <td>
+                                            <div class="user-info">
+                                                <div><strong>${userName}</strong></div>
+                                                <div>${userBadge}</div>
+                                                ${log.user_email ? `<div class="text-muted small">${log.user_email}</div>` : ''}
+                                            </div>
+                                        </td>
+                                        <td>${deviceDisplay}</td>
+                                        <td>${parameters}</td>
+                                        <td>${results}</td>
+                                        <td>${performance}</td>
+                                        <td>${location}</td>
+                                        <td>${statusBadge}</td>
+                                    </tr>
+                                `);
+
+                    // Hover effect
+                    row.hover(
+                        function() {
+                            $(this).addClass('table-row-hover');
+                            if (log.error_message) {
+                                $(this).attr('title', 'Errore: ' + log.error_message);
+                            }
+                        },
+                        function() {
+                            $(this).removeClass('table-row-hover');
+                        }
+                    );
+
+                    tbody.append(row);
+
+                    // Animazione di entrata
+                    setTimeout(() => {
+                        row.addClass('fade-in-row');
+                    }, index * 50);
                 });
+
+                console.log('✅ Tabella log aggiornata con', logs.length, 'righe');
+            }
+
+            function showSearchLogsError(errorMessage) {
+                const tbody = $('#search-logs-table tbody');
+                tbody.html(`
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i><br>
+                                        <h6 class="text-danger">Errore Caricamento Log</h6>
+                                        <p class="text-muted mb-2">${errorMessage}</p>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="loadSearchLogs()">
+                                            <i class="fas fa-redo me-1"></i>Riprova
+                                        </button>
+                                    </td>
+                                </tr>
+                            `);
             }
 
             function updatePagination(data) {
@@ -681,29 +1011,29 @@
                 // Previous button
                 if (currentPageNum > 1) {
                     pagination.append(`
-                <li class="page-item">
-                    <a class="page-link" href="#" data-page="${currentPageNum - 1}">Precedente</a>
-                </li>
-            `);
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="${currentPageNum - 1}">Precedente</a>
+                                        </li>
+                                    `);
                 }
 
                 // Page numbers
                 for (let i = Math.max(1, currentPageNum - 2); i <= Math.min(totalPages, currentPageNum + 2); i++) {
                     const activeClass = i === currentPageNum ? 'active' : '';
                     pagination.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link" href="#" data-page="${i}">${i}</a>
-                </li>
-            `);
+                                        <li class="page-item ${activeClass}">
+                                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                                        </li>
+                                    `);
                 }
 
                 // Next button
                 if (currentPageNum < totalPages) {
                     pagination.append(`
-                <li class="page-item">
-                    <a class="page-link" href="#" data-page="${currentPageNum + 1}">Successiva</a>
-                </li>
-            `);
+                                        <li class="page-item">
+                                            <a class="page-link" href="#" data-page="${currentPageNum + 1}">Successiva</a>
+                                        </li>
+                                    `);
                 }
 
                 // Event listeners for pagination
@@ -766,18 +1096,26 @@
                 requestAnimationFrame(updateCounter);
             }
 
+            // Utility functions aggiornate
             function getCountryFlag(country) {
                 const flags = {
                     'Italy': '🇮🇹',
+                    'Italia': '🇮🇹',
                     'United States': '🇺🇸',
                     'Germany': '🇩🇪',
+                    'Germania': '🇩🇪',
                     'France': '🇫🇷',
+                    'Francia': '🇫🇷',
                     'Spain': '🇪🇸',
+                    'Spagna': '🇪🇸',
                     'United Kingdom': '🇬🇧',
                     'Netherlands': '🇳🇱',
+                    'Paesi Bassi': '🇳🇱',
                     'Austria': '🇦🇹',
                     'Switzerland': '🇨🇭',
-                    'Local': '🏠'
+                    'Svizzera': '🇨🇭',
+                    'Local': '🏠',
+                    'N/D': '🌍'
                 };
                 return flags[country] || '🌍';
             }
@@ -785,8 +1123,9 @@
             function getDeviceIcon(deviceType) {
                 const icons = {
                     'mobile': '📱',
-                    'tablet': '📱',
-                    'desktop': '💻'
+                    'tablet': '📲',
+                    'desktop': '💻',
+                    'N/D': '❓'
                 };
                 return icons[deviceType] || '❓';
             }

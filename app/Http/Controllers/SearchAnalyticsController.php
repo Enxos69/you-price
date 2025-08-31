@@ -287,8 +287,9 @@ class SearchAnalyticsController extends Controller
                 'monthly_patterns' => $this->getMonthlyPatterns(),
                 'seasonal_trends' => $this->getSeasonalTrends()
             ];
-        }, 1800); // Cache per 30 minuti
+        }, 1800);
     }
+
 
     /**
      * Performance metrics avanzate - CORRETTO
@@ -357,9 +358,8 @@ class SearchAnalyticsController extends Controller
             ];
         }, 600); // Cache per 10 minuti
     }
-
     /**
-     * Log ricerche con filtri avanzati e paginazione ottimizzata
+     * Log ricerche con filtri avanzati e paginazione ottimizzata - CORRETTO
      */
     public function getSearchLogs(Request $request)
     {
@@ -396,17 +396,33 @@ class SearchAnalyticsController extends Controller
         try {
             $logs = $query->paginate($request->get('per_page', 25));
 
-            // Trasforma i dati per ottimizzare la response
-            $logs->getCollection()->transform(function ($log) {
+            // IMPORTANTE: Trasforma i dati in formato semplice per JavaScript
+            $transformedData = $logs->getCollection()->map(function ($log) {
                 return $this->transformLogForResponse($log);
             });
 
-            return response()->json($logs);
+            // Restituisci struttura semplificata per DataTable
+            return response()->json([
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+                'per_page' => $logs->perPage(),
+                'total' => $logs->total(),
+                'from' => $logs->firstItem(),
+                'to' => $logs->lastItem(),
+                'data' => $transformedData->toArray() // IMPORTANTE: ->toArray()
+            ]);
         } catch (\Exception $e) {
             Log::error('Errore caricamento logs: ' . $e->getMessage());
-            return response()->json(['error' => 'Errore nel caricamento dei log'], 500);
+            return response()->json([
+                'error' => 'Errore nel caricamento dei log: ' . $e->getMessage(),
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'total' => 0
+            ], 500);
         }
     }
+
 
     /**
      * Export CSV ottimizzato
@@ -582,7 +598,8 @@ class SearchAnalyticsController extends Controller
      */
     private function getBudgetDistribution()
     {
-        return SearchLog::selectRaw('
+        try {
+            $budgetData = SearchLog::selectRaw('
             CASE 
                 WHEN budget < 1000 THEN "0-999"
                 WHEN budget < 2000 THEN "1000-1999"
@@ -591,62 +608,132 @@ class SearchAnalyticsController extends Controller
                 ELSE "5000+"
             END as budget_range,
             COUNT(*) as count,
-            AVG(satisfaction_score) as avg_satisfaction
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction,
+            AVG(COALESCE(participants, 2)) as avg_participants
         ')
-            ->whereNotNull('budget')
-            ->groupBy('budget_range')
-            ->orderByRaw('MIN(budget)')
-            ->get()
-            ->mapWithKeys(function ($item) {
-                return [$item->budget_range => [
-                    'count' => $item->count,
-                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
-                ]];
-            });
+                ->whereNotNull('budget')
+                ->where('budget', '>', 0)
+                ->groupBy('budget_range')
+                ->orderByRaw('MIN(budget)')
+                ->get();
+
+            // IMPORTANTE: Converti Collection in array associativo semplice
+            $result = [];
+            foreach ($budgetData as $item) {
+                $result[$item->budget_range] = [
+                    'count' => (int) $item->count,
+                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1),
+                    'avg_participants' => round($item->avg_participants ?? 2, 1)
+                ];
+            }
+
+            // Assicurati che tutti i range esistano anche se vuoti
+            $allRanges = ['0-999', '1000-1999', '2000-2999', '3000-4999', '5000+'];
+            foreach ($allRanges as $range) {
+                if (!isset($result[$range])) {
+                    $result[$range] = [
+                        'count' => 0,
+                        'avg_satisfaction' => 0,
+                        'avg_participants' => 0
+                    ];
+                }
+            }
+
+            return $result; // Restituisce array semplice, non Collection
+        } catch (\Exception $e) {
+            Log::error('Errore getBudgetDistribution: ' . $e->getMessage());
+
+            // Restituisci struttura di fallback
+            return [
+                '0-999' => ['count' => 0, 'avg_satisfaction' => 0, 'avg_participants' => 0],
+                '1000-1999' => ['count' => 0, 'avg_satisfaction' => 0, 'avg_participants' => 0],
+                '2000-2999' => ['count' => 0, 'avg_satisfaction' => 0, 'avg_participants' => 0],
+                '3000-4999' => ['count' => 0, 'avg_satisfaction' => 0, 'avg_participants' => 0],
+                '5000+' => ['count' => 0, 'avg_satisfaction' => 0, 'avg_participants' => 0]
+            ];
+        }
     }
 
+
     /**
-     * Distribuzione partecipanti
+     * Distribuzione partecipanti - CORRETTO per Laravel Collection
      */
     private function getParticipantsDistribution()
     {
-        return SearchLog::selectRaw('
+        try {
+            $participantsData = SearchLog::selectRaw('
             participants,
             COUNT(*) as count,
-            AVG(budget) as avg_budget,
-            AVG(satisfaction_score) as avg_satisfaction
+            AVG(COALESCE(budget, 0)) as avg_budget,
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction
         ')
-            ->whereNotNull('participants')
-            ->groupBy('participants')
-            ->orderBy('participants')
-            ->get();
+                ->whereNotNull('participants')
+                ->where('participants', '>', 0)
+                ->where('participants', '<=', 10)
+                ->groupBy('participants')
+                ->orderBy('participants')
+                ->get();
+
+            // IMPORTANTE: Converti Collection in array semplice
+            return $participantsData->map(function ($item) {
+                return [
+                    'participants' => (int) $item->participants,
+                    'count' => (int) $item->count,
+                    'avg_budget' => round($item->avg_budget ?? 0),
+                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
+                ];
+            })->toArray(); // IMPORTANTE: ->toArray() per convertire Collection
+
+        } catch (\Exception $e) {
+            Log::error('Errore getParticipantsDistribution: ' . $e->getMessage());
+            return [];
+        }
     }
 
+
     /**
-     * Porti più ricercati
+     * Porti più ricercati - CORRETTO per Laravel Collection
      */
     private function getPopularPorts()
     {
-        return SearchLog::selectRaw('
+        try {
+            $portsData = SearchLog::selectRaw('
             port_start,
             COUNT(*) as searches,
-            AVG(satisfaction_score) as avg_satisfaction,
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction,
             COUNT(CASE WHEN total_matches > 0 THEN 1 END) as searches_with_results
         ')
-            ->whereNotNull('port_start')
-            ->where('port_start', '!=', '')
-            ->groupBy('port_start')
-            ->orderBy('searches', 'desc')
-            ->limit(10)
-            ->get();
+                ->whereNotNull('port_start')
+                ->where('port_start', '!=', '')
+                ->groupBy('port_start')
+                ->orderBy('searches', 'desc')
+                ->limit(15) // Aumentato da 10 a 15 per avere più dati
+                ->get();
+
+            // IMPORTANTE: Converti Collection in array semplice
+            return $portsData->map(function ($item) {
+                return [
+                    'port_start' => $item->port_start,
+                    'searches' => (int) $item->searches,
+                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1),
+                    'searches_with_results' => (int) $item->searches_with_results
+                ];
+            })->toArray(); // IMPORTANTE: ->toArray()
+
+        } catch (\Exception $e) {
+            Log::error('Errore getPopularPorts: ' . $e->getMessage());
+            return [];
+        }
     }
 
+
     /**
-     * Pattern mensili dalle date_range
+     * Pattern mensili - CORRETTO per Laravel Collection
      */
     private function getMonthlyPatterns()
     {
-        return SearchLog::selectRaw('
+        try {
+            $monthlyData = SearchLog::selectRaw('
             CASE 
                 WHEN date_range REGEXP "(^|/)0?1/" THEN "Gennaio"
                 WHEN date_range REGEXP "(^|/)0?2/" THEN "Febbraio"
@@ -663,30 +750,61 @@ class SearchAnalyticsController extends Controller
                 ELSE "Altro"
             END as month,
             COUNT(*) as searches,
-            AVG(budget) as avg_budget
+            AVG(COALESCE(budget, 0)) as avg_budget
         ')
-            ->whereNotNull('date_range')
-            ->groupBy('month')
-            ->orderBy('searches', 'desc')
-            ->get();
+                ->whereNotNull('date_range')
+                ->groupBy('month')
+                ->orderBy('searches', 'desc')
+                ->get();
+
+            // IMPORTANTE: Converti Collection in array semplice
+            return $monthlyData->map(function ($item) {
+                return [
+                    'month' => $item->month,
+                    'searches' => (int) $item->searches,
+                    'avg_budget' => round($item->avg_budget ?? 0)
+                ];
+            })->toArray(); // IMPORTANTE: ->toArray()
+
+        } catch (\Exception $e) {
+            Log::error('Errore getMonthlyPatterns: ' . $e->getMessage());
+            return [];
+        }
     }
 
+
     /**
-     * Trend stagionali
+     * Trend stagionali - CORRETTO per Laravel Collection
      */
     private function getSeasonalTrends()
     {
-        return SearchLog::selectRaw('
+        try {
+            $seasonalData = SearchLog::selectRaw('
             QUARTER(search_date) as quarter,
             YEAR(search_date) as year,
             COUNT(*) as searches,
-            AVG(satisfaction_score) as avg_satisfaction
+            AVG(COALESCE(satisfaction_score, 0)) as avg_satisfaction
         ')
-            ->groupBy('quarter', 'year')
-            ->orderBy('year', 'desc')
-            ->orderBy('quarter', 'desc')
-            ->limit(8) // Ultimi 2 anni
-            ->get();
+                ->groupBy('quarter', 'year')
+                ->orderBy('year', 'desc')
+                ->orderBy('quarter', 'desc')
+                ->limit(8)
+                ->get();
+
+            // IMPORTANTE: Converti Collection in array semplice
+            return $seasonalData->map(function ($item) {
+                return [
+                    'quarter' => (int) $item->quarter,
+                    'year' => (int) $item->year,
+                    'searches' => (int) $item->searches,
+                    'avg_satisfaction' => round($item->avg_satisfaction ?? 0, 1)
+                ];
+            })->toArray(); // IMPORTANTE: ->toArray()
+
+        } catch (\Exception $e) {
+            Log::error('Errore getSeasonalTrends: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -752,46 +870,90 @@ class SearchAnalyticsController extends Controller
     }
 
     /**
-     * Trasforma log per response API
+     * Trasforma log per response API - SEMPLIFICATO
      */
     private function transformLogForResponse($log)
     {
+        // Gestisci utente
+        $userName = 'Ospite';
+        $userEmail = '';
+        if ($log->user) {
+            $userName = trim(($log->user->name ?? '') . ' ' . ($log->user->surname ?? ''));
+            $userEmail = $log->user->email ?? '';
+        }
+
+        // Gestisci device info con fallback
+        $deviceType = $log->device_type ?? 'N/D';
+        $operatingSystem = $log->operating_system ?? '';
+        $browser = $log->browser ?? '';
+        if ($log->browser_version) {
+            $browser .= ' ' . $log->browser_version;
+        }
+
+        // Gestisci location con fallback
+        $country = $log->country ?? 'N/D';
+        $city = $log->city ?? '';
+        $isp = $log->isp ?? '';
+
+        // Gestisci parametri ricerca
+        $dateRange = $log->date_range ?? 'N/D';
+        $budget = $log->budget ?? 0;
+        $participants = $log->participants ?? 0;
+        $portStart = $log->port_start ?? '';
+
+        // Gestisci risultati
+        $totalMatches = $log->total_matches ?? 0;
+        $totalAlternatives = $log->total_alternatives ?? 0;
+        $satisfactionScore = $log->satisfaction_score ?? 0;
+
+        // Gestisci performance
+        $searchDuration = $log->search_duration_ms ?? 0;
+        $searchSuccessful = $log->search_successful ?? false;
+        $errorMessage = $log->error_message ?? '';
+
         return [
             'id' => $log->id,
-            'search_date' => $log->search_date,
-            'user' => $log->user ? [
-                'name' => trim($log->user->name . ' ' . $log->user->surname),
-                'email' => $log->user->email
-            ] : null,
+            'search_date' => $log->search_date ? $log->search_date->format('d/m/y H:i') : 'N/D',
+
+            // Utente
+            'user_name' => $userName,
+            'user_email' => $userEmail,
             'user_type' => $log->user ? 'Registrato' : 'Ospite',
-            'parameters' => [
-                'date_range' => $log->date_range,
-                'budget' => $log->budget,
-                'participants' => $log->participants,
-                'port_start' => $log->port_start
-            ],
-            'results' => [
-                'total_matches' => $log->total_matches,
-                'total_alternatives' => $log->total_alternatives,
-                'satisfaction_score' => $log->satisfaction_score
-            ],
-            'device_info' => [
-                'type' => $log->device_type,
-                'os' => $log->operating_system,
-                'browser' => $log->browser . ($log->browser_version ? ' ' . $log->browser_version : '')
-            ],
-            'location' => [
-                'country' => $log->country,
-                'city' => $log->city,
-                'isp' => $log->isp
-            ],
-            'performance' => [
-                'duration_ms' => $log->search_duration_ms,
-                'successful' => $log->search_successful,
-                'error_message' => $log->error_message
-            ]
+            'is_guest' => $log->user ? false : true,
+
+            // Device
+            'device_type' => $deviceType,
+            'operating_system' => $operatingSystem,
+            'browser' => $browser,
+            'browser_full' => trim($browser . ' ' . $operatingSystem),
+
+            // Parametri
+            'date_range' => $dateRange,
+            'budget' => (int) $budget,
+            'participants' => (int) $participants,
+            'port_start' => $portStart,
+
+            // Risultati
+            'total_matches' => (int) $totalMatches,
+            'total_alternatives' => (int) $totalAlternatives,
+            'satisfaction_score' => round($satisfactionScore, 1),
+
+            // Location
+            'country' => $country,
+            'city' => $city,
+            'isp' => $isp,
+            'location_full' => trim($city . ', ' . $country),
+
+            // Performance
+            'search_duration_ms' => (int) $searchDuration,
+            'search_successful' => $searchSuccessful,
+            'error_message' => $errorMessage,
+
+            // Status
+            'status' => $searchSuccessful ? 'success' : 'error'
         ];
     }
+
 
     /**
      * Genera stream CSV ottimizzato
