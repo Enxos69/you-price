@@ -1009,6 +1009,8 @@
             }
 
             function updateCountriesList(countries) {
+                console.log(countries );
+                
                 const container = $('#countries-list');
                 container.empty();
 
