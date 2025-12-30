@@ -6,7 +6,6 @@
             <div class="row justify-content-center">
                 <div class="col-12">
                     
-                    <!-- Header della pagina -->
                     <div class="page-header">
                         <div class="header-content">
                             <div class="header-icon">
@@ -27,10 +26,8 @@
                         </div>
                     </div>
 
-                    <!-- Card principale -->
                     <div class="users-card">
                         <div class="card-body">                            
-                            <!-- Statistics Row -->
                             <div class="stats-row">
                                 <div class="stat-card">
                                     <div class="stat-icon">
@@ -70,38 +67,24 @@
                                 </div>
                             </div>
 
-                            <!-- Table Container -->
                             <div class="table-container">
                                 <table class="table users-table" id="users-table">
                                     <thead>
                                         <tr>
-                                            <th>
-                                                <i class="fas fa-user me-2"></i>Nome
-                                            </th>
-                                            <th>
-                                                <i class="fas fa-user me-2"></i>Cognome
-                                            </th>
-                                            <th>
-                                                <i class="fas fa-envelope me-2"></i>Email
-                                            </th>
-                                            <th>
-                                                <i class="fas fa-user-tag me-2"></i>Ruolo
-                                            </th>
-                                            <th>
-                                                <i class="fas fa-toggle-on me-2"></i>Stato
-                                            </th>
-                                            <th>
-                                                <i class="fas fa-cogs me-2"></i>Azioni
-                                            </th>
+                                            <th><i class="fas fa-user me-2"></i>Nome</th>
+                                            <th><i class="fas fa-user me-2"></i>Cognome</th>
+                                            <th><i class="fas fa-envelope me-2"></i>Email</th>
+                                            <th><i class="fas fa-user-tag me-2"></i>Ruolo</th>
+                                            <th><i class="fas fa-check-circle me-2"></i>Email Verificata</th>
+                                            <th><i class="fas fa-toggle-on me-2"></i>Stato</th>
+                                            <th><i class="fas fa-cogs me-2"></i>Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <!-- Dati caricati via AJAX -->
                                     </tbody>
                                 </table>
                             </div>
 
-                            <!-- Loading Overlay -->
                             <div class="loading-overlay d-none" id="loadingOverlay">
                                 <div class="loading-content">
                                     <div class="spinner"></div>

@@ -112,4 +112,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Email verification settings for new user registrations.
+    | Link expires after 15 minutes as per CustomVerifyEmail notification.
+    |
+    */
+
+    'verification' => [
+        'expire' => 15, // minuti
+    ],
+
 ];

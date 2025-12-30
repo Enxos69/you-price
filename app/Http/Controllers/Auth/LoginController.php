@@ -49,13 +49,20 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user)
     {     
-        if (!$user->abilitato) {
-            Auth::logout(); // Disconnetti l'utente
-
-            // Redirigi l'utente a una pagina con un messaggio di errore
+        // CONTROLLO 1: Email deve essere verificata
+        if (!$user->hasVerifiedEmail()) {
+            Auth::logout();
             return redirect()->route('login')
-                             ->with('status', 'L\'utente non è abilitato. Contatta l\'amministratore.');
+                ->with('warning', 'Devi verificare la tua email prima di accedere. Controlla la tua casella di posta e clicca sul link di verifica.');
         }
+
+        // CONTROLLO 2: Utente deve essere abilitato
+        if (!$user->abilitato) {
+            Auth::logout();
+            return redirect()->route('login')
+                ->with('status', 'L\'utente non è abilitato. Contatta l\'amministratore.');
+        }
+
         // Implementa la logica di redirezione basata sul ruolo
         if ($user->role === '1') {
             return redirect()->route('admin.index');

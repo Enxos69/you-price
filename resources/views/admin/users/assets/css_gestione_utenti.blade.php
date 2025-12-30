@@ -275,41 +275,47 @@
     table-layout: fixed; /* FIX: Layout fisso per controllare le larghezze */
 }
 
-/* FIX: Larghezze colonne ottimizzate */
+/* FIX: Larghezze colonne ottimizzate per 7 colonne */
 .users-table th:nth-child(1), /* Nome */
 .users-table td:nth-child(1) {
-    width: 15%;
-    min-width: 120px;
+    width: 12%;
+    min-width: 100px;
 }
 
 .users-table th:nth-child(2), /* Cognome */
 .users-table td:nth-child(2) {
-    width: 15%;
-    min-width: 120px;
+    width: 12%;
+    min-width: 100px;
 }
 
 .users-table th:nth-child(3), /* Email */
 .users-table td:nth-child(3) {
-    width: 25%;
-    min-width: 200px;
+    width: 20%;
+    min-width: 180px;
 }
 
 .users-table th:nth-child(4), /* Ruolo */
 .users-table td:nth-child(4) {
-    width: 15%;
-    min-width: 130px; /* FIX: Larghezza minima per evitare wrapping */
+    width: 13%;
+    min-width: 120px;
 }
 
-.users-table th:nth-child(5), /* Stato */
+.users-table th:nth-child(5), /* Email Verificata */
 .users-table td:nth-child(5) {
     width: 12%;
     min-width: 110px;
 }
 
-.users-table th:nth-child(6), /* Azioni */
+.users-table th:nth-child(6), /* Stato */
 .users-table td:nth-child(6) {
-    width: 18%;
-    min-width: 140px;
+    width: 11%;
+    min-width: 100px;
+}
+
+.users-table th:nth-child(7), /* Azioni */
+.users-table td:nth-child(7) {
+    width: 20%;
+    min-width: 180px;
 }
 
 .users-table thead {
@@ -320,7 +326,7 @@
     color: white;
     font-weight: 600;
     text-transform: uppercase;
-    font-size: 0.75rem; /* FIX: Font più piccolo per header */
+    font-size: 0.75rem; /* FIX: Font piÃ¹ piccolo per header */
     letter-spacing: 0.5px;
     padding: 0.75rem 0.5rem; /* FIX: Padding ridotto */
     border: none;
@@ -345,7 +351,7 @@
     text-align: center;
     border: none;
     font-weight: 500;
-    font-size: 0.9rem; /* FIX: Font leggermente più piccolo */
+    font-size: 0.9rem; /* FIX: Font leggermente piÃ¹ piccolo */
     word-wrap: break-word; /* FIX: Gestisce testi lunghi */
     overflow: hidden;
 }
@@ -361,7 +367,7 @@
 .status-badge {
     padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
     border-radius: 15px; /* FIX: Border radius ridotto */
-    font-size: 0.7rem; /* FIX: Font più piccolo */
+    font-size: 0.7rem; /* FIX: Font piÃ¹ piccolo */
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -387,7 +393,7 @@
 .role-badge {
     padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
     border-radius: 15px;
-    font-size: 0.7rem; /* FIX: Font più piccolo */
+    font-size: 0.7rem; /* FIX: Font piÃ¹ piccolo */
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -419,7 +425,7 @@
 
 .btn-sm {
     padding: 0.3rem 0.6rem; /* FIX: Padding ridotto */
-    font-size: 0.75rem; /* FIX: Font più piccolo */
+    font-size: 0.75rem; /* FIX: Font piÃ¹ piccolo */
     border-radius: 5px;
     font-weight: 500;
     transition: all 0.3s ease;
@@ -475,6 +481,17 @@
     background: #004d5c;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 97, 112, 0.3);
+}
+
+.btn-warning {
+    background: var(--youPrice-warning);
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
 }
 
 /* Loading Overlay */
@@ -624,7 +641,7 @@
     }
     
     .users-table {
-        min-width: 700px; /* FIX: Larghezza minima per scroll orizzontale */
+        min-width: 900px; /* FIX: Larghezza minima per 7 colonne */
     }
 }
 
@@ -634,7 +651,7 @@
     }
     
     .users-table {
-        min-width: 600px;
+        min-width: 900px;
         font-size: 0.75rem;
     }
     
@@ -642,5 +659,13 @@
         flex-direction: column;
         gap: 0.2rem;
     }
+}
+
+/* FORZA VISIBILITÀ COLONNA AZIONI */
+.users-table td:nth-child(7),
+.users-table th:nth-child(7) {
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 </style>

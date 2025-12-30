@@ -123,6 +123,22 @@ class UserController extends Controller
                 </span>';
                 }
             })
+            ->addColumn('email_verified', function (User $user) {
+                // Controlla se l'email è verificata
+                $isVerified = !is_null($user->email_verified_at);
+
+                if ($isVerified) {
+                    return '<span class="status-badge active">
+                        <i class="fas fa-check-circle"></i>
+                        Verificata
+                    </span>';
+                } else {
+                    return '<span class="status-badge disabled">
+                        <i class="fas fa-times-circle"></i>
+                        Non Verificata
+                    </span>';
+                }
+            })
             ->addColumn('actions', function ($user) {
                 $actions = '<div class="action-buttons">';
 
@@ -163,12 +179,37 @@ class UserController extends Controller
                         <i class="fas fa-user-check"></i>
                     </button>';
                     }
+
+                    // Pulsanti Verifica Email
+                    $isVerified = !is_null($user->email_verified_at);
+
+                    if (!$isVerified) {
+                        // Pulsante Reinvia Email Verifica
+                        $actions .= '<button 
+                        data-id="' . $user->id . '" 
+                        data-name="' . htmlspecialchars($userName) . '"
+                        class="btn btn-sm btn-warning resendVerificationButton" 
+                        data-bs-toggle="tooltip" 
+                        title="Reinvia email verifica">
+                        <i class="fas fa-envelope"></i>
+                    </button>';
+
+                        // Pulsante Forza Verifica
+                        $actions .= '<button 
+                        data-id="' . $user->id . '" 
+                        data-name="' . htmlspecialchars($userName) . '"
+                        class="btn btn-sm btn-primary forceVerifyButton" 
+                        data-bs-toggle="tooltip" 
+                        title="Forza verifica email">
+                        <i class="fas fa-check-double"></i>
+                    </button>';
+                    }
                 }
 
                 $actions .= '</div>';
                 return $actions;
             })
-            ->rawColumns(['actions', 'abilitato'])
+            ->rawColumns(['actions', 'abilitato', 'email_verified'])
             ->make(true);
     }
 
@@ -194,5 +235,65 @@ class UserController extends Controller
             return response()->json(['success' => 'Utente disabilitato con successo.']);
         }
         return response()->json(['error' => 'Utente non trovato.'], 404);
+    }
+
+    /**
+     * Reinvia email di verifica
+     */
+    public function resendVerification(Request $request)
+    {
+        $user = User::find($request->userId);
+
+        if (!$user) {
+            return response()->json(['error' => 'Utente non trovato.'], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['error' => 'Email già verificata.'], 400);
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+
+            return response()->json([
+                'success' => 'Email di verifica inviata con successo.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Errore durante l\'invio dell\'email: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Forza verifica email (senza invio email)
+     */
+    public function forceVerify(Request $request)
+    {
+        $user = User::find($request->userId);
+
+        if (!$user) {
+            return response()->json(['error' => 'Utente non trovato.'], 404);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['error' => 'Email già verificata.'], 400);
+        }
+
+        try {
+            $user->markEmailAsVerified();
+
+            // Abilita automaticamente l'utente
+            $user->abilitato = true;
+            $user->save();
+
+            return response()->json([
+                'success' => 'Email verificata con successo e utente abilitato.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Errore durante la verifica: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

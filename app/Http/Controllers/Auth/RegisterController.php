@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Auth\RegistersUsers;
 
 class RegisterController extends Controller
 {
@@ -28,7 +29,7 @@ class RegisterController extends Controller
      *
      * @var string
      */
-    protected $redirectTo = '/home';
+    protected $redirectTo = '/email/verify';
 
     /**
      * Create a new controller instance.
@@ -38,6 +39,27 @@ class RegisterController extends Controller
     public function __construct()
     {
         $this->middleware('guest');
+    }
+
+    /**
+     * The user has been registered.
+     * Override per impedire login automatico e inviare email verifica
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return mixed
+     */
+    protected function registered(Request $request, $user)
+    {
+        // Invia email di verifica
+        $user->sendEmailVerificationNotification();
+        
+        // Logout immediato (impedisce login automatico)
+        $this->guard()->logout();
+        
+        // Redirect a pagina login con messaggio di conferma registrazione
+        return redirect()->route('login')
+            ->with('registered', 'Registrazione completata con successo! Controlla la tua email per verificare l\'account prima di effettuare il login.');
     }
 
     /**
@@ -69,6 +91,7 @@ class RegisterController extends Controller
             'surname' => $data['surname'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'abilitato' => false, // Verrà abilitato automaticamente alla verifica email
         ]);
     }
 }

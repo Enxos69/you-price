@@ -1,17 +1,108 @@
 @extends('layouts.app')
 @section('content')
-    <!-- Verifica se esiste un messaggio di stato nella sessione -->
+    <!-- Messaggio Registrazione Completata -->
+    @if (session('registered'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            Swal.fire({
+                title: 'Registrazione Completata!',
+                html: `
+                    <div style="text-align: left; padding: 1rem;">
+                        <p style="margin-bottom: 1rem;"><i class="fas fa-check-circle" style="color: #28a745; font-size: 1.2rem;"></i> {{ session('registered') }}</p>
+                        <hr style="margin: 1rem 0;">
+                        <p style="margin-bottom: 0.5rem; font-weight: 600;"><i class="fas fa-info-circle" style="color: #0dcaf0;"></i> Prossimi passi:</p>
+                        <ol style="margin-left: 1.5rem; text-align: left;">
+                            <li style="margin-bottom: 0.5rem;">Controlla la tua casella email</li>
+                            <li style="margin-bottom: 0.5rem;">Clicca sul link di verifica</li>
+                            <li style="margin-bottom: 0.5rem;">Torna qui per effettuare il login</li>
+                        </ol>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #6c757d;">
+                            <i class="fas fa-lightbulb"></i> <strong>Suggerimento:</strong> Controlla anche la cartella SPAM
+                        </p>
+                    </div>
+                `,
+                icon: 'success',
+                confirmButtonText: 'Ho capito',
+                confirmButtonColor: '#84bc00',
+                width: '600px'
+            });
+        </script>
+    @endif
+
+    <!-- Messaggio Email Verificata con successo -->
+    @if (session('verified'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            Swal.fire({
+                title: 'Email Verificata!',
+                text: "{{ session('verified') }}",
+                icon: 'success',
+                confirmButtonText: 'Accedi ora',
+                confirmButtonColor: '#28a745'
+            });
+        </script>
+    @endif
+
+    <!-- Messaggio Warning - Email da verificare -->
+    @if (session('warning'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            Swal.fire({
+                title: 'Email da Verificare',
+                html: `
+                    <div style="text-align: left; padding: 1rem;">
+                        <p style="margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle" style="color: #ffc107; font-size: 1.2rem;"></i> {{ session('warning') }}</p>
+                        <hr style="margin: 1rem 0;">
+                        <p style="margin-bottom: 0.5rem; font-weight: 600;"><i class="fas fa-envelope"></i> Cosa devi fare:</p>
+                        <ol style="margin-left: 1.5rem; text-align: left;">
+                            <li style="margin-bottom: 0.5rem;">Controlla la tua email</li>
+                            <li style="margin-bottom: 0.5rem;">Clicca sul link di verifica</li>
+                            <li style="margin-bottom: 0.5rem;">Torna qui per il login</li>
+                        </ol>
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: #fff3cd; border-radius: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem;">
+                                <i class="fas fa-redo"></i> <strong>Non hai ricevuto l'email?</strong><br>
+                                <a href="{{ route('verification.notice') }}" style="color: #0d6efd; text-decoration: underline;">
+                                    Clicca qui per reinviare
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                confirmButtonText: 'Ho capito',
+                confirmButtonColor: '#ffc107',
+                width: '600px'
+            });
+        </script>
+    @endif
+
+    <!-- Messaggio Email già verificata -->
     @if (session('status'))
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
             Swal.fire({
                 title: 'Attenzione',
                 text: "{!! session('status') !!}",
-                icon: 'warning',
+                icon: 'info',
                 confirmButtonText: 'Ok'
             });
         </script>
     @endif
+
+    <!-- Messaggio Errore -->
+    @if (session('error'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            Swal.fire({
+                title: 'Errore',
+                text: "{{ session('error') }}",
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
+        </script>
+    @endif
+
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-md-8">

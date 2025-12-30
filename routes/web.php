@@ -71,7 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/cruises/bulk-delete', [CruiseController::class, 'bulkDelete'])->name('cruises.bulk-delete');
     Route::get('/admin/cruises/export', [CruiseController::class, 'export'])->name('cruises.export');
 
-    // Import Crociere (come funzionalità aggiuntiva)
+    // Import Crociere (come funzionalitÃ  aggiuntiva)
     Route::get('/admin/import-crociere', [CruiseImportController::class, 'showForm'])->name('cruises.import.form');
     Route::post('/admin/import-crociere', [CruiseImportController::class, 'import'])->name('cruises.import');
     Route::get('/admin/import-results', [CruiseImportController::class, 'showResults'])->name('cruises.import.results');
@@ -85,6 +85,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/admin/users/update', [UserController::class, 'update'])->name('users.update');
     Route::post('/admin/users/lock', [UserController::class, 'lock'])->name('users.lock');
     Route::post('/admin/users/unlock', [UserController::class, 'unlock'])->name('users.unlock');
+    Route::post('/admin/users/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
+    Route::post('/admin/users/force-verify', [UserController::class, 'forceVerify'])->name('users.force-verify');
+    Route::post('/admin/users/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
+    Route::post('/admin/users/force-verify', [UserController::class, 'forceVerify'])->name('users.force-verify');
 
     // Rotte per gli utenti normali
     Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
