@@ -2,7 +2,89 @@
     // Crea/aggiorna singolo gauge con grafica dal rosso al verde
 
     $(function() {
-        // Configurazione DateRangePicker
+        /**
+         * Funzione per calcolare le date delle stagioni
+         * @param {number} year - Anno di riferimento
+         * @returns {Object} Date di inizio/fine stagioni
+         */
+        function getSeasonDates(year) {
+            return {
+                spring: {
+                    start: moment(`${year}-03-20`),
+                    end: moment(`${year}-06-20`)
+                },
+                summer: {
+                    start: moment(`${year}-06-21`),
+                    end: moment(`${year}-09-20`)
+                },
+                autumn: {
+                    start: moment(`${year}-09-21`),
+                    end: moment(`${year}-12-20`)
+                },
+                winter: {
+                    start: moment(`${year}-12-21`),
+                    end: moment(`${year + 1}-03-19`)
+                }
+            };
+        }
+
+        /**
+         * Genera le prossime 4 stagioni a partire da oggi
+         * @returns {Object} Oggetto con le prossime 4 stagioni
+         */
+        function getNextFourSeasons() {
+            const today = moment();
+            const currentYear = today.year();
+            const seasons = [];
+            
+            // Definizione stagioni per anno corrente e prossimo
+            const currentYearSeasons = getSeasonDates(currentYear);
+            const nextYearSeasons = getSeasonDates(currentYear + 1);
+            
+            // Array di tutte le stagioni in ordine cronologico
+            const allSeasons = [
+                { name: 'Primavera', year: currentYear, ...currentYearSeasons.spring },
+                { name: 'Estate', year: currentYear, ...currentYearSeasons.summer },
+                { name: 'Autunno', year: currentYear, ...currentYearSeasons.autumn },
+                { name: 'Inverno', year: currentYear, ...currentYearSeasons.winter },
+                { name: 'Primavera', year: currentYear + 1, ...nextYearSeasons.spring },
+                { name: 'Estate', year: currentYear + 1, ...nextYearSeasons.summer },
+                { name: 'Autunno', year: currentYear + 1, ...nextYearSeasons.autumn },
+                { name: 'Inverno', year: currentYear + 1, ...nextYearSeasons.winter }
+            ];
+            
+            // Filtra solo le stagioni future e prendi le prossime 4
+            const futureSeasons = allSeasons.filter(season => season.end.isAfter(today));
+            const nextFour = futureSeasons.slice(0, 4);
+            
+            // Crea l'oggetto ranges per daterangepicker
+            const ranges = {};
+            
+            nextFour.forEach(season => {
+                // Gestione speciale per l'inverno che va a cavallo di due anni
+                let label;
+                if (season.name === 'Inverno') {
+                    label = `${season.name} ${season.year}/${String(season.year + 1).slice(-2)}`;
+                } else {
+                    label = `${season.name} ${season.year}`;
+                }
+                
+                ranges[label] = [season.start, season.end];
+            });
+            
+            return ranges;
+        }
+
+        // Genera ranges dinamici
+        const dynamicRanges = {
+            'Prossimo mese': [
+                moment().add(1, 'month').startOf('month'), 
+                moment().add(1, 'month').endOf('month')
+            ],
+            ...getNextFourSeasons()
+        };
+
+        // Configurazione DateRangePicker con stagioni dinamiche
         $('#date-range').daterangepicker({
             locale: {
                 format: 'DD/MM/YYYY',
@@ -17,21 +99,14 @@
                 ],
                 firstDay: 1
             },
-            ranges: {
-                'Prossimo mese': [moment().add(1, 'month').startOf('month'), moment().add(1, 'month')
-                    .endOf('month')
-                ],
-                'Estate 2025': [moment('2025-06-21'), moment('2025-09-21')],
-                'Autunno 2025': [moment('2025-09-21'), moment('2025-12-21')],
-                'Inverno 2025/26': [moment('2025-12-21'), moment('2026-03-20')],
-                'Primavera 2026': [moment('2026-03-20'), moment('2026-06-21')]
-            },
+            ranges: dynamicRanges,
             startDate: moment().add(1, 'month'),
             endDate: moment().add(1, 'month').add(7, 'days'),
             minDate: moment(),
             maxDate: moment().add(2, 'years'),
             opens: 'left',
-            drops: 'down'
+            drops: 'down',
+            alwaysShowCalendars: true
         });
     });
 
@@ -410,7 +485,9 @@
             };
 
             if (type === 'matches') {
-                // Tabella matches SENZA colonna azioni
+                // Tabella matches
+                const isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
+                
                 tr.innerHTML = `
                 <td>
                     <div class="ship-name">${item.ship || 'N/D'}</div>
@@ -435,9 +512,20 @@
                 <td>
                     <div class="price-daily">${formatPrice(dailyCostForGroup)}</div>
                 </td>
+                ${isAuthenticated && item.id ? `
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary btn-action-detail" 
+                            onclick="showCruiseDetails(${item.id})"
+                            title="Visualizza dettagli completi">
+                        <i class="fas fa-info-circle"></i> Dettagli
+                    </button>
+                </td>
+                ` : ''}
             `;
             } else {
                 // Tabella alternatives CON benefit
+                const isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
+                
                 tr.innerHTML = `
                 <td>
                     <div class="ship-name">${item.ship || 'N/D'}</div>
@@ -466,6 +554,15 @@
                         ${(item.benefit || item.recommendation_reason || 'Buona opzione').substring(0, 15)}${(item.benefit || item.recommendation_reason || '').length > 15 ? '...' : ''}
                     </span>
                 </td>
+                ${isAuthenticated && item.id ? `
+                <td class="text-center">
+                    <button class="btn btn-sm btn-warning btn-action-detail" 
+                            onclick="showCruiseDetails(${item.id})"
+                            title="Visualizza dettagli completi">
+                        <i class="fas fa-info-circle"></i> Dettagli
+                    </button>
+                </td>
+                ` : ''}
             `;
             }
 
@@ -906,37 +1003,6 @@
     // Aggiungi questo codice al tuo file js.blade.php esistente
 
     $(function() {
-        // Configurazione DateRangePicker (mantieni quella esistente)
-        $('#date-range').daterangepicker({
-            locale: {
-                format: 'DD/MM/YYYY',
-                applyLabel: "Applica",
-                cancelLabel: "Annulla",
-                fromLabel: "Da",
-                toLabel: "A",
-                customRangeLabel: "Personalizzato",
-                daysOfWeek: ["D", "L", "M", "M", "G", "V", "S"],
-                monthNames: ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
-                    "Lug", "Ago", "Set", "Ott", "Nov", "Dic"
-                ],
-                firstDay: 1
-            },
-            ranges: {
-                'Prossimo mese': [moment().add(1, 'month').startOf('month'), moment().add(1, 'month')
-                    .endOf('month')
-                ],
-                'Estate 2025': [moment('2025-06-21'), moment('2025-09-21')],
-                'Autunno 2025': [moment('2025-09-21'), moment('2025-12-21')],
-                'Inverno 2025/26': [moment('2025-12-21'), moment('2026-03-20')],
-                'Primavera 2026': [moment('2026-03-20'), moment('2026-06-21')]
-            },
-            startDate: moment().add(1, 'month'),
-            endDate: moment().add(1, 'month').add(7, 'days'),
-            minDate: moment(),
-            maxDate: moment().add(2, 'years'),
-            opens: 'left',
-            drops: 'down'
-        });
 
         // NUOVO: Sistema di messaggi dinamici
         initializeDynamicMessages();

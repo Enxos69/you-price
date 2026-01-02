@@ -668,4 +668,25 @@ class CrocieraController extends Controller
             return response()->json(['error' => 'Impossibile recuperare le statistiche'], 500);
         }
     }
+
+    /**
+     * Mostra i dettagli di una singola crociera (solo per utenti autenticati)
+     */
+    public function show($id)
+    {
+        try {
+            $cruise = Cruise::findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'cruise' => $cruise
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore recupero dettagli crociera: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Crociera non trovata'
+            ], 404);
+        }
+    }
 }

@@ -17,7 +17,8 @@
                         <a class="dropdown-item" href="#">Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="dropdown-item" href="{{ route('user.index') }}"><i class="fas fa-users"></i>Gestione Utenti</a>
+                        <a class="dropdown-item" href="{{ route('user.index') }}"><i class="fas fa-users"></i>Gestione
+                            Utenti</a>
                     </li>
                     {{-- <li class="nav-item dropdown">
                         <a class="dropdown-item" href="{{ route('cruises.import.form') }}">Importa Crociere</a>
@@ -29,12 +30,12 @@
                     </li>
                     <li class="nav-item dropdown">
                         <a class="dropdown-item" href="{{ route('admin.analytics.index') }}">
-                                <i class="fas fa-chart-bar me-2"></i>Analytics Ricerche
-                            </a>
+                            <i class="fas fa-chart-bar me-2"></i>Analytics Ricerche
+                        </a>
                     </li>
                 @elseif(Auth::user()->isUser())
                     <a class="dropdown-item" href="#">Profilo</a>
-                    <a class="dropdown-item" href="{{ route('richieste.index') }}">Le Mie Richieste</a>
+                    <a class="dropdown-item" href="#">Le Mie Richieste</a>
                     <a class="dropdown-item" href="#">Supporto</a>
                 @endif
         </div>
@@ -43,8 +44,11 @@
     </ul>
     <ul class="navbar-nav ml-auto">
         @if (Route::has('login'))
-            @auth
+            @auth                
                 <li class="nav-item w-100">
+                     <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
+                        Fai la tua Ricerca!
+                    </a>
                     <a class="nav-link" href="{{ url('/home') }}">
                         <i class="fa-solid fa-house"></i> Home
                     </a>
@@ -61,6 +65,7 @@
                     <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
                         Fai la tua Ricerca!
                     </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('login') }}">
                         <i class="fas fa-sign-in-alt"></i> Login

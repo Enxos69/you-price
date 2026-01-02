@@ -50,6 +50,11 @@ Route::get('/crociere', [CrocieraController::class, 'index'])->name('crociere.in
 Route::post('/crociere/search', [CrocieraController::class, 'search'])->name('crociere.search');
 Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('crociere.stats');
 
+// Dettagli singola crociera (solo utenti autenticati)
+Route::get('/crociere/{id}', [CrocieraController::class, 'show'])
+    ->name('crociere.show')
+    ->middleware('auth');
+
 // Tutte le rotte protette solo da autenticazione
 Route::middleware('auth')->group(function () {
 
@@ -97,15 +102,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/home', function () {
         return view('home');
     })->name('home');
-
-    // RICHIESTE UTENTE
-    Route::get('/richieste', [RichiestaController::class, 'index'])->name('richieste.index');
-    Route::get('/richieste/create', [RichiestaController::class, 'create'])->name('richieste.create');
-    Route::post('/richieste', [RichiestaController::class, 'store'])->name('richieste.store');
-    Route::get('/richieste/{id}', [RichiestaController::class, 'show'])->name('richieste.show');
-    Route::get('/richieste/{id}/edit', [RichiestaController::class, 'edit'])->name('richieste.edit');
-    Route::post('/richieste/update', [RichiestaController::class, 'update'])->name('richieste.update');
-    Route::delete('/richieste/{id}', [RichiestaController::class, 'destroy'])->name('richieste.destroy');
+   
 });
 
 
