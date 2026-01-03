@@ -40,12 +40,12 @@
                             <i class="fas fa-tachometer-alt me-2"></i>La Mia Dashboard
                         </a>
                     </li>
-                    <li>
+                   {{--  <li>
                         <a class="dropdown-item" href="{{ route('favorites.index') }}">
                             <i class="fas fa-heart me-2"></i>
                             Preferiti ({{ Auth::user()->favorites()->count() }})
                         </a>
-                    </li>
+                    </li> --}}
                     <li>
                         <a class="dropdown-item" href="{{ route('alerts.index') }}">
                             <i class="fas fa-bell me-2"></i>

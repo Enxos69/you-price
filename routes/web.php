@@ -67,7 +67,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard principale
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Preferiti
-    Route::get('/preferiti', [FavoritesController::class, 'index'])->name('favorites.index');
+    # Route::get('/preferiti', [FavoritesController::class, 'index'])->name('favorites.index');
     Route::post('/cruises/{cruise}/favorite/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
     Route::post('/cruises/{cruise}/favorite', [FavoritesController::class, 'store'])->name('favorites.store');
     Route::delete('/cruises/{cruise}/favorite', [FavoritesController::class, 'destroy'])->name('favorites.destroy');
@@ -103,7 +103,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/preferiti', [FavoritesController::class, 'index'])->name('user.favorites.index');
+    # Route::get('/preferiti', [FavoritesController::class, 'index'])->name('user.favorites.index');
     Route::get('/alert-prezzi', [PriceAlertsController::class, 'index'])->name('alerts.index');
 });
 

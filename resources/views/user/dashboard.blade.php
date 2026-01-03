@@ -37,7 +37,7 @@
             </a>
         </div>
         
-        <div class="col-md-3 col-sm-6 mb-3">
+        {{-- <div class="col-md-3 col-sm-6 mb-3">
             <a href="{{ route('favorites.index') }}" class="text-decoration-none">
                 <div class="card quick-action-card text-center p-4 h-100">
                     <i class="fas fa-heart quick-action-icon text-danger"></i>
@@ -45,7 +45,7 @@
                     <small class="text-muted">{{ $stats['favorites_count'] }} crociere salvate</small>
                 </div>
             </a>
-        </div>
+        </div> --}}
         
         <div class="col-md-3 col-sm-6 mb-3">
             <a href="{{ route('alerts.index') }}" class="text-decoration-none">
@@ -169,9 +169,9 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0"><i class="fas fa-heart text-danger me-2"></i>I Miei Preferiti</h5>
-                        <a href="{{ route('favorites.index') }}" class="btn btn-sm btn-outline-danger">
+                        {{-- <a href="{{ route('favorites.index') }}" class="btn btn-sm btn-outline-danger">
                             Vedi tutti ({{ $stats['favorites_count'] }})
-                        </a>
+                        </a> --}}
                     </div>
                     
                     <div class="row">
