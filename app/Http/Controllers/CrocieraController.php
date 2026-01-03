@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Carbon\Carbon;
 use App\Models\Cruise;
 use App\Models\SearchLog;
-use Carbon\Carbon;
+use App\Models\UserActivity;
+use Illuminate\Http\Request;
+use App\Models\UserFavorite;
+use App\Models\UserCruiseView;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CrocieraController extends Controller
 {
@@ -676,7 +680,17 @@ class CrocieraController extends Controller
     {
         try {
             $cruise = Cruise::findOrFail($id);
+            if (Auth::check()) {
+                UserCruiseView::recordView(Auth::id(), $cruise->id);
 
+                // Log dell'attività
+                UserActivity::log(
+                    Auth::id(),
+                    'view',
+                    $cruise,
+                    ['cruise_name' => $cruise->cruise]
+                );
+            }
             return response()->json([
                 'success' => true,
                 'cruise' => $cruise
@@ -688,5 +702,37 @@ class CrocieraController extends Controller
                 'error' => 'Crociera non trovata'
             ], 404);
         }
+        return view('crociere.create', compact('cruise'));
+    }
+
+    /**
+     * nuovo metodo per ottenere info sui preferiti
+     * Utile per mostrare l'icona del cuore già selezionata se è nei preferiti
+     */
+    public function getCruiseWithUserData($id)
+    {
+        $cruise = Cruise::findOrFail($id);
+
+        $userData = [];
+
+        if (Auth::check()) {
+            $userId = Auth::id();
+
+            $userData = [
+                'is_favorite' => UserFavorite::isFavorite($userId, $cruise->id),
+                'has_viewed' => UserCruiseView::where('user_id', $userId)
+                    ->where('cruise_id', $cruise->id)
+                    ->exists(),
+                'view_count' => UserCruiseView::where('user_id', $userId)
+                    ->where('cruise_id', $cruise->id)
+                    ->value('view_count') ?? 0
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'cruise' => $cruise,
+            'user_data' => $userData
+        ]);
     }
 }

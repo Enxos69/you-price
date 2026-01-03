@@ -1,0 +1,469 @@
+/* ============================================================================
+   DASHBOARD STYLES - You Price Cruises
+   ============================================================================ */
+
+:root {
+    --primary: #2d5016;
+    --primary-light: #4a7c59;
+    --success: #22543d;
+    --dashboard-bg: #f8f9fa;
+}
+
+body {
+    background: var(--dashboard-bg);
+}
+
+/* Hero Section
+   ========================================================================== */
+.hero-section {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.hero-section h2 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.hero-section .badge {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Quick Action Cards
+   ========================================================================== */
+.quick-action-card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.quick-action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.quick-action-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.quick-action-card h6 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.quick-action-card small {
+    font-size: 0.85rem;
+}
+
+/* Stat Cards
+   ========================================================================== */
+.stat-card {
+    border-left: 4px solid var(--primary);
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+/* Recent Search Items
+   ========================================================================== */
+.recent-search-item {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-left: 3px solid var(--primary-light);
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.recent-search-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+/* Favorite Cruise Cards
+   ========================================================================== */
+.favorite-cruise-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.favorite-cruise-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.favorite-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.favorite-card .remove-favorite {
+    transition: all 0.2s;
+}
+
+.favorite-card .remove-favorite:hover {
+    transform: scale(1.2);
+}
+
+/* Price Alert Cards
+   ========================================================================== */
+.price-alert {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+    border-left: 4px solid #dc3545;
+}
+
+.alert-card {
+    transition: all 0.3s;
+}
+
+.alert-card:hover {
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+.alert-card .progress {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Timeline
+   ========================================================================== */
+.timeline-item {
+    border-left: 2px solid var(--primary-light);
+    padding-left: 1.5rem;
+    padding-bottom: 1.5rem;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border: 3px solid white;
+    border-radius: 50%;
+    position: absolute;
+    left: -7px;
+    top: 0;
+    box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.1);
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+/* Badges Custom
+   ========================================================================== */
+.badge-custom {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+/* Cards General
+   ========================================================================== */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background: white;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+/* Buttons
+   ========================================================================== */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.btn-outline-primary {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Progress Bars
+   ========================================================================== */
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+    height: 8px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.6s ease;
+}
+
+/* Alerts
+   ========================================================================== */
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Responsive
+   ========================================================================== */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 1.5rem 0;
+    }
+    
+    .hero-section h2 {
+        font-size: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+    }
+    
+    .quick-action-icon {
+        font-size: 2rem;
+    }
+    
+    .recent-search-item:hover {
+        transform: none;
+    }
+}
+
+/* Animations
+   ========================================================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card, .stat-card, .recent-search-item {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Loading States
+   ========================================================================== */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15rem;
+}
+
+/* Modals
+   ========================================================================== */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+    border-radius: 0 0 12px 12px;
+}
+
+/* Tooltips
+   ========================================================================== */
+.tooltip-inner {
+    background-color: var(--primary);
+    border-radius: 6px;
+}
+
+.tooltip.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: var(--primary);
+}
+
+/* Pagination
+   ========================================================================== */
+.pagination .page-link {
+    color: var(--primary);
+    border-radius: 6px;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-link:hover {
+    background-color: var(--primary-light);
+    border-color: var(--primary-light);
+    color: white;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* Custom Scrollbar
+   ========================================================================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+/* Empty States
+   ========================================================================== */
+.empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.empty-state i {
+    opacity: 0.5;
+}
+
+.empty-state h4 {
+    margin-top: 1rem;
+    color: #6c757d;
+}
+
+/* Focus States
+   ========================================================================== */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(45, 80, 22, 0.25);
+    border-color: var(--primary-light);
+}
+
+/* Utility Classes
+   ========================================================================== */
+.text-primary {
+    color: var(--primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary) !important;
+}
+
+.border-primary {
+    border-color: var(--primary) !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+.shadow {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+}
+
+.shadow-lg {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
+}
+
+/* Print Styles
+   ========================================================================== */
+@media print {
+    .hero-section,
+    .quick-action-card,
+    .btn,
+    .navbar {
+        display: none !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+}

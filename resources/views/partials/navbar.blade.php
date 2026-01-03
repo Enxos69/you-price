@@ -1,7 +1,8 @@
 <!-- resources/views/partials/navbar.blade.php -->
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
     <a class="navbar-brand" href="/">
-        <img src="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo.png' : asset('img/logo.png') }}" alt="Logo">
+        <img src="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo.png' : asset('img/logo.png') }}"
+            alt="Logo">
     </a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav"
         aria-expanded="false" aria-label="Toggle navigation">
@@ -34,9 +35,31 @@
                         </a>
                     </li>
                 @elseif(Auth::user()->isUser())
-                    <a class="dropdown-item" href="#">Profilo</a>
-                    <a class="dropdown-item" href="#">Le Mie Richieste</a>
-                    <a class="dropdown-item" href="#">Supporto</a>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-2"></i>La Mia Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('favorites.index') }}">
+                            <i class="fas fa-heart me-2"></i>
+                            Preferiti ({{ Auth::user()->favorites()->count() }})
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('alerts.index') }}">
+                            <i class="fas fa-bell me-2"></i>
+                            Alert Prezzi
+                            @if (Auth::user()->getTriggeredAlerts()->count() > 0)
+                                <span class="badge bg-success ms-1">
+                                    {{ Auth::user()->getTriggeredAlerts()->count() }} raggiunti!
+                                </span>
+                            @endif
+                        </a>
+                    </li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
                 @endif
         </div>
         </li>
@@ -44,9 +67,9 @@
     </ul>
     <ul class="navbar-nav ml-auto">
         @if (Route::has('login'))
-            @auth                
+            @auth
                 <li class="nav-item w-100">
-                     <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
+                    <a href="{{ route('crociere.index') }}" class="btn btn-primary ml-3">
                         Fai la tua Ricerca!
                     </a>
                     <a class="nav-link" href="{{ url('/home') }}">

@@ -6,8 +6,11 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CruiseController;
 use App\Http\Controllers\CrocieraController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FavoritesController;
 use App\Http\Controllers\RichiestaController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\PriceAlertsController;
 use App\Http\Controllers\CruiseImportController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\SearchAnalyticsController;
@@ -61,6 +64,49 @@ Route::middleware('auth')->group(function () {
     // Rotte admin (senza controllo isAdmin per ora)
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
 
+    // Dashboard principale
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Preferiti
+    Route::get('/preferiti', [FavoritesController::class, 'index'])->name('favorites.index');
+    Route::post('/cruises/{cruise}/favorite/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
+    Route::post('/cruises/{cruise}/favorite', [FavoritesController::class, 'store'])->name('favorites.store');
+    Route::delete('/cruises/{cruise}/favorite', [FavoritesController::class, 'destroy'])->name('favorites.destroy');
+    Route::patch('/cruises/{cruise}/favorite/note', [FavoritesController::class, 'updateNote'])->name('favorites.update-note');
+
+    // Alert Prezzi
+    Route::get('/alert-prezzi', [PriceAlertsController::class, 'index'])->name('alerts.index');
+    Route::post('/alert-prezzi', [PriceAlertsController::class, 'store'])->name('alerts.store');
+    Route::patch('/alert-prezzi/{alert}', [PriceAlertsController::class, 'update'])->name('alerts.update');
+    Route::delete('/alert-prezzi/{alert}', [PriceAlertsController::class, 'destroy'])->name('alerts.destroy');
+    Route::post('/alert-prezzi/{alert}/toggle', [PriceAlertsController::class, 'toggleActive'])->name('alerts.toggle');
+
+    // API Dashboard (AJAX)
+    Route::prefix('api/dashboard')->name('api.dashboard.')->group(function () {
+        Route::get('/stats', [DashboardController::class, 'getStats'])->name('stats');
+        Route::get('/favorites', [DashboardController::class, 'getFavoritesJson'])->name('favorites');
+        Route::get('/alerts', [DashboardController::class, 'getAlertsJson'])->name('alerts');
+        Route::get('/timeline', [DashboardController::class, 'getActivityTimelineJson'])->name('timeline');
+    });
+
+    // API Favorites (AJAX)
+    Route::prefix('api/favorites')->name('api.favorites.')->group(function () {
+        Route::get('/', [FavoritesController::class, 'getFavorites'])->name('list');
+        Route::get('/check/{cruise}', [FavoritesController::class, 'check'])->name('check');
+        Route::delete('/all', [FavoritesController::class, 'destroyAll'])->name('destroy-all');
+    });
+
+    // API Alerts (AJAX)
+    Route::prefix('api/alerts')->name('api.alerts.')->group(function () {
+        Route::get('/', [PriceAlertsController::class, 'getAlerts'])->name('list');
+        Route::get('/active', [PriceAlertsController::class, 'getActiveAlerts'])->name('active');
+        Route::delete('/inactive', [PriceAlertsController::class, 'destroyInactive'])->name('destroy-inactive');
+    });
+    Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/preferiti', [FavoritesController::class, 'index'])->name('user.favorites.index');
+    Route::get('/alert-prezzi', [PriceAlertsController::class, 'index'])->name('alerts.index');
+});
+
     // CRUD Crociere (Admin)
     Route::get('/admin/cruises', [CruiseController::class, 'index'])->name('cruises.index');
     Route::get('/admin/cruises/create', [CruiseController::class, 'create'])->name('cruises.create');
@@ -102,7 +148,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/home', function () {
         return view('home');
     })->name('home');
-   
 });
 
 
