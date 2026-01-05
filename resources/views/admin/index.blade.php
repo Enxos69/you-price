@@ -8,7 +8,7 @@
     <!-- Main Content -->
     <div class="jumbotron text-center mt-5 pt-5">
         <h1>Benvenuto nel nostro sito, Amministratore!</h1>
-        <p>Questa è la pagina iniziale. Accedi o registrati per continuare.</p>
+        <p>Questa è la pagina iniziale.... in fase di sviluppo</p>
     </div>      
 </div>
 @endsection

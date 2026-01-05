@@ -2,6 +2,7 @@
 
 // routes/web.php - Versione semplificata senza middleware admin
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CruiseController;
@@ -145,9 +146,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
 
     // Rotta generica per gli utenti autenticati
-    Route::get('/home', function () {
+    /* Route::get('/home', function () {
         return view('home');
-    })->name('home');
+    })->name('home'); */
+
+Route::get('/home', [HomeController::class, 'index'])
+    ->middleware('auth')
+    ->name('home');
 });
 
 

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-
+<link rel="stylesheet" href="{{ asset('/css/dashboard.css') }}">
 @section('title', 'Dashboard - You Price')
 
 @section('content')
@@ -304,16 +304,8 @@
     </div>
 </div>
 
-<div class="container my-5">
-    <div class="text-center text-muted">
-        <small>Dashboard Utente - You Price Cruises</small>
-    </div>
-</div>
-@endsection
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('assets/css/dashboard.css') }}">
-@endpush
+@endsection
 
 @push('scripts')
 <script src="{{ asset('js/dashboard.js') }}"></script>
