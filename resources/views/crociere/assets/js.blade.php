@@ -36,30 +36,61 @@
             const today = moment();
             const currentYear = today.year();
             const seasons = [];
-            
+
             // Definizione stagioni per anno corrente e prossimo
             const currentYearSeasons = getSeasonDates(currentYear);
             const nextYearSeasons = getSeasonDates(currentYear + 1);
-            
+
             // Array di tutte le stagioni in ordine cronologico
-            const allSeasons = [
-                { name: 'Primavera', year: currentYear, ...currentYearSeasons.spring },
-                { name: 'Estate', year: currentYear, ...currentYearSeasons.summer },
-                { name: 'Autunno', year: currentYear, ...currentYearSeasons.autumn },
-                { name: 'Inverno', year: currentYear, ...currentYearSeasons.winter },
-                { name: 'Primavera', year: currentYear + 1, ...nextYearSeasons.spring },
-                { name: 'Estate', year: currentYear + 1, ...nextYearSeasons.summer },
-                { name: 'Autunno', year: currentYear + 1, ...nextYearSeasons.autumn },
-                { name: 'Inverno', year: currentYear + 1, ...nextYearSeasons.winter }
+            const allSeasons = [{
+                    name: 'Primavera',
+                    year: currentYear,
+                    ...currentYearSeasons.spring
+                },
+                {
+                    name: 'Estate',
+                    year: currentYear,
+                    ...currentYearSeasons.summer
+                },
+                {
+                    name: 'Autunno',
+                    year: currentYear,
+                    ...currentYearSeasons.autumn
+                },
+                {
+                    name: 'Inverno',
+                    year: currentYear,
+                    ...currentYearSeasons.winter
+                },
+                {
+                    name: 'Primavera',
+                    year: currentYear + 1,
+                    ...nextYearSeasons.spring
+                },
+                {
+                    name: 'Estate',
+                    year: currentYear + 1,
+                    ...nextYearSeasons.summer
+                },
+                {
+                    name: 'Autunno',
+                    year: currentYear + 1,
+                    ...nextYearSeasons.autumn
+                },
+                {
+                    name: 'Inverno',
+                    year: currentYear + 1,
+                    ...nextYearSeasons.winter
+                }
             ];
-            
+
             // Filtra solo le stagioni future e prendi le prossime 4
             const futureSeasons = allSeasons.filter(season => season.end.isAfter(today));
             const nextFour = futureSeasons.slice(0, 4);
-            
+
             // Crea l'oggetto ranges per daterangepicker
             const ranges = {};
-            
+
             nextFour.forEach(season => {
                 // Gestione speciale per l'inverno che va a cavallo di due anni
                 let label;
@@ -68,17 +99,17 @@
                 } else {
                     label = `${season.name} ${season.year}`;
                 }
-                
+
                 ranges[label] = [season.start, season.end];
             });
-            
+
             return ranges;
         }
 
         // Genera ranges dinamici
         const dynamicRanges = {
             'Prossimo mese': [
-                moment().add(1, 'month').startOf('month'), 
+                moment().add(1, 'month').startOf('month'),
                 moment().add(1, 'month').endOf('month')
             ],
             ...getNextFourSeasons()
@@ -444,7 +475,109 @@
                     tr.classList.add(index % 2 === 0 ? 'slide-in-left' : 'slide-in-right');
                 }, index * 80);
             });
+             setTimeout(() => {
+                initTableSorting(tableId);
+            }, items.length * 80 + 100);
         }
+
+
+        // Inizializza ordinamento manuale per le tabelle
+        function initTableSorting(tableId) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+
+            const headers = table.querySelectorAll('thead th');
+
+            headers.forEach((header, index) => {
+                // Non rendere ordinabile la colonna AZIONI
+                if (header.textContent.includes('AZIONI')) {
+                    return;
+                }
+
+                header.style.cursor = 'pointer';
+                header.style.userSelect = 'none';
+                header.dataset.sortOrder = 'none';
+
+                // Aggiungi icona ordinamento
+                const sortIcon = document.createElement('i');
+                sortIcon.className = 'fas fa-sort ms-2';
+                sortIcon.style.opacity = '0.3';
+                sortIcon.style.fontSize = '0.75rem';
+                header.appendChild(sortIcon);
+
+                header.addEventListener('click', () => {
+                    sortTable(tableId, index, header);
+                });
+            });
+        }
+
+        // Funzione di ordinamento
+        function sortTable(tableId, columnIndex, headerElement) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Determina direzione ordinamento
+            let currentOrder = headerElement.dataset.sortOrder || 'none';
+            let newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+
+            // Reset tutte le icone
+            table.querySelectorAll('thead th').forEach(th => {
+                const icon = th.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-sort ms-2';
+                    icon.style.opacity = '0.3';
+                    icon.style.color = '';
+                }
+                th.dataset.sortOrder = 'none';
+            });
+
+            // Aggiorna icona header corrente
+            const icon = headerElement.querySelector('i');
+            if (icon) {
+                icon.className = newOrder === 'asc' ? 'fas fa-sort-up ms-2' : 'fas fa-sort-down ms-2';
+                icon.style.opacity = '1';
+                icon.style.color = '#68d391';
+            }
+            headerElement.dataset.sortOrder = newOrder;
+
+            // Ordina le righe
+            rows.sort((a, b) => {
+                const aCell = a.cells[columnIndex];
+                const bCell = b.cells[columnIndex];
+
+                if (!aCell || !bCell) return 0;
+
+                let aVal = aCell.textContent.trim();
+                let bVal = bCell.textContent.trim();
+
+                // Rimuovi simboli per numeri (€, ., virgole, ecc.)
+                const aNum = parseFloat(aVal.replace(/[€,.gni]/g, '').replace(/\s/g, ''));
+                const bNum = parseFloat(bVal.replace(/[€,.gni]/g, '').replace(/\s/g, ''));
+
+                // Se sono numeri, confronta come numeri
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+
+                // Altrimenti confronta come stringhe
+                if (newOrder === 'asc') {
+                    return aVal.localeCompare(bVal, 'it');
+                } else {
+                    return bVal.localeCompare(aVal, 'it');
+                }
+            });
+
+            // Rimuovi tutte le righe
+            while (tbody.firstChild) {
+                tbody.removeChild(tbody.firstChild);
+            }
+
+            // Ri-aggiungi le righe ordinate
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+
 
         // Creazione riga tabella senza azioni per matches - Style coordinato
         function createTableRow(item, type) {
@@ -487,7 +620,7 @@
             if (type === 'matches') {
                 // Tabella matches
                 const isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
-                
+
                 tr.innerHTML = `
                 <td>
                     <div class="ship-name">${item.ship || 'N/D'}</div>
@@ -525,7 +658,7 @@
             } else {
                 // Tabella alternatives CON benefit
                 const isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
-                
+
                 tr.innerHTML = `
                 <td>
                     <div class="ship-name">${item.ship || 'N/D'}</div>

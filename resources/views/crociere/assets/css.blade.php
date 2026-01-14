@@ -1405,4 +1405,15 @@
             animation: none !important;
         }
     }
+
+    /* Stili per ordinamento manuale */
+    .table-header th[style*="cursor: pointer"]:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .table-header th .fa-sort,
+    .table-header th .fa-sort-up,
+    .table-header th .fa-sort-down {
+        transition: all 0.2s ease;
+    }
 </style>
