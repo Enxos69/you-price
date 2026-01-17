@@ -235,6 +235,8 @@ class CruiseImportController extends Controller
             return $this->parseRoyalCaribbeanCruise($record);
         } elseif (strpos($line, 'costa') !== false) {
             return $this->parseCostaCruise($record);
+        }elseif (strpos($line, 'norwegian') !== false) {
+            return $this->parseCostaCruise($record);
         }
 
         // Parser generico per altre compagnie

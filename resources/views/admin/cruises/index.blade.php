@@ -116,10 +116,11 @@
                                         <div class="filter-group-optimized">
                                             <select id="companyFilter" class="filter-select-optimized">
                                                 <option value="">Tutte le compagnie</option>
-                                                <option value="msc">MSC Cruises</option>
-                                                <option value="costa">Costa Crociere</option>
-                                                <option value="royal">Royal Caribbean</option>
                                                 <option value="carnival">Carnival</option>
+                                                <option value="costa">Costa Crociere</option>
+                                                <option value="msc">MSC Cruises</option>
+                                                <option value="norwegian">Norwegian Cruise Line</option>
+                                                <option value="royal">Royal Caribbean</option>
                                             </select>
                                         </div>
 
