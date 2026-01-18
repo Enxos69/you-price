@@ -118,6 +118,7 @@
                                         <option value="Genova">
                                         <option value="Napoli">
                                         <option value="Palermo">
+                                        <option value="Rio de Janeiro">
                                     </datalist>
                                 </div>
                                 <div class="col-md-12 col-lg-12 mb-12 " style="text-align: center">
