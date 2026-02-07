@@ -775,11 +775,50 @@
                     animateCounterValue(document.getElementById('available-cruises'), stats
                         .available_cruises || 0);
                     animateCounterValue(document.getElementById('total-companies'), stats.companies || 0);
-                    // RIMOSSO: expired-cruises
+                    
+                    // Popola lista compagnie con placeholder orizzontali
+                    if (stats.companies_list && stats.companies_list.length > 0) {
+                        displayCompaniesList(stats.companies_list);
+                    }
                 }
             } catch (error) {
                 console.warn('Impossibile caricare statistiche:', error);
             }
+        }
+
+        function displayCompaniesList(companies) {
+            const container = document.getElementById('companies-list');
+            if (!container) return;
+
+            // Colori distintivi per ogni compagnia
+            const companyData = {
+                'Carnival': { color: '#C41E3A', abbr: 'CAR' },
+                'Costa': { color: '#FFCC00', abbr: 'COS', textColor: '#003087' },
+                'MSC': { color: '#003087', abbr: 'MSC' },
+                'Norwegian': { color: '#0066B2', abbr: 'NOR' },
+                'Royal Caribbean': { color: '#0078BE', abbr: 'RC' }
+            };
+
+            const badges = companies.map(company => {
+                let data = { color: '#17a2b8', abbr: company.substring(0, 3).toUpperCase(), textColor: 'white' };
+                
+                // Trova i dati corrispondenti
+                for (const [key, value] of Object.entries(companyData)) {
+                    if (company.toLowerCase().includes(key.toLowerCase())) {
+                        data = { ...value, textColor: value.textColor || 'white' };
+                        break;
+                    }
+                }
+                
+                return `
+                    <div class="company-badge" style="background: ${data.color}; color: ${data.textColor};" 
+                         title="${company}">
+                        ${data.abbr}
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = badges;
         }
 
         // Animazione contatori con effetto coordinato

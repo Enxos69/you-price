@@ -273,6 +273,32 @@
         line-height: 1;
     }
 
+    /* Companies List - Layout orizzontale con badge */
+    .companies-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .company-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: default;
+        white-space: nowrap;
+    }
+
+    .company-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
     /* Mini stats icons */
     .stats-mini-icon {
         width: 2.5rem;

@@ -660,6 +660,12 @@ class CrocieraController extends Controller
                 'total_cruises' => Cruise::count(),
                 'available_cruises' => Cruise::available()->future()->count(),
                 'companies' => Cruise::distinct('line')->whereNotNull('line')->count(),
+                'companies_list' => Cruise::distinct()
+                    ->whereNotNull('line')
+                    ->where('line', '!=', '')
+                    ->pluck('line')
+                    ->sort()
+                    ->values(),
                 'avg_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->avg('interior'),
                 'min_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->min('interior'),
                 'max_price' => Cruise::whereNotNull('interior')->where('interior', '>', 0)->max('interior'),

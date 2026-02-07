@@ -52,7 +52,7 @@
             <div class="col-xl-4 col-md-6 mb-3">
                 <div class="card stats-card stats-companies">
                     <div class="card-body">
-                        <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center mb-2">
                             <div class="stats-icon">
                                 <i class="fas fa-building"></i>
                             </div>
@@ -60,6 +60,7 @@
                                 <div class="stats-number" id="total-companies">0</div>
                                 <div class="stats-label">COMPAGNIE</div>
                             </div>
+                            <div id="companies-list" class="companies-list"></div>
                         </div>
                     </div>
                 </div>
@@ -86,7 +87,7 @@
                                     <input type="number" name="budget" id="budget" class="form-control"
                                         placeholder="Es. 2000" required min="100" data-field="budget">
                                     <div class="form-text"><small id="budget-per-person" class="text-muted"></small></div>
-                                    <div class="invalid-feedback">Inserisci un budget minimo (>= €100)</div>
+                                    <div class="invalid-feedback">Inserisci un budget minimo di €100</div>
                                 </div>
                                 <div class="col-md-6 col-lg-3 mb-3">
                                     <label for="participants" class="form-label">Numero Partecipanti <span
