@@ -84,9 +84,9 @@
                                     <label for="budget" class="form-label">Budget Totale (€) <span
                                             class="text-danger">*</span></label>
                                     <input type="number" name="budget" id="budget" class="form-control"
-                                        placeholder="Es. 2000" required min="100" step="50" data-field="budget">
+                                        placeholder="Es. 2000" required min="100" data-field="budget">
                                     <div class="form-text"><small id="budget-per-person" class="text-muted"></small></div>
-                                    <div class="invalid-feedback">Inserisci un budget valido</div>
+                                    <div class="invalid-feedback">Inserisci un budget minimo (>= €100)</div>
                                 </div>
                                 <div class="col-md-6 col-lg-3 mb-3">
                                     <label for="participants" class="form-label">Numero Partecipanti <span

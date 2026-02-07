@@ -1270,67 +1270,85 @@
         // Event listeners per i campi con validazione migliorata
         $('#date-range').on('apply.daterangepicker input change', function(ev, picker) {
             const hasValue = $(this).val().trim() !== '';
-            fieldStatus.periodo = hasValue;
-            updateFieldVisualState($(this), hasValue);
-            updateDynamicMessage();
-
+            
+            // Rimuovi tutte le classi di validazione
+            $(this).removeClass('field-filled field-invalid field-progress is-valid is-invalid');
+            
             if (hasValue) {
+                $(this).addClass('field-filled is-valid');
+                fieldStatus.periodo = true;
                 showDynamicToast('📅 Periodo selezionato!', 'success', 1500);
+            } else {
+                fieldStatus.periodo = false;
             }
+            
+            updateDynamicMessage();
         });
 
         $('#participants').on('change', function() {
             const hasValue = $(this).val() !== '';
-            fieldStatus.partecipanti = hasValue;
-            updateFieldVisualState($(this), hasValue);
-            updateDynamicMessage();
-            updateBudgetCalculation(); // Ricalcola budget per persona
-
+            
+            // Rimuovi tutte le classi di validazione
+            $(this).removeClass('field-filled field-invalid field-progress is-valid is-invalid');
+            
             if (hasValue) {
+                $(this).addClass('field-filled is-valid');
+                fieldStatus.partecipanti = true;
                 const count = $(this).val();
                 const text = count === '1' ? 'persona' : 'persone';
                 showDynamicToast(`👥 ${count} ${text} selezionate!`, 'success', 1500);
+            } else {
+                fieldStatus.partecipanti = false;
             }
+            
+            updateDynamicMessage();
+            updateBudgetCalculation(); // Ricalcola budget per persona
         });
 
         $('#budget').on('input change', function() {
             const value = parseFloat($(this).val());
-            const isValid = !isNaN(value) && value >= 100;
-            fieldStatus.budget = isValid;
-            updateFieldVisualState($(this), isValid, !isValid && value > 0);
+            const hasValue = $(this).val().trim() !== '';
+            
+            // Rimuovi tutte le classi di validazione
+            $(this).removeClass('field-filled field-invalid field-progress is-valid is-invalid');
+            
+            if (!hasValue) {
+                // Campo vuoto - nessun feedback
+                fieldStatus.budget = false;
+            } else if (isNaN(value) || value < 100) {
+                // Valore non valido - mostra errore
+                $(this).addClass('field-invalid is-invalid');
+                fieldStatus.budget = false;
+                if (value > 0 && value < 100) {
+                    showDynamicToast('⚠️ Budget minimo: €100', 'warning', 2000);
+                }
+            } else {
+                // Valore valido - mostra successo
+                $(this).addClass('field-filled is-valid');
+                fieldStatus.budget = true;
+                showDynamicToast(`💰 Budget di €${value.toLocaleString('it-IT')} impostato!`, 'success', 1500);
+            }
+            
             updateDynamicMessage();
             updateBudgetCalculation();
-
-            if (isValid) {
-                showDynamicToast(`💰 Budget di €${value.toLocaleString('it-IT')} impostato!`, 'success', 1500);
-            } else if (value > 0 && value < 100) {
-                showDynamicToast('⚠️ Budget minimo: €100', 'warning', 2000);
-            }
         });
 
         $('#port_start').on('input change', function() {
             const hasValue = $(this).val().trim() !== '';
-            fieldStatus.porto = hasValue;
-            updateFieldVisualState($(this), hasValue);
-            updateDynamicMessage();
-
+            
+            // Rimuovi tutte le classi di validazione
+            $(this).removeClass('field-filled field-invalid field-progress is-valid is-invalid');
+            
             if (hasValue) {
+                $(this).addClass('field-filled');
+                fieldStatus.porto = true;
                 showDynamicToast(`⚓ Porto "${$(this).val()}" selezionato!`, 'info', 1500);
+            } else {
+                fieldStatus.porto = false;
             }
+            
+            updateDynamicMessage();
         });
-
-        // Funzione per aggiornare lo stato visivo dei campi
-        function updateFieldVisualState(field, isValid, isInvalid = false) {
-            field.removeClass('field-filled field-invalid field-progress is-valid is-invalid');
-
-            if (isInvalid) {
-                field.addClass('field-invalid is-invalid');
-            } else if (isValid) {
-                field.addClass('field-filled is-valid');
-            } else if (field.val().trim() !== '') {
-                field.addClass('field-progress');
-            }
-        }
 
         // Funzione migliorata per il calcolo budget per persona
         function updateBudgetCalculation() {
@@ -1425,7 +1443,7 @@
         const initialParticipants = $('#participants').val();
         if (initialParticipants && initialParticipants !== '') {
             fieldStatus.partecipanti = true;
-            updateFieldVisualState($('#participants'), true);
+            $('#participants').addClass('field-filled is-valid');
             updateBudgetCalculation();
         }
 
