@@ -277,6 +277,7 @@
     .companies-list {
         display: flex;
         flex-wrap: wrap;
+        flex-direction: row-reverse;
         gap: 0.5rem;
         margin-top: 0.5rem;
     }
