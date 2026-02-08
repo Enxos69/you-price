@@ -647,8 +647,8 @@
                 </td>
                 ${isAuthenticated && item.id ? `
                 <td class="text-center">
-                    <button class="btn btn-sm btn-primary btn-action-detail" 
-                            onclick="showCruiseDetails(${item.id})"
+                    <button class="btn btn-sm btn-primary btn-action-detail open-cruise-details" 
+                            data-cruise-id="${item.id}"
                             title="Visualizza dettagli completi">
                         <i class="fas fa-info-circle"></i> Dettagli
                     </button>
@@ -689,8 +689,8 @@
                 </td>
                 ${isAuthenticated && item.id ? `
                 <td class="text-center">
-                    <button class="btn btn-sm btn-warning btn-action-detail" 
-                            onclick="showCruiseDetails(${item.id})"
+                    <button class="btn btn-sm btn-warning btn-action-detail open-cruise-details" 
+                            data-cruise-id="${item.id}"
                             title="Visualizza dettagli completi">
                         <i class="fas fa-info-circle"></i> Dettagli
                     </button>
@@ -792,11 +792,11 @@
 
             // Colori distintivi per ogni compagnia
             const companyData = {
-                'Carnival': { color: '#C41E3A', abbr: 'Carnival' },
-                'Costa': { color: '#FFCC00', abbr: 'Costa', textColor: '#003087' },
+                'Carnival': { color: '#C41E3A', abbr: 'CAR' },
+                'Costa': { color: '#FFCC00', abbr: 'COS', textColor: '#003087' },
                 'MSC': { color: '#003087', abbr: 'MSC' },
-                'Norwegian': { color: '#0066B2', abbr: 'Norwegian' },
-                'Royal Caribbean': { color: '#0078BE', abbr: 'Royal Caribbean' }
+                'Norwegian': { color: '#0066B2', abbr: 'NOR' },
+                'Royal Caribbean': { color: '#0078BE', abbr: 'RC' }
             };
 
             const badges = companies.map(company => {

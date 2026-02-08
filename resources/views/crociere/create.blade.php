@@ -360,52 +360,8 @@
         </div>
     </div>
 
-    {{-- Modal Dettaglio Crociera (solo per utenti autenticati) --}}
-    @auth
-        <div class="modal fade" id="cruiseDetailModal" tabindex="-1" aria-labelledby="cruiseDetailModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title" id="cruiseDetailModalLabel">
-                            <i class="fas fa-ship me-2"></i>
-                            <span id="modal-cruise-name">Dettaglio Crociera</span>
-                        </h5>
-                        <div class="d-flex align-items-center gap-2">
-                            <button type="button" id="favorite-icon-header" class="btn btn-sm btn-light" onclick="toggleFavorite()" title="Aggiungi ai preferiti">
-                                <i class="far fa-heart" id="favorite-icon-header-heart"></i>
-                            </button>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                                aria-label="Close"></button>
-                        </div>
-                    </div>
-                    <div class="modal-body" id="modal-cruise-body">
-                        {{-- Contenuto dinamico caricato via JavaScript --}}
-                        <div class="text-center py-5">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Caricamento...</span>
-                            </div>
-                            <p class="mt-3 text-muted">Caricamento dettagli...</p>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" id="favorite-btn" class="btn btn-outline-danger" onclick="toggleFavorite()">
-                            <i class="fas fa-heart me-2" id="favorite-icon"></i>
-                            <span id="favorite-text">Aggiungi ai Preferiti</span>
-                        </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-2"></i>Chiudi
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endauth
-
-    {{-- Toast Container --}}
-    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
-        <div id="toast-container"></div>
-    </div>
+    {{-- Modal Dettaglio Crociera --}}
+    @include('partials.cruise-detail-modal')
 @endsection
 
 @section('scripts')
