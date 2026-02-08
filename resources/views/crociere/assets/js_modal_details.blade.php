@@ -5,6 +5,22 @@
 
         // Inizializza la modale
         let cruiseModalInstance = null;
+        let currentCruiseId = null;
+        let isFavorite = false;
+
+        // Apri modale automaticamente se cruise_id è nell'URL (da dashboard)
+        const urlParams = new URLSearchParams(window.location.search);
+        const cruiseIdFromUrl = urlParams.get('cruise_id');
+        if (cruiseIdFromUrl) {
+            // Rimuovi il parametro dall'URL senza ricaricare la pagina
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            
+            // Apri la modale dopo un breve delay per permettere il caricamento della pagina
+            setTimeout(() => {
+                window.showCruiseDetails(cruiseIdFromUrl);
+            }, 300);
+        }
 
         /**
          * Funzione per mostrare i dettagli della crociera nella modale
@@ -13,6 +29,9 @@
             const modalElement = document.getElementById('cruiseDetailModal');
             const modalBody = document.getElementById('modal-cruise-body');
             const modalTitle = document.getElementById('modal-cruise-name');
+
+            // Salva l'ID della crociera corrente
+            currentCruiseId = cruiseId;
 
             // Crea istanza modale se non esiste
             if (!cruiseModalInstance) {
@@ -51,6 +70,9 @@
                 }
 
                 renderCruiseDetails(data.cruise);
+                
+                // Carica lo stato preferiti
+                await loadFavoriteStatus(cruiseId);
 
             } catch (error) {
                 console.error('Errore caricamento dettagli:', error);
@@ -306,13 +328,204 @@
 
             modalBody.innerHTML = html;
         }
+
+        /**
+         * Carica lo stato preferiti della crociera
+         */
+        async function loadFavoriteStatus(cruiseId) {
+            try {
+                const response = await fetch(`/cruises/${cruiseId}/favorite/check`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    isFavorite = data.is_favorite;
+                    updateFavoriteButton();
+                }
+            } catch (error) {
+                console.error('Errore caricamento stato preferiti:', error);
+            }
+        }
+
+        /**
+         * Aggiorna l'aspetto del pulsante preferiti
+         */
+        function updateFavoriteButton() {
+            const btn = document.getElementById('favorite-btn');
+            const icon = document.getElementById('favorite-icon');
+            const text = document.getElementById('favorite-text');
+            const headerBtn = document.getElementById('favorite-icon-header');
+            const headerIcon = document.getElementById('favorite-icon-header-heart');
+
+            if (isFavorite) {
+                // Footer button
+                if (btn) {
+                    btn.classList.remove('btn-outline-danger');
+                    btn.classList.add('btn-danger');
+                }
+                if (icon) {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                }
+                if (text) {
+                    text.textContent = 'Rimuovi dai Preferiti';
+                }
+                
+                // Header icon
+                if (headerBtn) {
+                    headerBtn.classList.remove('btn-light');
+                    headerBtn.classList.add('btn-danger');
+                    headerBtn.title = 'Rimuovi dai preferiti';
+                }
+                if (headerIcon) {
+                    headerIcon.classList.remove('far');
+                    headerIcon.classList.add('fas');
+                    headerIcon.classList.add('text-white');
+                }
+            } else {
+                // Footer button
+                if (btn) {
+                    btn.classList.remove('btn-danger');
+                    btn.classList.add('btn-outline-danger');
+                }
+                if (icon) {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                }
+                if (text) {
+                    text.textContent = 'Aggiungi ai Preferiti';
+                }
+                
+                // Header icon
+                if (headerBtn) {
+                    headerBtn.classList.remove('btn-danger');
+                    headerBtn.classList.add('btn-light');
+                    headerBtn.title = 'Aggiungi ai preferiti';
+                }
+                if (headerIcon) {
+                    headerIcon.classList.remove('fas');
+                    headerIcon.classList.add('far');
+                    headerIcon.classList.remove('text-white');
+                }
+            }
+        }
+
+        /**
+         * Toggle preferiti (aggiungi/rimuovi)
+         */
+        window.toggleFavorite = async function() {
+            if (!currentCruiseId) return;
+
+            const btn = document.getElementById('favorite-btn');
+            const icon = document.getElementById('favorite-icon');
+            
+            // Disabilita pulsante durante la richiesta
+            btn.disabled = true;
+            icon.classList.add('fa-spin');
+
+            try {
+                const response = await fetch(`/cruises/${currentCruiseId}/favorite/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    isFavorite = data.is_favorite;
+                    updateFavoriteButton();
+                    
+                    // Mostra toast di conferma
+                    showFavoriteToast(data.message, isFavorite ? 'success' : 'info');
+                    
+                    // Animazione cuore
+                    animateHeart(icon);
+                } else {
+                    throw new Error(data.message || 'Errore durante l\'operazione');
+                }
+            } catch (error) {
+                console.error('Errore toggle preferiti:', error);
+                showFavoriteToast('Errore durante l\'operazione', 'error');
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('fa-spin');
+            }
+        };
+
+        /**
+         * Animazione cuore
+         */
+        function animateHeart(icon) {
+            // Anima icona footer
+            if (icon) {
+                icon.classList.add('heart-beat');
+                setTimeout(() => {
+                    icon.classList.remove('heart-beat');
+                }, 600);
+            }
+            
+            // Anima anche icona header
+            const headerIcon = document.getElementById('favorite-icon-header-heart');
+            if (headerIcon) {
+                headerIcon.classList.add('heart-beat');
+                setTimeout(() => {
+                    headerIcon.classList.remove('heart-beat');
+                }, 600);
+            }
+        }
+
+        /**
+         * Mostra toast per feedback preferiti
+         */
+        function showFavoriteToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) return;
+
+            const toastId = 'favorite-toast-' + Date.now();
+            const iconMap = {
+                success: 'fas fa-heart text-danger',
+                info: 'fas fa-heart-broken text-muted',
+                error: 'fas fa-exclamation-circle text-danger'
+            };
+
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = 'toast show';
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="toast-body d-flex align-items-center">
+                    <i class="${iconMap[type] || iconMap.success} me-2"></i>
+                    <span class="flex-grow-1">${message}</span>
+                    <button type="button" class="btn-close ms-2" onclick="this.closest('.toast').remove()"></button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(100%)';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 3000);
+        }
     });
     @endauth
 </script>
 
 <style>
     /* Stili per la modale dettagli crociera - Versione Compatta */
-    @auth .detail-item {
+    @auth
+        .detail-item {
             padding: 0.25rem 0;
         }
 
@@ -339,6 +552,69 @@
 
         .btn-action-detail i {
             font-size: 0.875rem;
+        }
+
+        /* Animazione cuore */
+        @keyframes heartBeat {
+            0%, 100% {
+                transform: scale(1);
+            }
+            25% {
+                transform: scale(1.3);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            75% {
+                transform: scale(1.2);
+            }
+        }
+
+        .heart-beat {
+            animation: heartBeat 0.6s ease-in-out;
+        }
+
+        /* Stile pulsante preferiti footer */
+        #favorite-btn {
+            transition: all 0.3s ease;
+        }
+
+        #favorite-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+
+        #favorite-btn.btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        #favorite-btn.btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        /* Stile icona preferiti header */
+        #favorite-icon-header {
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        #favorite-icon-header:hover {
+            transform: scale(1.1);
+        }
+
+        #favorite-icon-header.btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        #favorite-icon-header.btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        #favorite-icon-header-heart {
+            font-size: 1rem;
         }
 
         /* Riduci spazi nella modale */
@@ -396,5 +672,5 @@
         #cruiseDetailModal .modal-dialog-scrollable .modal-body {
             max-height: calc(100vh - 150px);
         }
-        @endauth
-    </style>
+    @endauth
+</style>

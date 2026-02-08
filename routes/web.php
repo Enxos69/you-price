@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Preferiti
     # Route::get('/preferiti', [FavoritesController::class, 'index'])->name('favorites.index');
+    Route::get('/cruises/{cruise}/favorite/check', [FavoritesController::class, 'check'])->name('favorites.check');
     Route::post('/cruises/{cruise}/favorite/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
     Route::post('/cruises/{cruise}/favorite', [FavoritesController::class, 'store'])->name('favorites.store');
     Route::delete('/cruises/{cruise}/favorite', [FavoritesController::class, 'destroy'])->name('favorites.destroy');

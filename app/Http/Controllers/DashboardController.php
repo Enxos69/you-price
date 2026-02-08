@@ -147,7 +147,6 @@ class DashboardController extends Controller
         return UserFavorite::forUser($user->id)
             ->with('cruise')
             ->orderBy('created_at', 'desc')
-            ->limit(4)
             ->get()
             ->map(function ($favorite) {
                 $cruise = $favorite->cruise;

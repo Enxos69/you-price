@@ -99,15 +99,17 @@
         </div>
         
         <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-number">{{ $stats['favorites_count'] }}</div>
-                        <small class="text-muted">Preferiti</small>
+            <a href="#favorites-section" class="text-decoration-none" onclick="document.getElementById('favorites-section')?.scrollIntoView({behavior: 'smooth', block: 'start'});">
+                <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-number">{{ $stats['favorites_count'] }}</div>
+                            <small class="text-muted">Preferiti</small>
+                        </div>
+                        <i class="fas fa-heart fa-2x text-danger opacity-25"></i>
                     </div>
-                    <i class="fas fa-heart fa-2x text-danger opacity-25"></i>
                 </div>
-            </div>
+            </a>
         </div>
         
         <div class="col-md-3 col-sm-6 mb-3">
@@ -159,60 +161,6 @@
                         @endif
                     </div>
                     @endforeach
-                </div>
-            </div>
-            @endif
-
-            <!-- Crociere nei Preferiti -->
-            @if($favorites->isNotEmpty())
-            <div class="card mb-4 border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="fas fa-heart text-danger me-2"></i>I Miei Preferiti</h5>
-                        {{-- <a href="{{ route('favorites.index') }}" class="btn btn-sm btn-outline-danger">
-                            Vedi tutti ({{ $stats['favorites_count'] }})
-                        </a> --}}
-                    </div>
-                    
-                    <div class="row">
-                        @foreach($favorites as $favorite)
-                        <div class="col-md-6 mb-3">
-                            <div class="card favorite-cruise-card border-0">
-                                <div class="favorite-badge">
-                                    <i class="fas fa-heart text-danger"></i>
-                                </div>
-                                <div class="card-body">
-                                    <span class="badge {{ $favorite['availability']['badge_class'] }} mb-2">
-                                        {{ $favorite['availability']['label'] }}
-                                    </span>
-                                    <h6 class="fw-bold">{{ $favorite['ship'] }}</h6>
-                                    <p class="text-muted mb-2 small">
-                                        <i class="fas fa-map-marker-alt me-1"></i>{{ $favorite['itinerary'] }}
-                                    </p>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <small class="text-muted">
-                                            <i class="fas fa-calendar me-1"></i>
-                                            {{ $favorite['departure_date'] ?? 'Data da definire' }}
-                                        </small>
-                                        <small class="text-muted">
-                                            <i class="fas fa-moon me-1"></i>{{ $favorite['duration'] }}
-                                        </small>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h5 class="text-success mb-0">{{ $favorite['price_formatted'] }}</h5>
-                                            <small class="text-muted">a persona</small>
-                                        </div>
-                                        <a href="{{ route('crociere.create') }}?cruise_id={{ $favorite['id'] }}" 
-                                           class="btn btn-sm btn-primary">
-                                            Dettagli
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
                 </div>
             </div>
             @endif
@@ -302,6 +250,64 @@
             @endif
         </div>
     </div>
+
+    <!-- Sezione Preferiti - Tutta Larghezza -->
+    @if($favorites->isNotEmpty())
+    <div class="row" id="favorites-section">
+        <div class="col-12">
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="fas fa-heart text-danger me-2"></i>I Miei Preferiti</h5>
+                        <span class="badge bg-danger">{{ $stats['favorites_count'] }} {{ $stats['favorites_count'] == 1 ? 'crociera' : 'crociere' }}</span>
+                    </div>
+                    
+                    <div class="row">
+                        @foreach($favorites as $favorite)
+                        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+                            <div class="card favorite-cruise-card border-0 h-100">
+                                <div class="favorite-badge">
+                                    <i class="fas fa-heart text-danger"></i>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <span class="badge {{ $favorite['availability']['badge_class'] }} mb-2 align-self-start">
+                                        {{ $favorite['availability']['label'] }}
+                                    </span>
+                                    <h6 class="fw-bold">{{ $favorite['ship'] }}</h6>
+                                    <p class="text-muted mb-2 small">
+                                        <i class="fas fa-map-marker-alt me-1"></i>{{ $favorite['itinerary'] }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar me-1"></i>
+                                            {{ $favorite['departure_date'] ?? 'Data da definire' }}
+                                        </small>
+                                        <small class="text-muted">
+                                            <i class="fas fa-moon me-1"></i>{{ $favorite['duration'] }}
+                                        </small>
+                                    </div>
+                                    <div class="mt-auto">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="text-success mb-0">{{ $favorite['price_formatted'] }}</h5>
+                                                <small class="text-muted">a persona</small>
+                                            </div>
+                                            <a href="{{ route('crociere.index') }}?cruise_id={{ $favorite['id'] }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye me-1"></i>Dettagli
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 
