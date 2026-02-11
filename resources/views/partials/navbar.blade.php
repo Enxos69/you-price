@@ -46,7 +46,7 @@
                             Preferiti ({{ Auth::user()->favorites()->count() }})
                         </a>
                     </li> --}}
-                    <li>
+                   {{--  <li>
                         <a class="dropdown-item" href="{{ route('alerts.index') }}">
                             <i class="fas fa-bell me-2"></i>
                             Alert Prezzi
@@ -56,7 +56,7 @@
                                 </span>
                             @endif
                         </a>
-                    </li>
+                    </li> --}}
                     <li>
                         <hr class="dropdown-divider">
                     </li>

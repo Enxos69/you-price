@@ -35,19 +35,8 @@
                     <small class="opacity-75">Trova la tua crociera ideale</small>
                 </div>
             </a>
-        </div>
-        
-        {{-- <div class="col-md-3 col-sm-6 mb-3">
-            <a href="{{ route('favorites.index') }}" class="text-decoration-none">
-                <div class="card quick-action-card text-center p-4 h-100">
-                    <i class="fas fa-heart quick-action-icon text-danger"></i>
-                    <h6 class="mb-0">I Miei Preferiti</h6>
-                    <small class="text-muted">{{ $stats['favorites_count'] }} crociere salvate</small>
-                </div>
-            </a>
-        </div> --}}
-        
-        <div class="col-md-3 col-sm-6 mb-3">
+        </div> 
+       {{--  <div class="col-md-3 col-sm-6 mb-3">
             <a href="{{ route('alerts.index') }}" class="text-decoration-none">
                 <div class="card quick-action-card text-center p-4 h-100">
                     <i class="fas fa-bell quick-action-icon text-warning"></i>
@@ -55,9 +44,9 @@
                     <small class="text-muted">{{ $stats['active_alerts'] }} alert attivi</small>
                 </div>
             </a>
-        </div>
+        </div> --}}
         
-        <div class="col-md-3 col-sm-6 mb-3">
+       {{--  <div class="col-md-3 col-sm-6 mb-3">
             <a href="{{ route('admin.analytics.index') }}" class="text-decoration-none">
                 <div class="card quick-action-card text-center p-4 h-100">
                     <i class="fas fa-chart-line quick-action-icon text-info"></i>
@@ -65,7 +54,7 @@
                     <small class="text-muted">Analizza le tue ricerche</small>
                 </div>
             </a>
-        </div>
+        </div> --}}
     </div>
 
     <!-- Statistiche -->
@@ -74,7 +63,7 @@
             <h5><i class="fas fa-chart-bar me-2"></i>Panoramica</h5>
         </div>
         
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-4 col-sm-6 mb-4">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -86,7 +75,7 @@
             </div>
         </div>
         
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-4 col-sm-6 mb-4">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -98,7 +87,7 @@
             </div>
         </div>
         
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-4 col-sm-6 mb-4">
             <a href="#favorites-section" class="text-decoration-none" onclick="document.getElementById('favorites-section')?.scrollIntoView({behavior: 'smooth', block: 'start'});">
                 <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;">
                     <div class="d-flex justify-content-between align-items-start">
@@ -112,7 +101,7 @@
             </a>
         </div>
         
-        <div class="col-md-3 col-sm-6 mb-3">
+       {{--  <div class="col-md-3 col-sm-6 mb-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -122,7 +111,7 @@
                     <i class="fas fa-bell fa-2x text-warning opacity-25"></i>
                 </div>
             </div>
-        </div>
+        </div> --}}
     </div>
 
     <div class="row">
