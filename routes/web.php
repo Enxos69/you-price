@@ -131,6 +131,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/import-data', [CruiseImportController::class, 'getImportedCruisesData'])->name('cruises.import.data');
     Route::get('/admin/download-skipped', [CruiseImportController::class, 'downloadSkippedRecords'])->name('cruises.import.download-skipped');
 
+    // Richieste quotazione personalizzata
+    Route::post('/richiesta-quotazione', [RichiestaController::class, 'store'])->name('richiesta.store');
+
     // Gestione Utenti
     Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/admin/users/data', [UserController::class, 'getUsersData'])->name('users.data');

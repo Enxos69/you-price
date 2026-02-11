@@ -357,11 +357,147 @@
                     </div>
                 </div>
             </div>
+            {{-- Bottone Quotazione Personalizzata --}}
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    @auth
+                        <button type="button"
+                                id="btn-quotazione-custom"
+                                class="btn btn-lg"
+                                style="background:#003580;color:#fff;padding:14px 36px;border-radius:8px;font-size:1rem;font-weight:600;letter-spacing:.3px;"
+                                data-toggle="modal"
+                                data-target="#modalQuotazioneCustom">
+                            <i class="fas fa-paper-plane mr-2"></i>
+                            Non trovi ciò che cerchi? Richiedi una quotazione su misura
+                        </button>
+                    @else
+                        <a href="{{ route('register') }}"
+                           class="btn btn-lg"
+                           style="background:#003580;color:#fff;padding:14px 36px;border-radius:8px;font-size:1rem;font-weight:600;">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Registrati per richiedere una quotazione su misura
+                        </a>
+                    @endauth
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- Modal Dettaglio Crociera --}}
     @include('partials.cruise-detail-modal')
+
+    {{-- Modal Quotazione Personalizzata --}}
+    @auth
+    <div class="modal fade" id="modalQuotazioneCustom" tabindex="-1" role="dialog"
+         aria-labelledby="modalQuotazioneCustomLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#003580;color:#fff;">
+                    <h5 class="modal-title" id="modalQuotazioneCustomLabel">
+                        <i class="fas fa-paper-plane mr-2"></i> Richiedi una quotazione su misura
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+                        <span aria-hidden="true" style="color:#fff;">&times;</span>
+                    </button>
+                </div>
+
+                <form id="formQuotazioneCustom">
+                    @csrf
+                    <div class="modal-body">
+                        <p class="text-muted mb-4">
+                            Compila il form con i tuoi parametri: il nostro team elaborerà una proposta personalizzata
+                            e ti ricontatterà nel più breve tempo possibile.
+                        </p>
+
+                        <div class="row">
+                            {{-- Periodo di viaggio --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qc_date_range">
+                                        Periodo di viaggio <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="qc_date_range" name="date_range"
+                                           placeholder="es. 01/06/2025 - 30/06/2025" required>
+                                    <div class="invalid-feedback" id="err_date_range"></div>
+                                </div>
+                            </div>
+
+                            {{-- Budget totale --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qc_budget">
+                                        Budget totale (€) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" class="form-control" id="qc_budget" name="budget"
+                                           min="1" step="1" placeholder="es. 2000" required>
+                                    <div class="invalid-feedback" id="err_budget"></div>
+                                </div>
+                            </div>
+
+                            {{-- Numero partecipanti --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qc_participants">
+                                        Numero partecipanti <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" class="form-control" id="qc_participants" name="participants"
+                                           min="1" max="50" placeholder="es. 2" required>
+                                    <div class="invalid-feedback" id="err_participants"></div>
+                                </div>
+                            </div>
+
+                            {{-- Porto di imbarco --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qc_port_start">Porto di imbarco preferito</label>
+                                    <input type="text" class="form-control" id="qc_port_start" name="port_start"
+                                           placeholder="es. Civitavecchia">
+                                    <div class="invalid-feedback" id="err_port_start"></div>
+                                </div>
+                            </div>
+
+                            {{-- Telefono --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="qc_phone">Telefono</label>
+                                    <input type="tel" class="form-control" id="qc_phone" name="phone"
+                                           placeholder="es. +39 333 1234567">
+                                    <div class="invalid-feedback" id="err_phone"></div>
+                                </div>
+                            </div>
+
+                            {{-- Note --}}
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="qc_notes">Note aggiuntive</label>
+                                    <textarea class="form-control" id="qc_notes" name="notes" rows="3"
+                                              placeholder="Destinazioni preferite, tipo di cabina, esigenze particolari..."></textarea>
+                                    <div class="invalid-feedback" id="err_notes"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="qc-alert" class="alert d-none" role="alert"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-quotazione"
+                                style="background:#003580;border-color:#003580;min-width:140px;">
+                            <span id="btn-submit-text">
+                                <i class="fas fa-paper-plane mr-1"></i> Invia richiesta
+                            </span>
+                            <span id="btn-submit-spinner" class="d-none">
+                                <span class="spinner-border spinner-border-sm mr-1" role="status"></span>
+                                Invio in corso...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endauth
 @endsection
 
 @section('scripts')
@@ -374,4 +510,126 @@
     @include('crociere.assets.css')
     @include('crociere.assets.js')
     @include('crociere.assets.js_modal_details')
+
+    @auth
+    <script>
+    (function () {
+        'use strict';
+
+        var ROUTE_STORE = '{{ route('richiesta.store') }}';
+        var CSRF_TOKEN  = '{{ csrf_token() }}';
+
+        // Pre-popola il modale con i dati dell'ultima ricerca effettuata
+        $('#modalQuotazioneCustom').on('show.bs.modal', function () {
+            var form = document.getElementById('searchForm') ||
+                       document.querySelector('form[id]');
+
+            // Legge i valori dai campi della form di ricerca
+            var dateRange    = document.getElementById('date-range')    ? document.getElementById('date-range').value    : '';
+            var budget       = document.getElementById('budget')        ? document.getElementById('budget').value        : '';
+            var participants = document.getElementById('participants')  ? document.getElementById('participants').value  : '';
+            var portStart    = document.getElementById('port_start')    ? document.getElementById('port_start').value    : '';
+
+            if (dateRange)    document.getElementById('qc_date_range').value    = dateRange;
+            if (budget)       document.getElementById('qc_budget').value        = budget;
+            if (participants) document.getElementById('qc_participants').value  = participants;
+            if (portStart)    document.getElementById('qc_port_start').value    = portStart;
+
+            // Reset alert e stati
+            clearFormState();
+        });
+
+        // Invio form via AJAX
+        document.getElementById('formQuotazioneCustom').addEventListener('submit', function (e) {
+            e.preventDefault();
+            clearFormState();
+
+            var btnText    = document.getElementById('btn-submit-text');
+            var btnSpinner = document.getElementById('btn-submit-spinner');
+            var btnSubmit  = document.getElementById('btn-submit-quotazione');
+
+            btnText.classList.add('d-none');
+            btnSpinner.classList.remove('d-none');
+            btnSubmit.disabled = true;
+
+            var formData = new FormData(this);
+
+            fetch(ROUTE_STORE, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': CSRF_TOKEN,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: formData,
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    showAlert('success', '<i class="fas fa-check-circle mr-1"></i>' + data.message);
+                    document.getElementById('formQuotazioneCustom').reset();
+                    // Chiude il modale dopo 2 secondi
+                    setTimeout(function () {
+                        $('#modalQuotazioneCustom').modal('hide');
+                    }, 2200);
+                } else {
+                    if (data.errors) {
+                        highlightErrors(data.errors);
+                    }
+                    showAlert('danger', data.message || 'Si è verificato un errore.');
+                }
+            })
+            .catch(function () {
+                showAlert('danger', 'Errore di connessione. Riprova più tardi.');
+            })
+            .finally(function () {
+                btnText.classList.remove('d-none');
+                btnSpinner.classList.add('d-none');
+                btnSubmit.disabled = false;
+            });
+        });
+
+        function highlightErrors(errors) {
+            var map = {
+                date_range:   'qc_date_range',
+                budget:       'qc_budget',
+                participants: 'qc_participants',
+                port_start:   'qc_port_start',
+                phone:        'qc_phone',
+                notes:        'qc_notes',
+            };
+            Object.keys(errors).forEach(function (field) {
+                var inputId = map[field];
+                if (!inputId) return;
+                var el = document.getElementById(inputId);
+                var errEl = document.getElementById('err_' + field);
+                if (el) el.classList.add('is-invalid');
+                if (errEl) errEl.textContent = errors[field][0];
+            });
+        }
+
+        function showAlert(type, msg) {
+            var el = document.getElementById('qc-alert');
+            el.className = 'alert alert-' + type;
+            el.innerHTML = msg;
+            el.classList.remove('d-none');
+        }
+
+        function clearFormState() {
+            ['qc_date_range','qc_budget','qc_participants','qc_port_start','qc_phone','qc_notes']
+                .forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.classList.remove('is-invalid');
+                });
+            ['err_date_range','err_budget','err_participants','err_port_start','err_phone','err_notes']
+                .forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.textContent = '';
+                });
+            var alertEl = document.getElementById('qc-alert');
+            if (alertEl) alertEl.classList.add('d-none');
+        }
+    })();
+    </script>
+    @endauth
 @endsection
