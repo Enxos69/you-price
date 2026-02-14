@@ -120,6 +120,13 @@
                                         <option value="Napoli">
                                         <option value="Palermo">
                                         <option value="Rio de Janeiro">
+                                        <option value="Fort Lauderdale">
+                                        <option value="Port Canaveral">
+                                        <option value="San Juan">
+                                        <option value="Galveston">
+                                        <option value="Los Angeles">
+                                        <option value="San Francisco">
+                                        <option value="Miami">
                                     </datalist>
                                 </div>
                                 <div class="col-md-12 col-lg-12 mb-12 " style="text-align: center">

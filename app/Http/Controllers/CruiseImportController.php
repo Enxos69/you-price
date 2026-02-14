@@ -235,8 +235,10 @@ class CruiseImportController extends Controller
             return $this->parseRoyalCaribbeanCruise($record);
         } elseif (strpos($line, 'costa') !== false) {
             return $this->parseCostaCruise($record);
-        }elseif (strpos($line, 'norwegian') !== false) {
+        } elseif (strpos($line, 'norwegian') !== false) {
             return $this->parseCostaCruise($record);
+        } elseif (strpos($line, 'princess') !== false) {
+            return $this->parsePrincessCruise($record);
         }
 
         // Parser generico per altre compagnie
@@ -458,6 +460,44 @@ class CruiseImportController extends Controller
             return $parsedRecord;
         } catch (\Exception $e) {
             Log::warning("Errore parsing Costa cruise: " . $e->getMessage(), ['record' => $record]);
+            return $this->parseGenericCruise($record);
+        }
+    }
+
+    private function parsePrincessCruise($record)
+    {
+        try {
+            // 1. Nome della nave: prendi per intero
+            $ship = trim($record['ship'] ?? '');
+
+            // 2. Pulisci nome della linea: rimuovi "Cruise" e tutto ciò che viene dopo
+            $line = $this->cleanCruiseLineName($record['line'] ?? '');
+
+            // 3. Parse della cruise con algoritmo generico
+            $cruiseData = $this->parseGenericCruiseField($record['cruise'] ?? '');
+
+            // 4. Costruisci il record finale
+            $parsedRecord = [
+                'ship' => $ship,
+                'cruise' => $cruiseData['cruise_name'],
+                'line' => $line,
+                'duration' => $cruiseData['duration'] ?: ($record['duration'] ?? null),
+                'night' => $cruiseData['duration'] ?: ($record['night'] ?? null),
+                'from' => $cruiseData['from'] ?: ($record['from'] ?? ''),
+                'to' => $cruiseData['to'] ?: ($record['to'] ?? ''),
+                'details' => $record['details'] ?? '',
+                'partenza' => $this->parseDate($record['partenza'] ?? ''),
+                'arrivo' => $this->parseDate($record['arrivo'] ?? ''),
+                'interior' => $this->convertUsdToEur($record['interior'] ?? ''),
+                'oceanview' => $this->convertUsdToEur($record['oceanview'] ?? ''),
+                'balcony' => $this->convertUsdToEur($record['balcony'] ?? ''),
+                'minisuite' => $this->convertUsdToEur($record['minisuite'] ?? ''),
+                'suite' => $this->convertUsdToEur($record['suite'] ?? ''),
+            ];
+
+            return $parsedRecord;
+        } catch (\Exception $e) {
+            Log::warning("Errore parsing Princess cruise: " . $e->getMessage(), ['record' => $record]);
             return $this->parseGenericCruise($record);
         }
     }
