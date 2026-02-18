@@ -29,6 +29,9 @@ Route::get('/privacy-policy', fn() => view('legal.privacy'))->name('privacy');
 Route::get('/cookie-policy',  fn() => view('legal.cookie'))->name('cookie');
 Route::get('/termini-di-servizio', fn() => view('legal.termini'))->name('termini');
 
+// Richiesta preventivo
+Route::post('/richiesta', [RichiestaController::class, 'store'])->name('richiesta.store');
+
 
 // Login Routes...
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
