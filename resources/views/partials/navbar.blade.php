@@ -43,7 +43,6 @@
                 @endif
             @endauth
         </ul>
-
         <ul class="navbar-nav navbar-right-group">
             @if(Route::has('login'))
                 @auth
