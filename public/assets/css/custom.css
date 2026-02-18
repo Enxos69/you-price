@@ -1,26 +1,49 @@
-/* Aggiungi questo CSS al tuo file app.css o in un tag <style> nel file Blade */
+/* ============================================================
+   YOU-PRICE — custom.css
+   Colori brand:
+     Teal logo:    #1a7a8a
+     Teal scuro:   #125f6c
+     Teal chiaro:  #e8f5f7
+     Verde pallini: #4caf50
+============================================================ */
 
-#homepage{    
-    background-size: cover; background-position: center; height: 100vh;
-    margin-top:30px;
+:root {
+    --yp-teal:        #1a7a8a;
+    --yp-teal-dark:   #125f6c;
+    --yp-teal-light:  #e8f5f7;
+    --yp-green:       #4caf50;
+    --yp-green-dark:  #388e3c;
 }
 
+/* ============================================================
+   LAYOUT BASE
+============================================================ */
+#homepage {
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+}
+
+.jumbotron { margin-top: 80px; }
+.container  { margin-top: 80px; }
+
+/* ============================================================
+   NAVBAR — BASE COMUNE
+============================================================ */
 .navbar {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    background-color: white !important;
+    padding: 0 24px;
+    height: 64px;
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .navbar-brand img {
-    height: 50px;
+    height: 46px;
+    transition: filter 0.35s ease;
 }
 
-.jumbotron {
-    margin-top: 80px;
-    /* Aggiusta questo valore in base all'altezza della navbar */
-}
-
-.container {
-    margin-top: 80px;
+/* Logo bianco per navbar scura */
+.navbar-brand img.logo-white {
+    filter: brightness(0) invert(1);
 }
 
 .nav-item {
@@ -28,39 +51,239 @@
     align-items: center;
 }
 
-.nav-item.w-100 {
-    width: 100%;
+.navbar-right-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.nav-link {
-    display: inline-block;
-    text-align: center;
+/* ============================================================
+   NAVBAR — OPZIONE 2: MINIMAL PREMIUM (pagine interne)
+   Sfondo bianco, accent teal, underline sulla voce attiva
+============================================================ */
+.navbar-premium {
+    background-color: #ffffff !important;
+    box-shadow: 0 1px 0 #e9ecef, 0 2px 8px rgba(0,0,0,0.06);
+    border-top: 3px solid var(--yp-teal);
 }
 
-.navbar-nav .dropdown-menu {
-    background-color: #333;
-    border: none;
+.navbar-premium .nav-link {
+    color: #2c3e50 !important;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px !important;
+    border-radius: 7px;
+    transition: color 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.navbar-premium .nav-link i {
+    color: var(--yp-teal);
+    font-size: 13px;
+}
+
+.navbar-premium .nav-link:hover {
+    color: var(--yp-teal) !important;
+    background: var(--yp-teal-light);
+}
+
+/* voce attiva (aggiunta via JS o manualmente) */
+.navbar-premium .nav-item.active .nav-link {
+    color: var(--yp-teal) !important;
+    font-weight: 600;
+}
+
+.navbar-premium .nav-logout {
+    color: #6c757d !important;
+}
+
+.navbar-premium .nav-logout:hover {
+    color: #c0392b !important;
+    background: #fff5f5;
+}
+
+.navbar-premium .navbar-toggler {
+    border-color: var(--yp-teal);
+}
+
+/* ============================================================
+   NAVBAR — OPZIONE 3: GLASS (homepage su hero scuro)
+============================================================ */
+.navbar-glass {
+    background: rgba(255, 255, 255, 0.10) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: none;
+    transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
-.navbar-nav .dropdown-item {
-    color: darkgreen;
+/* Scrollato fuori dal hero → vetro teal scuro, tutto leggibile */
+.navbar-glass.navbar-glass--scrolled {
+    background: rgba(18, 95, 108, 0.96) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.20);
 }
 
-.navbar-nav .dropdown-item:hover {
-    background-color: lightgrey;
+.navbar-glass .nav-link {
+    color: rgba(255, 255, 255, 0.88) !important;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 14px !important;
+    border-radius: 7px;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-/* Responsive styles */
+.navbar-glass .nav-link:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff !important;
+}
+
+.navbar-glass .nav-logout {
+    color: rgba(255,255,255,0.65) !important;
+}
+
+.navbar-glass .nav-logout:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.12);
+}
+
+.navbar-glass .navbar-toggler {
+    border-color: rgba(255,255,255,0.5);
+}
+
+.navbar-glass .navbar-toggler-icon {
+    filter: invert(1);
+}
+
+/* ============================================================
+   CTA BUTTON — comune a entrambe le navbar
+============================================================ */
+.btn-navbar-cta {
+    background-color: var(--yp-green) !important;
+    border-color: var(--yp-green) !important;
+    color: #ffffff !important;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 18px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+    margin-left: 6px;
+}
+
+.btn-navbar-cta:hover {
+    background-color: var(--yp-green-dark) !important;
+    border-color: var(--yp-green-dark) !important;
+    color: #ffffff !important;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   HERO HOMEPAGE — rimuove margin-top (la navbar è glass overlay)
+============================================================ */
+.hero {
+    margin-top: -25px !important;
+}
+
+/* Glass navbar scrollata fuori dall'hero: diventa teal solido */
+.navbar-glass--scrolled {
+    background: rgba(18, 95, 108, 0.96) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
 @media (max-width: 992px) {
-    .navbar-nav.mx-auto {
-        margin: 0;
+    .navbar-nav.mx-auto { margin: 0; }
+
+    /* --- Hamburger visibile su entrambe le navbar --- */
+    .navbar-glass .navbar-toggler,
+    .navbar-premium .navbar-toggler {
+        padding: 6px 10px;
+    }
+
+    .navbar-glass .navbar-toggler {
+        border-color: rgba(255,255,255,0.7);
+    }
+
+    .navbar-glass .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255,255,255,0.9)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
+
+    .navbar-premium .navbar-toggler {
+        border-color: var(--yp-teal);
+    }
+
+    .navbar-premium .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(26,122,138,1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
+
+    /* --- Menu espanso: sfondo solido, voci a sinistra --- */
+    .navbar-glass .navbar-collapse,
+    .navbar-premium .navbar-collapse {
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 12px 16px 16px;
+    }
+
+    .navbar-glass .navbar-collapse {
+        background: rgba(15, 70, 80, 0.97);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .navbar-premium .navbar-collapse {
+        background: #ffffff;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        border-top: 2px solid var(--yp-teal-light);
+    }
+
+    .navbar-glass .navbar-collapse .nav-link,
+    .navbar-premium .navbar-collapse .nav-link {
+        text-align: left;
+        padding: 10px 12px !important;
+        border-radius: 8px;
+    }
+
+    .navbar-right-group {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+
+    .navbar-premium .navbar-right-group {
+        border-top-color: var(--yp-teal-light);
+    }
+
+    .btn-navbar-cta {
+        margin: 8px 0 4px;
+        width: 100%;
+        justify-content: center;
     }
 }
 
-/* Personalizzazione dell'aspetto */
+/* ============================================================
+   TABELLE DATATABLES
+============================================================ */
 table.dataTable thead {
-    background-color: darkgreen;
+    background-color: var(--yp-teal);
     color: white;
 }
 
@@ -70,9 +293,7 @@ table.dataTable {
     font-family: Arial, sans-serif;
 }
 
-table.dataTable tbody tr:hover {
-    background-color: #f1f1f1;
-}
+table.dataTable tbody tr:hover { background-color: #f1f1f1; }
 
 table.dataTable thead th,
 table.dataTable thead td {
@@ -81,25 +302,24 @@ table.dataTable thead td {
 }
 
 table.dataTable td,
-table.dataTable th {
-    padding: 2px 5px !important;
-}
+table.dataTable th { padding: 2px 5px !important; }
+table.dataTable td { text-align: center; }
 
-table.dataTable td {
-    text-align: center;
-}
-
+/* ============================================================
+   BOTTONI GENERICI
+============================================================ */
 .btn-primary {
-    background-color: darkgreen !important;
-    border-color: darkgreen !important;    
+    background-color: var(--yp-teal) !important;
+    border-color: var(--yp-teal) !important;
     margin-right: 5px;
 }
 
 .btn-primary:hover {
-    background-color: darkolivegreen !important;
-    border-color: darkolivegreen !important;
+    background-color: var(--yp-teal-dark) !important;
+    border-color: var(--yp-teal-dark) !important;
     margin-right: 5px;
 }
+
 .btn-lock {
     background-color: red !important;
     border-color: red !important;
@@ -123,4 +343,390 @@ table.dataTable td {
     border-color: darkslategrey !important;
     color: white !important;
 }
- 
+
+/* ============================================================
+   FOOTER SPLIT (teal sinistra / bianco destra)
+============================================================ */
+.footer-split {
+    margin-top: auto;
+    font-size: 14px;
+}
+
+.fs-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Colonna sinistra teal */
+.fs-left {
+    background: var(--yp-teal);
+    padding: 52px 44px;
+}
+
+.fs-logo {
+    height: 44px;
+    filter: brightness(0) invert(1);
+    display: block;
+    margin-bottom: 18px;
+}
+
+.fs-left p {
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 13px;
+    line-height: 1.75;
+    max-width: 300px;
+    margin-bottom: 26px;
+}
+
+.fs-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--yp-green);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px 22px;
+    border-radius: 9px;
+    margin-bottom: 28px;
+    transition: background 0.2s;
+}
+
+.fs-cta:hover {
+    background: var(--yp-green-dark);
+    color: #fff;
+    text-decoration: none;
+}
+
+.fs-social {
+    display: flex;
+    gap: 10px;
+}
+
+.fs-social a {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.fs-social a:hover { background: rgba(255, 255, 255, 0.28); }
+
+/* Colonna destra bianca */
+.fs-right {
+    background: #ffffff;
+    padding: 52px 44px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    border-top: 3px solid var(--yp-teal);
+}
+
+.fs-col h4 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #adb5bd;
+    margin-bottom: 16px;
+}
+
+.fs-col-spacer { margin-top: 28px; }
+
+.fs-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.fs-col ul a {
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+}
+
+.fs-col ul a i {
+    color: var(--yp-teal);
+    font-size: 11px;
+    width: 14px;
+}
+
+.fs-col ul a:hover { color: var(--yp-teal); }
+
+/* Bottom bar */
+.fs-bottom {
+    background: var(--yp-teal-dark);
+    padding: 14px 44px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.fs-bottom-links {
+    display: flex;
+    gap: 18px;
+}
+
+.fs-bottom-links a {
+    color: rgba(255, 255, 255, 0.45);
+    text-decoration: none;
+    font-size: 12px;
+    transition: color 0.2s;
+}
+
+.fs-bottom-links a:hover { color: rgba(255, 255, 255, 0.8); }
+
+/* Responsive footer */
+@media (max-width: 768px) {
+    .fs-top { grid-template-columns: 1fr; }
+
+    .fs-left { padding: 36px 24px; }
+
+    .fs-right {
+        padding: 36px 24px;
+        grid-template-columns: 1fr 1fr;
+        border-top: none;
+        border-left: 3px solid var(--yp-teal);
+    }
+
+    .fs-bottom {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+        padding: 16px 24px;
+    }
+}
+
+/* ============================================================
+   PAGINE LEGALI (Privacy, Cookie, Termini)
+============================================================ */
+.legal-page {
+    min-height: calc(100vh - 64px);
+}
+
+.legal-hero {
+    background: linear-gradient(135deg, var(--yp-teal-dark) 0%, var(--yp-teal) 100%);
+    padding: 60px 40px 48px;
+    text-align: center;
+    color: #fff;
+}
+
+.legal-hero-inner { max-width: 600px; margin: 0 auto; }
+
+.legal-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    margin-bottom: 20px;
+}
+
+.legal-hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.legal-hero p {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 14px;
+}
+
+.legal-body {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 48px;
+    align-items: start;
+}
+
+/* TOC sidebar */
+.legal-toc {
+    position: sticky;
+    top: 80px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #e9ecef;
+}
+
+.legal-toc h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--yp-teal);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legal-toc ol {
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legal-toc a {
+    color: #6c757d;
+    text-decoration: none;
+    font-size: 13px;
+    line-height: 1.4;
+    transition: color 0.2s;
+}
+
+.legal-toc a:hover { color: var(--yp-teal); }
+
+/* Contenuto */
+.legal-content { min-width: 0; }
+
+.legal-content section {
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.legal-content section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.legal-content h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--yp-teal-dark);
+    margin-bottom: 14px;
+}
+
+.legal-content p {
+    color: #444;
+    line-height: 1.75;
+    margin-bottom: 14px;
+    font-size: 15px;
+}
+
+.legal-content p:last-child { margin-bottom: 0; }
+
+.legal-content ul {
+    padding-left: 20px;
+    color: #444;
+    line-height: 1.75;
+    font-size: 15px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.legal-content a {
+    color: var(--yp-teal);
+    text-decoration: underline;
+}
+
+/* Box nota informativa */
+.legal-notice {
+    background: var(--yp-teal-light);
+    border-left: 4px solid var(--yp-teal);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    font-size: 14px;
+    color: var(--yp-teal-dark);
+    margin: 16px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    line-height: 1.6;
+}
+
+.legal-notice i { margin-top: 2px; flex-shrink: 0; }
+
+/* Tabella cookie */
+.legal-table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.legal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.legal-table thead {
+    background: var(--yp-teal);
+    color: #fff;
+}
+
+.legal-table th,
+.legal-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.legal-table tbody tr:last-child td { border-bottom: none; }
+.legal-table tbody tr:hover { background: #f8f9fa; }
+.legal-table code {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Responsive pagine legali */
+@media (max-width: 768px) {
+    .legal-body {
+        grid-template-columns: 1fr;
+        padding: 32px 16px 48px;
+        gap: 32px;
+    }
+
+    .legal-toc { position: static; }
+
+    .legal-hero { padding: 48px 24px 36px; }
+    .legal-hero h1 { font-size: 26px; }
+}
+
+/* ============================================================
+   AUTH LAYOUT — login / register
+   Centra verticalmente la card e spinge il footer in fondo
+============================================================ */
+.auth-layout main.py-4 {
+    min-height: calc(100vh - 30px);
+    display: flex;
+    align-items: center;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.auth-layout main.py-4 .container {
+    margin-top: 0;
+    width: 100%;
+}

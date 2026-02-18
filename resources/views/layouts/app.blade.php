@@ -33,7 +33,7 @@
 
 </head>
 
-<body>
+<body class="@yield('body-class')">
     <!-- Includi la Navbar -->
     @include('partials.navbar')
 
@@ -41,6 +41,7 @@
         <main class="py-4">
             @yield('content') <!-- Questo è per le viste tradizionali -->
         </main>
+        @include('partials.footer')
     </div>
     <!-- Include scripts section -->
     @yield('scripts')
@@ -51,5 +52,64 @@
     <!-- aggiungo sweet alarm -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+
+    <!-- Active nav item highlight -->
+    <script>
+        (function () {
+            var currentPath = window.location.pathname;
+            document.querySelectorAll('.navbar .nav-link').forEach(function (link) {
+                var href = link.getAttribute('href');
+                if (href && href !== '#' && currentPath.startsWith(href) && href !== '/') {
+                    link.closest('.nav-item') && link.closest('.nav-item').classList.add('active');
+                }
+            });
+        })();
+    </script>
+
+    <!-- Glass navbar: scurisce uscendo dall'hero + toggle logo bianco/colorato -->
+    <script>
+        (function () {
+            var navbar = document.querySelector('.navbar-glass');
+            if (!navbar) return;
+
+            var logo     = navbar.querySelector('.navbar-brand img');
+            var hero     = document.querySelector('.hero');
+            var threshold = hero ? hero.offsetHeight - navbar.offsetHeight : 80;
+
+            function onScroll() {
+                if (window.scrollY > threshold) {
+                    navbar.classList.add('navbar-glass--scrolled');
+                    if (logo) logo.classList.add('logo-white');
+                } else {
+                    navbar.classList.remove('navbar-glass--scrolled');
+                    if (logo) logo.classList.remove('logo-white');
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        })();
+    </script>
+
+    <!-- Glass navbar: si scurisce scrollando fuori dall'hero -->
+    <script>
+        (function () {
+            var navbar = document.querySelector('.navbar-glass');
+            if (!navbar) return;
+
+            var hero = document.querySelector('.hero');
+            function onScroll() {
+                var threshold = hero ? (hero.offsetHeight - 80) : 300;
+                if (window.scrollY > threshold) {
+                    navbar.classList.add('navbar-glass--scrolled');
+                } else {
+                    navbar.classList.remove('navbar-glass--scrolled');
+                }
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll(); // controlla subito al caricamento
+        })();
+    </script>
 
     <!-- Livewire Scripts

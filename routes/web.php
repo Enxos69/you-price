@@ -24,6 +24,11 @@ Route::get('/', function () {
     return view('index');
 });
 
+// Pagine legali
+Route::get('/privacy-policy', fn() => view('legal.privacy'))->name('privacy');
+Route::get('/cookie-policy',  fn() => view('legal.cookie'))->name('cookie');
+Route::get('/termini-di-servizio', fn() => view('legal.termini'))->name('termini');
+
 
 // Login Routes...
 Route::get('login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -130,9 +135,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/import-results', [CruiseImportController::class, 'showResults'])->name('cruises.import.results');
     Route::get('/admin/import-data', [CruiseImportController::class, 'getImportedCruisesData'])->name('cruises.import.data');
     Route::get('/admin/download-skipped', [CruiseImportController::class, 'downloadSkippedRecords'])->name('cruises.import.download-skipped');
-
-    // Richieste quotazione personalizzata
-    Route::post('/richiesta-quotazione', [RichiestaController::class, 'store'])->name('richiesta.store');
 
     // Gestione Utenti
     Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');

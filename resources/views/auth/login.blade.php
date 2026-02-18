@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('body-class', 'auth-layout')
 @section('content')
     <!-- Messaggio Registrazione Completata -->
     @if (session('registered'))
