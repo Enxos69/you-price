@@ -623,11 +623,11 @@
             <div class="highlight-column"><i class="fas fa-check-circle feature-icon"></i></div>
         </div>
 
-        <div class="comparison-row">
+       {{--  <div class="comparison-row">
             <div>Alert sui prezzi</div>
             <div><i class="fas fa-times-circle no-feature"></i></div>
             <div class="highlight-column"><i class="fas fa-check-circle feature-icon"></i></div>
-        </div>
+        </div> --}}
 
         <div class="comparison-row">
             <div>Dashboard personalizzata</div>
