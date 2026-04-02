@@ -79,10 +79,10 @@
             function onScroll() {
                 if (window.scrollY > threshold) {
                     navbar.classList.add('navbar-glass--scrolled');
-                    if (logo) logo.classList.add('logo-white');
+                    if (logo) logo.src = logo.dataset.logoWhite;
                 } else {
                     navbar.classList.remove('navbar-glass--scrolled');
-                    if (logo) logo.classList.remove('logo-white');
+                    if (logo) logo.src = logo.dataset.logoDefault;
                 }
             }
 

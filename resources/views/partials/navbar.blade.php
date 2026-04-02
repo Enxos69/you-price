@@ -5,8 +5,10 @@
 
     <a class="navbar-brand" href="/">
         <img src="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo.png' : asset('assets/img/logo.png') }}"
+             data-logo-default="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo.png' : asset('assets/img/logo.png') }}"
+             data-logo-white="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo_white.png' : asset('assets/img/logo_white.png') }}"
              alt="You-Price"
-             class="{{ $isHome ? 'logo-white' : '' }}">
+             id="navbar-logo">
     </a>
 
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"

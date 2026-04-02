@@ -41,10 +41,6 @@
     transition: filter 0.35s ease;
 }
 
-/* Logo bianco per navbar scura */
-.navbar-brand img.logo-white {
-    filter: brightness(0) invert(1);
-}
 
 .nav-item {
     display: flex;
