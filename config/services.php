@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'cruisehost' => [
+        'base_url'  => env('CRUISEHOST_BASE_URL', 'https://rest.api.cruisehost.net/api/v1'),
+        'api_key'   => env('CRUISEHOST_API_KEY'),
+        'agency_id' => env('CRUISEHOST_AGENCY_ID', '210847'),
+    ],
+
 ];
