@@ -110,20 +110,16 @@ class AdminCatalogController extends Controller
                 Log::info('[CatalogSync] CMD Windows', ['cmd' => $cmd]);
                 pclose(popen($cmd, 'r'));
             } else {
-                // Linux/Mac: HTTP self-request con timeout 2s
-                // ignore_user_abort(true) nell'endpoint interno garantisce che il sync
-                // continui anche dopo il timeout della richiesta (exec() non necessario)
-                $secret = hash('sha256', config('app.key') . ':' . $logId);
-                Log::info('[CatalogSync] HTTP self-request', ['log_id' => $logId]);
-                try {
-                    Http::timeout(2)
-                        ->withoutVerifying()
-                        ->withHeader('X-Sync-Secret', $secret)
-                        ->post(url('/internal/catalog-sync'), ['log_id' => $logId]);
-                } catch (\Throwable $e) {
-                    // Timeout atteso: il sync sta girando in background
-                    Log::info('[CatalogSync] Self-request timeout (atteso)', ['log_id' => $logId]);
-                }
+                // Linux (LiteSpeed/Hostinger): exec() disabilitato, background non supportato.
+                // Esecuzione sincrona nella stessa richiesta HTTP.
+                // Il browser aspetta (fetch senza timeout), il polling parte al completamento.
+                set_time_limit(600);
+                ini_set('max_execution_time', '600');
+                Log::info('[CatalogSync] Avvio sincrono', ['log_id' => $logId]);
+                \Artisan::call('catalog:sync', [
+                    '--source' => 'manual',
+                    '--log-id' => $logId,
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('[CatalogSync] Errore avvio processo', ['error' => $e->getMessage()]);
