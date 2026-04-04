@@ -183,7 +183,7 @@
             Utils.toggleLoading(element);
             
             try {
-                const data = await Utils.fetchJSON(`/cruises/${cruiseId}/favorite/toggle`, {
+                const data = await Utils.fetchJSON(`/departures/${cruiseId}/favorite/toggle`, {
                     method: 'POST'
                 });
 
@@ -220,7 +220,7 @@
          */
         async check(cruiseId) {
             try {
-                const data = await Utils.fetchJSON(`/api/favorites/check/${cruiseId}`);
+                const data = await Utils.fetchJSON(`/departures/${cruiseId}/favorite/check`);
                 return data.success && data.is_favorite;
             } catch (error) {
                 console.error('Error checking favorite:', error);
@@ -233,7 +233,7 @@
          */
         async updateNote(cruiseId, note) {
             try {
-                const data = await Utils.fetchJSON(`/cruises/${cruiseId}/favorite/note`, {
+                const data = await Utils.fetchJSON(`/departures/${cruiseId}/favorite/note`, {
                     method: 'PATCH',
                     body: JSON.stringify({ note: note })
                 });

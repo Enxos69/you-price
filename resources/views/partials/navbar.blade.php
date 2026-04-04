@@ -22,7 +22,7 @@
             @auth
                 @if(Auth::user()->isAdmin())
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('user.index') }}">
+                        <a class="nav-link" href="{{ route('users.index') }}">
                             <i class="fas fa-users"></i> Gestione Utenti
                         </a>
                     </li>

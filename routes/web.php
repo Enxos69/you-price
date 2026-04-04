@@ -71,8 +71,6 @@ Route::middleware('auth')->group(function () {
     // Preferiti
     Route::get('/departures/{departure}/favorite/check',        [FavoritesController::class, 'check'])->name('favorites.check');
     Route::post('/departures/{departure}/favorite/toggle',      [FavoritesController::class, 'toggle'])->name('favorites.toggle');
-    Route::post('/departures/{departure}/favorite',             [FavoritesController::class, 'store'])->name('favorites.store');
-    Route::delete('/departures/{departure}/favorite',           [FavoritesController::class, 'destroy'])->name('favorites.destroy');
     Route::patch('/departures/{departure}/favorite/note',       [FavoritesController::class, 'updateNote'])->name('favorites.update-note');
 
     Route::prefix('api/favorites')->name('api.favorites.')->group(function () {
@@ -138,7 +136,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/analytics/export',       [SearchAnalyticsController::class, 'exportCsv'])->name('admin.analytics.export');
     Route::get('/admin/analytics/clear-cache',  [SearchAnalyticsController::class, 'clearAnalyticsCache'])->name('analytics.clear-cache');
 
-    Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
 });
 
 // Endpoint interno per sync asincrono — protetto da token, niente auth/CSRF
