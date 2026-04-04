@@ -122,13 +122,12 @@ class AdminCatalogController extends Controller
                     ]);
                 });
             } else {
-                // Fallback Linux/Mac mod_php
-                $cmd = sprintf(
-                    '"%s" "%s" catalog:sync --source=manual --log-id=%d > "%s" 2>&1 &',
-                    $phpBinary, $artisan, $logId, $logFile
-                );
-                Log::info('[CatalogSync] CMD Unix fallback', ['cmd' => $cmd]);
-                exec($cmd);
+                // Linux/Mac: dispatch alla queue (nessun exec necessario)
+                Log::info('[CatalogSync] Queue dispatch', ['log_id' => $logId]);
+                \Artisan::queue('catalog:sync', [
+                    '--source' => 'manual',
+                    '--log-id' => $logId,
+                ])->onConnection('database');
             }
         } catch (\Throwable $e) {
             Log::error('[CatalogSync] Errore avvio processo', ['error' => $e->getMessage()]);
