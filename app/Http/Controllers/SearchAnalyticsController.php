@@ -40,38 +40,33 @@ class SearchAnalyticsController extends Controller
     public function getGeneralStats()
     {
         return $this->cacheResponse('general_stats', function () {
-            $today = Carbon::today();
-            $yesterday = $today->copy()->subDay();
+            $today     = Carbon::today()->toDateString();
+            $yesterday = Carbon::yesterday()->toDateString();
 
-            $stats = [
-                // Contatori principali
-                'total_searches' => SearchLog::count(),
-                'successful_searches' => SearchLog::where('search_successful', true)->count(),
-                'registered_users_searches' => SearchLog::whereNotNull('user_id')->count(),
-                'guest_searches' => SearchLog::whereNull('user_id')->count(),
+            $row = DB::selectOne("
+                SELECT
+                    COUNT(*)                                                        AS total_searches,
+                    COUNT(CASE WHEN search_successful = 1 THEN 1 END)              AS successful_searches,
+                    COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END)                AS registered_users_searches,
+                    COUNT(CASE WHEN user_id IS NULL THEN 1 END)                    AS guest_searches,
+                    ROUND(AVG(satisfaction_score), 1)                              AS avg_satisfaction,
+                    ROUND(AVG(search_duration_ms))                                 AS avg_search_duration,
+                    COALESCE(SUM(total_matches), 0)                                AS total_matches_found,
+                    ROUND(AVG(budget), 2)                                          AS avg_budget,
+                    COUNT(CASE WHEN DATE(search_date) = ? THEN 1 END)             AS today_searches,
+                    COUNT(CASE WHEN DATE(search_date) = ? THEN 1 END)             AS yesterday_searches
+                FROM search_logs
+            ", [$today, $yesterday]);
 
-                // Metriche qualitative
-                'avg_satisfaction' => round(SearchLog::avg('satisfaction_score') ?? 0, 1),
-                'avg_search_duration' => round(SearchLog::avg('search_duration_ms') ?? 0),
-                'total_matches_found' => SearchLog::sum('total_matches') ?? 0,
-                'avg_budget' => round(SearchLog::avg('budget') ?? 0, 2),
-
-                // Statistiche giornaliere
-                'today_searches' => SearchLog::whereDate('search_date', $today)->count(),
-                'yesterday_searches' => SearchLog::whereDate('search_date', $yesterday)->count(),
-
-                // Partecipanti più comuni
-                'most_popular_participants' => $this->getMostPopularParticipants(),
-            ];
-
-            // Calcola variazione percentuale giornaliera
-            $stats['daily_change_percent'] = $this->calculatePercentageChange(
+            $stats = (array) $row;
+            $stats['most_popular_participants'] = $this->getMostPopularParticipants();
+            $stats['daily_change_percent']      = $this->calculatePercentageChange(
                 $stats['today_searches'],
                 $stats['yesterday_searches']
             );
 
             return $stats;
-        }, 300); // Cache per 5 minuti
+        }, 300);
     }
 
     /**
@@ -310,10 +305,8 @@ class SearchAnalyticsController extends Controller
                 WHERE search_duration_ms IS NOT NULL
             ');
 
-            // Calcolo del 95° percentile compatibile con MySQL
-            $totalCount = DB::table('search_logs')->whereNotNull('search_duration_ms')->count();
-            $skipCount = (int) floor($totalCount * 0.95);
-
+            // Calcolo del 95° percentile: riusa total_searches dalla query precedente
+            $skipCount   = (int) floor(($metrics->total_searches ?? 0) * 0.95);
             $p95Duration = DB::table('search_logs')
                 ->whereNotNull('search_duration_ms')
                 ->orderBy('search_duration_ms')

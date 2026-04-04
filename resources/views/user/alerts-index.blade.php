@@ -51,8 +51,13 @@
 
     <div class="row">
         @foreach($alerts as $alert)
+        @php
+            $departure   = $alert->departure;
+            $product     = $departure->product;
+            $currentPrice = $alert->current_price;
+        @endphp
         <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card alert-card h-100 border-0 shadow-sm {{ $alert->is_active ? '' : 'opacity-75' }}" 
+            <div class="card alert-card h-100 border-0 shadow-sm {{ $alert->is_active ? '' : 'opacity-75' }}"
                  data-alert-id="{{ $alert->id }}">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                     @if($alert->isPriceReached())
@@ -65,69 +70,59 @@
                         </span>
                     @endif
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-sm btn-link text-{{ $alert->is_active ? 'warning' : 'success' }} p-0 toggle-alert" 
+                        <button class="btn btn-sm btn-link text-{{ $alert->is_active ? 'warning' : 'success' }} p-0 toggle-alert"
                                 data-alert-id="{{ $alert->id }}"
                                 title="{{ $alert->is_active ? 'Disattiva' : 'Attiva' }}">
                             <i class="fas fa-power-off"></i>
                         </button>
-                        <button class="btn btn-sm btn-link text-danger p-0 ms-2 delete-alert" 
+                        <button class="btn btn-sm btn-link text-danger p-0 ms-2 delete-alert"
                                 data-alert-id="{{ $alert->id }}"
                                 title="Elimina">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="card-body">
-                    <h5 class="card-title fw-bold">{{ $alert->cruise->ship }}</h5>
+                    <h5 class="card-title fw-bold">{{ $product->ship->name ?? 'N/D' }}</h5>
                     <p class="text-muted small mb-2">
-                        <i class="fas fa-ship me-1"></i>{{ $alert->cruise->line }}
+                        <i class="fas fa-ship me-1"></i>{{ $product->cruiseLine->name ?? 'N/D' }}
                     </p>
                     <p class="text-muted mb-3">
                         <i class="fas fa-map-marker-alt me-1"></i>
-                        {{ $alert->cruise->getFormattedItinerary() }}
+                        {{ ($product->portFrom->name ?? 'N/D') }} - {{ ($product->portTo->name ?? 'N/D') }}
                     </p>
-                    
+
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block">
                                 <i class="fas fa-calendar me-1"></i>Partenza
                             </small>
-                            <small class="fw-bold">
-                                {{ $alert->cruise->getFormattedDepartureDate('d M Y') ?? 'N/D' }}
-                            </small>
+                            <small class="fw-bold">{{ $departure->dep_date->format('d M Y') }}</small>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">
-                                <i class="fas fa-bed me-1"></i>Cabina
+                                <i class="fas fa-bed me-1"></i>Categoria
                             </small>
-                            <small class="fw-bold">
-                                @switch($alert->cabin_type)
-                                    @case('interior') Interna @break
-                                    @case('oceanview') Vista Mare @break
-                                    @case('balcony') Balcone @break
-                                    @case('minisuite') Mini Suite @break
-                                    @case('suite') Suite @break
-                                @endswitch
-                            </small>
+                            <small class="fw-bold">{{ $alert->category_code }}</small>
                         </div>
                     </div>
 
-                    <!-- Progresso verso target -->
+                    {{-- Progresso verso target --}}
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
                             <small class="text-muted">Progresso verso target</small>
                             <small class="fw-bold">{{ $alert->getProgressPercentage() }}%</small>
                         </div>
                         <div class="progress" style="height: 8px;">
-                            <div class="progress-bar {{ $alert->isPriceReached() ? 'bg-success' : 'bg-info' }}" 
-                                 role="progressbar" 
+                            <div class="progress-bar {{ $alert->isPriceReached() ? 'bg-success' : 'bg-info' }}"
+                                 role="progressbar"
                                  style="width: {{ $alert->getProgressPercentage() }}%">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Prezzi -->
+                    {{-- Prezzi --}}
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block">Prezzo Target</small>
@@ -138,11 +133,7 @@
                         <div class="col-6">
                             <small class="text-muted d-block">Prezzo Attuale</small>
                             <h5 class="{{ $alert->isPriceReached() ? 'text-success' : 'text-secondary' }} mb-0">
-                                @if($alert->cruise->getCabinPrice($alert->cabin_type))
-                                    €{{ number_format($alert->cruise->getCabinPrice($alert->cabin_type), 0, ',', '.') }}
-                                @else
-                                    N/D
-                                @endif
+                                {{ $currentPrice ? '€' . number_format($currentPrice, 0, ',', '.') : 'N/D' }}
                             </h5>
                         </div>
                     </div>
@@ -154,7 +145,6 @@
                     </div>
                     @endif
 
-                    <!-- Info aggiuntive -->
                     <div class="small text-muted mb-3">
                         <div class="mb-1">
                             <i class="fas fa-clock me-1"></i>
@@ -168,14 +158,13 @@
                         @endif
                     </div>
 
-                    <!-- Azioni -->
                     <div class="d-grid gap-2">
-                        <a href="{{ route('crociere.create') }}?cruise_id={{ $alert->cruise->id }}" 
-                           class="btn btn-primary btn-sm">
+                        <button class="btn btn-primary btn-sm open-cruise-details"
+                                data-cruise-id="{{ $departure->id }}">
                             <i class="fas fa-eye me-2"></i>Vedi Crociera
-                        </a>
+                        </button>
                         @if($alert->notification_sent && $alert->is_active)
-                        <button class="btn btn-outline-secondary btn-sm reset-notification" 
+                        <button class="btn btn-outline-secondary btn-sm reset-notification"
                                 data-alert-id="{{ $alert->id }}">
                             <i class="fas fa-redo me-2"></i>Reimposta Notifica
                         </button>
@@ -187,12 +176,13 @@
         @endforeach
     </div>
 
-    <!-- Paginazione -->
     <div class="d-flex justify-content-center mt-4">
         {{ $alerts->links() }}
     </div>
     @endif
 </div>
+
+@include('partials.cruise-detail-modal')
 @endsection
 
 @push('styles')
@@ -201,4 +191,5 @@
 
 @push('scripts')
 <script src="{{ asset('js/alerts.js') }}"></script>
+@include('crociere.assets.js_modal_details')
 @endpush

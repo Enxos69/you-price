@@ -180,7 +180,7 @@
                             {{ $alert['itinerary'] }} • {{ $alert['departure_date'] }}
                         </small>
                         <small class="text-muted d-block mb-2">
-                            Cabina: {{ $alert['cabin_type_label'] }}
+                            Categoria: {{ $alert['category_code'] }}
                         </small>
                         <div class="progress" style="height: 5px;">
                             <div class="progress-bar {{ $alert['is_reached'] ? 'bg-success' : 'bg-info' }}" 

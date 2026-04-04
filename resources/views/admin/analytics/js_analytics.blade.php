@@ -108,8 +108,7 @@
             }
 
             async function loadCharts() {
-                await loadTrendsChart(30);
-                await loadDevicesChart();
+                await Promise.all([loadTrendsChart(30), loadDevicesChart()]);
             }
 
             async function loadTrendsChart(days = 30) {

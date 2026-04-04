@@ -77,11 +77,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Preferiti
     # Route::get('/preferiti', [FavoritesController::class, 'index'])->name('favorites.index');
-    Route::get('/cruises/{cruise}/favorite/check', [FavoritesController::class, 'check'])->name('favorites.check');
-    Route::post('/cruises/{cruise}/favorite/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
-    Route::post('/cruises/{cruise}/favorite', [FavoritesController::class, 'store'])->name('favorites.store');
-    Route::delete('/cruises/{cruise}/favorite', [FavoritesController::class, 'destroy'])->name('favorites.destroy');
-    Route::patch('/cruises/{cruise}/favorite/note', [FavoritesController::class, 'updateNote'])->name('favorites.update-note');
+    Route::get('/departures/{departure}/favorite/check', [FavoritesController::class, 'check'])->name('favorites.check');
+    Route::post('/departures/{departure}/favorite/toggle', [FavoritesController::class, 'toggle'])->name('favorites.toggle');
+    Route::post('/departures/{departure}/favorite', [FavoritesController::class, 'store'])->name('favorites.store');
+    Route::delete('/departures/{departure}/favorite', [FavoritesController::class, 'destroy'])->name('favorites.destroy');
+    Route::patch('/departures/{departure}/favorite/note', [FavoritesController::class, 'updateNote'])->name('favorites.update-note');
 
     // Alert Prezzi
     Route::get('/alert-prezzi', [PriceAlertsController::class, 'index'])->name('alerts.index');

@@ -39,6 +39,8 @@ class CatalogSyncCommand extends Command
 
             $searchAreas = $this->fetchAreasFromSearch();
 
+            $syncStart = now();
+
             DB::transaction(function () use ($catalog, $searchAreas, &$stats) {
                 $this->syncCruiseLines($catalog['cruiselines'] ?? []);
                 $areaIds = $this->syncAreas(array_merge($searchAreas, $catalog['areas'] ?? []));
@@ -46,6 +48,18 @@ class CatalogSyncCommand extends Command
                 $this->syncShips($catalog['ships'] ?? []);
                 $this->syncProducts($catalog['products'] ?? [], $stats, $areaIds);
             });
+
+            // Soft-delete partenze future non presenti nel catalogo appena scaricato
+            $stale = \App\Models\Departure::future()
+                ->where(fn($q) => $q->whereNull('synced_at')->orWhere('synced_at', '<', $syncStart))
+                ->count();
+
+            if ($stale > 0) {
+                \App\Models\Departure::future()
+                    ->where(fn($q) => $q->whereNull('synced_at')->orWhere('synced_at', '<', $syncStart))
+                    ->delete();
+                $this->warn("  {$stale} partenze future rimosse dal catalogo → soft-deleted.");
+            }
 
             DB::table('catalog_sync_log')->where('id', $logId)->update([
                 'finished_at'       => now(),
@@ -470,11 +484,12 @@ class CatalogSyncCommand extends Command
                         'dep_date'   => $cruise['depDate'],
                         'arr_date'   => $cruise['arrDate'],
                         'duration'   => $duration,
+                        'synced_at'  => $now,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ],
                     ['id'],
-                    ['dep_date', 'arr_date', 'duration', 'updated_at']
+                    ['dep_date', 'arr_date', 'duration', 'synced_at', 'updated_at']
                 );
 
                 foreach ($cruise['categories'] ?? [] as $cat) {
@@ -498,6 +513,22 @@ class CatalogSyncCommand extends Command
             // Insert prezzi a blocchi per non superare i limiti di MySQL
             foreach (array_chunk($priceRows, 500) as $chunk) {
                 DB::table('price_history')->insert($chunk);
+            }
+
+            // Aggiorna min_price denormalizzato sulle partenze di questo prodotto
+            if (! empty($priceRows)) {
+                $depIds = array_unique(array_column($priceRows, 'departure_id'));
+                $placeholders = implode(',', array_fill(0, count($depIds), '?'));
+                DB::statement("
+                    UPDATE departures d
+                    INNER JOIN (
+                        SELECT departure_id, MIN(price) AS min_p
+                        FROM price_history
+                        WHERE departure_id IN ({$placeholders})
+                        GROUP BY departure_id
+                    ) ph ON d.id = ph.departure_id
+                    SET d.min_price = ph.min_p
+                ", $depIds);
             }
         }
 

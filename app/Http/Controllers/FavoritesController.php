@@ -5,257 +5,155 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use App\Models\Cruise;
+use App\Models\Departure;
 use App\Models\UserFavorite;
 use App\Models\UserActivity;
 
 class FavoritesController extends Controller
 {
-    /**
-     * Costruttore - applica middleware autenticazione
-     */
     public function __construct()
     {
         $this->middleware('auth');
     }
 
-    /**
-     * Mostra tutti i preferiti dell'utente
-     *
-     * @return \Illuminate\View\View
-     */
     public function index()
     {
-        $user = Auth::user();
-        
-        $favorites = UserFavorite::forUser($user->id)
-            ->with('cruise')
-            ->orderBy('created_at', 'desc')
+        $favorites = UserFavorite::forUser(Auth::id())
+            ->with(['departure.product.ship', 'departure.product.cruiseLine', 'departure.latestPrices'])
+            ->orderByDesc('created_at')
             ->paginate(12);
 
         return view('user.favorites-index', compact('favorites'));
     }
 
-    /**
-     * Toggle preferito (Aggiungi/Rimuovi)
-     * Endpoint API per AJAX
-     *
-     * @param  \App\Models\Cruise  $cruise
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function toggle(Cruise $cruise, Request $request)
+    public function toggle(Departure $departure, Request $request)
     {
-        $user = Auth::user();
-        $note = $request->input('note');
+        $user       = Auth::user();
+        $isFavorite = UserFavorite::toggle($user->id, $departure->id, $request->input('note'));
 
-        $isFavorite = UserFavorite::toggle($user->id, $cruise->id, $note);
+        UserActivity::log($user->id, $isFavorite ? 'favorite_add' : 'favorite_remove', $departure, [
+            'cruise_name' => $departure->product->cruise_name,
+        ]);
 
-        // Log dell'attività
-        UserActivity::log(
-            $user->id,
-            $isFavorite ? 'favorite_add' : 'favorite_remove',
-            $cruise,
-            ['cruise_name' => $cruise->cruise]
-        );
-
-        // Invalida la cache della dashboard
         Cache::forget("dashboard_user_{$user->id}");
 
         return response()->json([
-            'success' => true,
-            'is_favorite' => $isFavorite,
-            'message' => $isFavorite 
-                ? 'Crociera aggiunta ai preferiti' 
-                : 'Crociera rimossa dai preferiti',
-            'favorites_count' => UserFavorite::forUser($user->id)->count()
+            'success'         => true,
+            'is_favorite'     => $isFavorite,
+            'message'         => $isFavorite ? 'Crociera aggiunta ai preferiti' : 'Crociera rimossa dai preferiti',
+            'favorites_count' => UserFavorite::forUser($user->id)->count(),
         ]);
     }
 
-    /**
-     * Aggiungi ai preferiti (form tradizionale)
-     *
-     * @param  \App\Models\Cruise  $cruise
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function store(Cruise $cruise, Request $request)
+    public function store(Departure $departure, Request $request)
     {
-        $user = Auth::user();
+        $user      = Auth::user();
+        $validated = $request->validate(['note' => 'nullable|string|max:500']);
 
-        $validated = $request->validate([
-            'note' => 'nullable|string|max:500'
-        ]);
-
-        // Verifica se è già nei preferiti
-        if (UserFavorite::isFavorite($user->id, $cruise->id)) {
+        if (UserFavorite::isFavorite($user->id, $departure->id)) {
             return redirect()->back()->with('info', 'Questa crociera è già nei tuoi preferiti');
         }
 
         UserFavorite::create([
-            'user_id' => $user->id,
-            'cruise_id' => $cruise->id,
-            'note' => $validated['note'] ?? null
+            'user_id'      => $user->id,
+            'departure_id' => $departure->id,
+            'note'         => $validated['note'] ?? null,
         ]);
 
-        // Log dell'attività
-        UserActivity::log(
-            $user->id,
-            'favorite_add',
-            $cruise,
-            ['cruise_name' => $cruise->cruise]
-        );
+        UserActivity::log($user->id, 'favorite_add', $departure, [
+            'cruise_name' => $departure->product->cruise_name,
+        ]);
 
-        // Invalida la cache della dashboard
         Cache::forget("dashboard_user_{$user->id}");
 
         return redirect()->back()->with('success', 'Crociera aggiunta ai preferiti!');
     }
 
-    /**
-     * Rimuovi dai preferiti
-     *
-     * @param  \App\Models\Cruise  $cruise
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function destroy(Cruise $cruise)
+    public function destroy(Departure $departure)
     {
-        $user = Auth::user();
-
+        $user     = Auth::user();
         $favorite = UserFavorite::where('user_id', $user->id)
-                                ->where('cruise_id', $cruise->id)
+                                ->where('departure_id', $departure->id)
                                 ->first();
 
-        if (!$favorite) {
+        if (! $favorite) {
             return redirect()->back()->with('error', 'Preferito non trovato');
         }
 
         $favorite->delete();
 
-        // Log dell'attività
-        UserActivity::log(
-            $user->id,
-            'favorite_remove',
-            $cruise,
-            ['cruise_name' => $cruise->cruise]
-        );
+        UserActivity::log($user->id, 'favorite_remove', $departure, [
+            'cruise_name' => $departure->product->cruise_name,
+        ]);
 
-        // Invalida la cache della dashboard
         Cache::forget("dashboard_user_{$user->id}");
 
         return redirect()->back()->with('success', 'Crociera rimossa dai preferiti');
     }
 
-    /**
-     * Aggiorna la nota di un preferito
-     *
-     * @param  \App\Models\Cruise  $cruise
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function updateNote(Cruise $cruise, Request $request)
+    public function updateNote(Departure $departure, Request $request)
     {
-        $user = Auth::user();
-
-        $validated = $request->validate([
-            'note' => 'nullable|string|max:500'
-        ]);
+        $user      = Auth::user();
+        $validated = $request->validate(['note' => 'nullable|string|max:500']);
 
         $favorite = UserFavorite::where('user_id', $user->id)
-                                ->where('cruise_id', $cruise->id)
+                                ->where('departure_id', $departure->id)
                                 ->first();
 
-        if (!$favorite) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Preferito non trovato'
-            ], 404);
+        if (! $favorite) {
+            return response()->json(['success' => false, 'message' => 'Preferito non trovato'], 404);
         }
 
         $favorite->note = $validated['note'] ?? null;
         $favorite->save();
 
-        // Invalida la cache della dashboard
         Cache::forget("dashboard_user_{$user->id}");
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Nota aggiornata con successo',
-            'note' => $favorite->note
-        ]);
+        return response()->json(['success' => true, 'message' => 'Nota aggiornata con successo', 'note' => $favorite->note]);
     }
 
-    /**
-     * Verifica se una crociera è nei preferiti
-     * Endpoint API per AJAX
-     *
-     * @param  \App\Models\Cruise  $cruise
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function check(Cruise $cruise)
+    public function check(Departure $departure)
     {
-        $user = Auth::user();
-        $isFavorite = UserFavorite::isFavorite($user->id, $cruise->id);
-
         return response()->json([
-            'success' => true,
-            'is_favorite' => $isFavorite
+            'success'     => true,
+            'is_favorite' => UserFavorite::isFavorite(Auth::id(), $departure->id),
         ]);
     }
 
-    /**
-     * Ottieni tutti i preferiti dell'utente (API JSON)
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function getFavorites()
     {
-        $user = Auth::user();
-        
-        $favorites = UserFavorite::forUser($user->id)
-            ->with('cruise')
-            ->orderBy('created_at', 'desc')
+        $favorites = UserFavorite::forUser(Auth::id())
+            ->with(['departure.product.ship', 'departure.product.cruiseLine', 'departure.product.portFrom', 'departure.product.portTo', 'departure.latestPrices'])
+            ->orderByDesc('created_at')
             ->get()
             ->map(function ($favorite) {
-                $cruise = $favorite->cruise;
+                $departure = $favorite->departure;
+                $product   = $departure->product;
+                $minPrice  = $departure->min_price;
+
                 return [
-                    'id' => $cruise->id,
-                    'ship' => $cruise->ship,
-                    'cruise_name' => $cruise->cruise,
-                    'line' => $cruise->line,
-                    'itinerary' => $cruise->getFormattedItinerary(),
-                    'price' => $cruise->getLowestPrice(),
-                    'price_formatted' => $cruise->getLowestPrice() ? '€' . number_format($cruise->getLowestPrice(), 0, ',', '.') : 'N/D',
-                    'note' => $favorite->note,
-                    'added_at' => $favorite->created_at->locale('it')->diffForHumans()
+                    'id'              => $departure->id,
+                    'ship'            => $product->ship->name ?? 'N/D',
+                    'cruise_name'     => $product->cruise_name ?? 'N/D',
+                    'line'            => $product->cruiseLine->name ?? 'N/D',
+                    'itinerary'       => ($product->portFrom->name ?? 'N/D') . ' - ' . ($product->portTo->name ?? 'N/D'),
+                    'price'           => $minPrice,
+                    'price_formatted' => $minPrice ? '€' . number_format($minPrice, 0, ',', '.') : 'N/D',
+                    'note'            => $favorite->note,
+                    'added_at'        => $favorite->created_at->locale('it')->diffForHumans(),
                 ];
             });
 
-        return response()->json([
-            'success' => true,
-            'favorites' => $favorites,
-            'count' => $favorites->count()
-        ]);
+        return response()->json(['success' => true, 'favorites' => $favorites, 'count' => $favorites->count()]);
     }
 
-    /**
-     * Rimuovi tutti i preferiti (bulk delete)
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function destroyAll()
     {
-        $user = Auth::user();
-        
+        $user  = Auth::user();
         $count = UserFavorite::where('user_id', $user->id)->delete();
 
-        // Invalida la cache della dashboard
         Cache::forget("dashboard_user_{$user->id}");
 
-        return response()->json([
-            'success' => true,
-            'message' => "Rimossi {$count} preferiti",
-            'deleted_count' => $count
-        ]);
+        return response()->json(['success' => true, 'message' => "Rimossi {$count} preferiti", 'deleted_count' => $count]);
     }
 }

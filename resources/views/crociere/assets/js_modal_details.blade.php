@@ -35,7 +35,7 @@
         console.log('Modale.modal("show") chiamato');
 
         try {
-            const response = await fetch(`/crociere/${cruiseId}`, {
+            const response = await fetch(`/crociere/${cruiseId}`, { // cruiseId è ora un departure_id
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
@@ -53,7 +53,7 @@
                 throw new Error(data.error || 'Errore sconosciuto');
             }
 
-            renderCruiseDetails(data.cruise);
+            renderCruiseDetails(data.departure);
             
             // Carica lo stato preferiti
             await loadFavoriteStatus(cruiseId);
@@ -74,7 +74,7 @@
      */
     async function loadFavoriteStatus(cruiseId) {
         try {
-            const response = await fetch(`/cruises/${cruiseId}/favorite/check`, {
+            const response = await fetch(`/departures/${cruiseId}/favorite/check`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
@@ -129,7 +129,7 @@
         icon.classList.add('fa-spin');
 
         try {
-            const response = await fetch(`/cruises/${currentCruiseId}/favorite/toggle`, {
+            const response = await fetch(`/departures/${currentCruiseId}/favorite/toggle`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -212,34 +212,46 @@
     /**
      * Renderizza i dettagli della crociera nella modale
      */
-    function renderCruiseDetails(cruise) {
+    function renderCruiseDetails(departure) {
         const modalTitle = document.getElementById('modal-cruise-name');
-        const modalBody = document.getElementById('modal-cruise-body');
+        const modalBody  = document.getElementById('modal-cruise-body');
 
-        modalTitle.textContent = cruise.ship || 'Dettaglio Crociera';
+        const product   = departure.product   || {};
+        const ship      = product.ship        || {};
+        const cruiseLine = product.cruise_line || {};
+        const portFrom  = product.port_from   || {};
+        const portTo    = product.port_to     || {};
+        const prices    = departure.latest_prices || [];
 
-        // Formatta le date
+        modalTitle.textContent = ship.name || 'Dettaglio Crociera';
+
         const formatDate = (dateString) => {
             if (!dateString) return 'N/D';
             const date = new Date(dateString);
-            return date.toLocaleDateString('it-IT', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
+            return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
         };
 
-        // Formatta il prezzo
         const formatPrice = (price) => {
-            if (!price || price === '-' || price === 0) return '-';
-            return '€' + parseFloat(price).toLocaleString('it-IT', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            });
+            if (!price || price === 0) return '-';
+            return '€' + parseFloat(price).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
         };
+
+        const pricesHtml = prices.length > 0
+            ? prices.map(p => `
+                <div class="col-6 col-md-4">
+                    <div class="cabin-price-card p-2 border rounded bg-light text-center">
+                        <i class="fas fa-bed mb-1 text-primary" style="font-size: 1.2rem;"></i>
+                        <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">${p.category_code}</h6>
+                        <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(p.price)}</p>
+                        <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
+                    </div>
+                </div>`).join('')
+            : `<div class="text-center text-muted py-2 col-12">
+                   <i class="fas fa-info-circle me-2"></i>
+                   <small>Nessun prezzo disponibile al momento</small>
+               </div>`;
 
         const html = `
-        <!-- Informazioni Generali - Compatta -->
         <div class="card mb-2 border-0 shadow-sm">
             <div class="card-header bg-light border-0 py-2">
                 <h6 class="mb-0 text-dark fw-bold" style="font-size: 0.9rem;">
@@ -253,7 +265,7 @@
                             <i class="fas fa-ship me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">Nave</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${cruise.ship || 'N/D'}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${ship.name || 'N/D'}</strong>
                             </div>
                         </div>
                     </div>
@@ -262,7 +274,7 @@
                             <i class="fas fa-building me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">Compagnia</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${cruise.line || 'N/D'}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${cruiseLine.name || 'N/D'}</strong>
                             </div>
                         </div>
                     </div>
@@ -271,7 +283,7 @@
                             <i class="fas fa-moon me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">Durata</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${cruise.night || cruise.duration || 'N/D'} ${cruise.night ? 'notti' : 'giorni'}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${departure.duration || 'N/D'} notti</strong>
                             </div>
                         </div>
                     </div>
@@ -280,7 +292,7 @@
                             <i class="fas fa-calendar-alt me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">Partenza</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${formatDate(cruise.partenza)}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${formatDate(departure.dep_date)}</strong>
                             </div>
                         </div>
                     </div>
@@ -289,7 +301,7 @@
                             <i class="fas fa-anchor me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">Da</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${cruise.from || 'N/D'}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${portFrom.name || 'N/D'}</strong>
                             </div>
                         </div>
                     </div>
@@ -298,99 +310,22 @@
                             <i class="fas fa-map-marked-alt me-2 text-muted" style="width: 18px;"></i>
                             <div class="flex-grow-1">
                                 <small class="text-muted d-block" style="font-size: 0.75rem;">A</small>
-                                <strong class="text-dark" style="font-size: 0.875rem;">${cruise.to || 'N/D'}</strong>
+                                <strong class="text-dark" style="font-size: 0.875rem;">${portTo.name || 'N/D'}</strong>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        ${cruise.details ? `
-        <!-- Note e Dettagli - Compatta -->
-        <div class="card mb-2 border-0 shadow-sm">
-            <div class="card-header bg-light border-0 py-2">
-                <h6 class="mb-0 text-dark fw-bold" style="font-size: 0.9rem;">
-                    <i class="fas fa-clipboard-list me-2 text-primary"></i>Note e Dettagli
-                </h6>
-            </div>
-            <div class="card-body py-2 px-3">
-                <p class="mb-0 text-dark" style="font-size: 0.875rem; line-height: 1.4;">${cruise.details}</p>
-            </div>
-        </div>
-        ` : ''}
-        
-        <!-- Prezzi Cabine - Compatta -->
+
         <div class="card mb-0 border-0 shadow-sm">
             <div class="card-header bg-light border-0 py-2">
                 <h6 class="mb-0 text-dark fw-bold" style="font-size: 0.9rem;">
-                    <i class="fas fa-euro-sign me-2 text-primary"></i>Prezzi per Tipologia Cabina
+                    <i class="fas fa-euro-sign me-2 text-primary"></i>Prezzi per Categoria Cabina
                 </h6>
             </div>
             <div class="card-body py-2 px-3">
-                <div class="row g-2 text-center">
-                    ${cruise.interior && cruise.interior !== '-' ? `
-                    <div class="col-6 col-md-4">
-                        <div class="cabin-price-card p-2 border rounded bg-light">
-                            <i class="fas fa-bed mb-1 text-primary" style="font-size: 1.2rem;"></i>
-                            <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">Interna</h6>
-                            <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(cruise.interior)}</p>
-                            <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${cruise.oceanview && cruise.oceanview !== '-' ? `
-                    <div class="col-6 col-md-4">
-                        <div class="cabin-price-card p-2 border rounded bg-light">
-                            <i class="fas fa-window-maximize mb-1 text-info" style="font-size: 1.2rem;"></i>
-                            <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">Esterna</h6>
-                            <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(cruise.oceanview)}</p>
-                            <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${cruise.balcony && cruise.balcony !== '-' ? `
-                    <div class="col-6 col-md-4">
-                        <div class="cabin-price-card p-2 border rounded bg-light">
-                            <i class="fas fa-door-open mb-1 text-warning" style="font-size: 1.2rem;"></i>
-                            <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">Balcone</h6>
-                            <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(cruise.balcony)}</p>
-                            <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${cruise.minisuite && cruise.minisuite !== '-' ? `
-                    <div class="col-6 col-md-4">
-                        <div class="cabin-price-card p-2 border rounded bg-light">
-                            <i class="fas fa-gem mb-1 text-purple" style="font-size: 1.2rem;"></i>
-                            <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">Mini Suite</h6>
-                            <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(cruise.minisuite)}</p>
-                            <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${cruise.suite && cruise.suite !== '-' ? `
-                    <div class="col-6 col-md-4">
-                        <div class="cabin-price-card p-2 border rounded bg-light">
-                            <i class="fas fa-crown mb-1 text-danger" style="font-size: 1.2rem;"></i>
-                            <h6 class="mb-0 text-muted" style="font-size: 0.75rem;">Suite</h6>
-                            <p class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">${formatPrice(cruise.suite)}</p>
-                            <small class="text-muted" style="font-size: 0.7rem;">a persona</small>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-                
-                ${!cruise.interior && !cruise.oceanview && !cruise.balcony && !cruise.minisuite && !cruise.suite ? `
-                <div class="text-center text-muted py-2">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <small>Nessun prezzo disponibile al momento</small>
-                </div>
-                ` : ''}
+                <div class="row g-2">${pricesHtml}</div>
             </div>
         </div>
     `;

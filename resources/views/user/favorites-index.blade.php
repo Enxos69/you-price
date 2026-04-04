@@ -46,7 +46,7 @@
         <div class="col-md-6">
             <p class="text-muted">
                 <i class="fas fa-info-circle me-2"></i>
-                Hai salvato <strong>{{ $favorites->total() }}</strong> 
+                Hai salvato <strong>{{ $favorites->total() }}</strong>
                 {{ $favorites->total() == 1 ? 'crociera' : 'crociere' }}
             </p>
         </div>
@@ -61,43 +61,49 @@
 
     <div class="row">
         @foreach($favorites as $favorite)
+        @php
+            $departure  = $favorite->departure;
+            $product    = $departure->product;
+            $minPrice   = $departure->min_price;
+            $depId      = $departure->id;
+        @endphp
         <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card favorite-card h-100 border-0 shadow-sm" data-cruise-id="{{ $favorite->cruise->id }}">
+            <div class="card favorite-card h-100 border-0 shadow-sm" data-cruise-id="{{ $depId }}">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                    <span class="badge bg-{{ $favorite->cruise->getAvailabilityStatus()['class'] }}">
-                        {{ $favorite->cruise->getAvailabilityStatus()['label'] }}
-                    </span>
-                    <button class="btn btn-sm btn-link text-danger p-0 remove-favorite" 
-                            data-cruise-id="{{ $favorite->cruise->id }}"
+                    @if($minPrice)
+                        <span class="badge bg-success">Disponibile</span>
+                    @else
+                        <span class="badge bg-secondary">N/D</span>
+                    @endif
+                    <button class="btn btn-sm btn-link text-danger p-0 remove-favorite"
+                            data-cruise-id="{{ $depId }}"
                             title="Rimuovi dai preferiti">
                         <i class="fas fa-heart fa-lg"></i>
                     </button>
                 </div>
-                
+
                 <div class="card-body">
-                    <h5 class="card-title fw-bold">{{ $favorite->cruise->ship }}</h5>
+                    <h5 class="card-title fw-bold">{{ $product->ship->name ?? 'N/D' }}</h5>
                     <p class="text-muted small mb-2">
-                        <i class="fas fa-ship me-1"></i>{{ $favorite->cruise->line }}
+                        <i class="fas fa-ship me-1"></i>{{ $product->cruiseLine->name ?? 'N/D' }}
                     </p>
                     <p class="text-muted mb-2">
                         <i class="fas fa-map-marker-alt me-1"></i>
-                        {{ $favorite->cruise->getFormattedItinerary() }}
+                        {{ ($product->portFrom->name ?? 'N/D') }} - {{ ($product->portTo->name ?? 'N/D') }}
                     </p>
-                    
+
                     <div class="row mb-3">
                         <div class="col-6">
                             <small class="text-muted d-block">
                                 <i class="fas fa-calendar me-1"></i>Partenza
                             </small>
-                            <small class="fw-bold">
-                                {{ $favorite->cruise->getFormattedDepartureDate('d M Y') ?? 'N/D' }}
-                            </small>
+                            <small class="fw-bold">{{ $departure->dep_date->format('d M Y') }}</small>
                         </div>
                         <div class="col-6">
                             <small class="text-muted d-block">
                                 <i class="fas fa-moon me-1"></i>Durata
                             </small>
-                            <small class="fw-bold">{{ $favorite->cruise->getFormattedDuration() }}</small>
+                            <small class="fw-bold">{{ $departure->formatted_duration }}</small>
                         </div>
                     </div>
 
@@ -113,7 +119,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <h4 class="text-success mb-0">
-                                {{ $favorite->cruise->getLowestPrice() ? '€' . number_format($favorite->cruise->getLowestPrice(), 0, ',', '.') : 'N/D' }}
+                                {{ $minPrice ? '€' . number_format($minPrice, 0, ',', '.') : 'N/D' }}
                             </h4>
                             <small class="text-muted">a persona</small>
                         </div>
@@ -123,13 +129,13 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <a href="{{ route('crociere.create') }}?cruise_id={{ $favorite->cruise->id }}" 
-                           class="btn btn-primary btn-sm">
+                        <button class="btn btn-primary btn-sm open-cruise-details"
+                                data-cruise-id="{{ $depId }}">
                             <i class="fas fa-eye me-2"></i>Vedi Dettagli
-                        </a>
-                        <button class="btn btn-outline-secondary btn-sm" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#noteModal{{ $favorite->cruise->id }}">
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#noteModal{{ $depId }}">
                             <i class="fas fa-edit me-2"></i>
                             {{ $favorite->note ? 'Modifica Nota' : 'Aggiungi Nota' }}
                         </button>
@@ -138,8 +144,8 @@
             </div>
         </div>
 
-        <!-- Modal per modificare la nota -->
-        <div class="modal fade" id="noteModal{{ $favorite->cruise->id }}" tabindex="-1">
+        {{-- Modal nota --}}
+        <div class="modal fade" id="noteModal{{ $depId }}" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -149,7 +155,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <form class="update-note-form" data-cruise-id="{{ $favorite->cruise->id }}">
+                        <form class="update-note-form" data-departure-id="{{ $depId }}">
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label">Nota personale</label>
@@ -169,12 +175,13 @@
         @endforeach
     </div>
 
-    <!-- Paginazione -->
     <div class="d-flex justify-content-center mt-4">
         {{ $favorites->links() }}
     </div>
     @endif
 </div>
+
+@include('partials.cruise-detail-modal')
 @endsection
 
 @push('styles')
@@ -183,4 +190,5 @@
 
 @push('scripts')
 <script src="{{ asset('js/favorites.js') }}"></script>
+@include('crociere.assets.js_modal_details')
 @endpush
