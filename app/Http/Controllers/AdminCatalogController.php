@@ -99,7 +99,7 @@ class AdminCatalogController extends Controller
 
         try {
             if ($isWin) {
-                // Windows: usa popen con START /B per distaccare il processo
+                // Windows (Laragon dev): usa popen con START /B per distaccare il processo
                 $cmd = sprintf(
                     'START /B "" "%s" "%s" catalog:sync --source=manual --log-id=%d > "%s" 2>&1',
                     str_replace('/', '\\', $phpBinary),
@@ -109,13 +109,25 @@ class AdminCatalogController extends Controller
                 );
                 Log::info('[CatalogSync] CMD Windows', ['cmd' => $cmd]);
                 pclose(popen($cmd, 'r'));
+            } elseif (function_exists('fastcgi_finish_request')) {
+                // PHP-FPM (Hostinger): chiude la connessione HTTP e gira il sync in-process
+                Log::info('[CatalogSync] PHP-FPM: avvio via fastcgi_finish_request', ['log_id' => $logId]);
+                app()->terminating(function () use ($logId) {
+                    fastcgi_finish_request();
+                    set_time_limit(0);
+                    ignore_user_abort(true);
+                    \Artisan::call('catalog:sync', [
+                        '--source' => 'manual',
+                        '--log-id' => $logId,
+                    ]);
+                });
             } else {
-                // Linux/Mac
+                // Fallback Linux/Mac mod_php
                 $cmd = sprintf(
                     '"%s" "%s" catalog:sync --source=manual --log-id=%d > "%s" 2>&1 &',
                     $phpBinary, $artisan, $logId, $logFile
                 );
-                Log::info('[CatalogSync] CMD Unix', ['cmd' => $cmd]);
+                Log::info('[CatalogSync] CMD Unix fallback', ['cmd' => $cmd]);
                 exec($cmd);
             }
         } catch (\Throwable $e) {
