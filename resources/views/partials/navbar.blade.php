@@ -27,8 +27,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('cruises.index') }}">
-                            <i class="fas fa-ship"></i> Gestione Crociere
+                        <a class="nav-link" href="{{ route('admin.catalog.index') }}">
+                            <i class="fas fa-ship"></i> Gestione Catalogo
                         </a>
                     </li>
                     <li class="nav-item">

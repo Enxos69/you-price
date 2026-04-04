@@ -5,13 +5,16 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class CatalogSyncCommand extends Command
 {
     protected $signature = 'catalog:sync
                             {--file= : Percorso file JSON locale (per test senza API)}
-                            {--force : Esegui anche se il limite giornaliero (4 download) è stato raggiunto}';
+                            {--force : Esegui anche se il limite giornaliero (4 download) è stato raggiunto}
+                            {--source=cron : Origine del sync (cron|manual)}
+                            {--log-id= : ID log preesistente da aggiornare (usato dal trigger manuale)}';
 
     protected $description = 'Scarica e sincronizza il catalogo CruiseHost nel database locale';
 
@@ -24,29 +27,56 @@ class CatalogSyncCommand extends Command
             return self::FAILURE;
         }
 
-        $logId = DB::table('catalog_sync_log')->insertGetId([
-            'started_at' => now(),
-            'status'     => 'running',
-        ]);
+        $source = $this->option('source') === 'manual' ? 'manual' : 'cron';
+
+        if ($existingLogId = $this->option('log-id')) {
+            $logId = (int) $existingLogId;
+            DB::table('catalog_sync_log')->where('id', $logId)->update([
+                'started_at'   => now(),
+                'status'       => 'running',
+                'triggered_by' => $source,
+            ]);
+        } else {
+            $logId = DB::table('catalog_sync_log')->insertGetId([
+                'started_at'   => now(),
+                'status'       => 'running',
+                'triggered_by' => $source,
+            ]);
+        }
 
         $this->info("Sync avviato (log ID: {$logId})");
 
         try {
+            Log::info('[CatalogSync] Avvio sync', ['log_id' => $logId, 'source' => $source]);
+            $this->logProgress($logId, 'Download catalogo da CruiseHost...');
             $catalog = $this->loadCatalog();
             $this->info('Catalogo caricato — avvio importazione...');
+            Log::info('[CatalogSync] Catalogo caricato in memoria');
 
             $stats = ['products_imported' => 0, 'prices_recorded' => 0];
 
+            $this->logProgress($logId, 'Recupero aree da /search...');
             $searchAreas = $this->fetchAreasFromSearch();
+            Log::info('[CatalogSync] Aree da /search', ['count' => count($searchAreas)]);
 
             $syncStart = now();
 
-            DB::transaction(function () use ($catalog, $searchAreas, &$stats) {
+            $this->logProgress($logId, 'Importazione cruise lines, aree, porti, navi...');
+            Log::info('[CatalogSync] Avvio transazione DB');
+            DB::transaction(function () use ($catalog, $searchAreas, &$stats, $logId) {
+                Log::info('[CatalogSync] Sync cruise lines');
                 $this->syncCruiseLines($catalog['cruiselines'] ?? []);
+                Log::info('[CatalogSync] Sync aree');
                 $areaIds = $this->syncAreas(array_merge($searchAreas, $catalog['areas'] ?? []));
+                Log::info('[CatalogSync] Sync porti');
                 $this->syncPorts($catalog['ports'] ?? []);
+                Log::info('[CatalogSync] Sync navi');
                 $this->syncShips($catalog['ships'] ?? []);
+                $nProd = count($catalog['products'] ?? []);
+                $this->logProgress($logId, "Importazione prodotti e prezzi ({$nProd} prodotti)...");
+                Log::info('[CatalogSync] Sync prodotti', ['count' => $nProd]);
                 $this->syncProducts($catalog['products'] ?? [], $stats, $areaIds);
+                Log::info('[CatalogSync] Sync prodotti completato', $stats);
             });
 
             // Soft-delete partenze future non presenti nel catalogo appena scaricato
@@ -66,6 +96,7 @@ class CatalogSyncCommand extends Command
                 'products_imported' => $stats['products_imported'],
                 'prices_recorded'   => $stats['prices_recorded'],
                 'status'            => 'completed',
+                'notes'             => null,
             ]);
 
             $this->info("Completato: {$stats['products_imported']} prodotti, {$stats['prices_recorded']} prezzi.");
@@ -101,6 +132,12 @@ class CatalogSyncCommand extends Command
         return $count < self::MAX_DAILY_SYNCS;
     }
 
+    private function logProgress(int $logId, string $message): void
+    {
+        DB::table('catalog_sync_log')->where('id', $logId)->update(['notes' => $message]);
+        $this->line('  ' . $message);
+    }
+
     private function loadCatalog(): array
     {
         if ($file = $this->option('file')) {
@@ -113,17 +150,60 @@ class CatalogSyncCommand extends Command
         $url    = rtrim(config('services.cruisehost.base_url'), '/') . '/catalog';
         $apiKey = config('services.cruisehost.api_key');
 
-        $response = Http::withToken($apiKey)->timeout(300)->get($url);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException("Download catalogo fallito: HTTP {$response->status()}");
-        }
+        $this->line("  Connessione a: {$url}");
+        Log::info('[CatalogSync] Inizio download', ['url' => $url]);
 
         $zipPath = tempnam(sys_get_temp_dir(), 'cruisehost_catalog_') . '.zip';
+        Log::info('[CatalogSync] File temporaneo', ['path' => $zipPath]);
 
         try {
-            file_put_contents($zipPath, $response->body());
-            return $this->extractJsonFromZip($zipPath);
+            Log::info('[CatalogSync] Invio richiesta HTTP...');
+
+            $response = Http::withToken($apiKey)
+                ->withoutVerifying()
+                ->connectTimeout(15)
+                ->timeout(300)
+                ->sink($zipPath)
+                ->get($url);
+
+            Log::info('[CatalogSync] Risposta ricevuta', [
+                'status'         => $response->status(),
+                'ok'             => $response->successful(),
+                'content_type'   => $response->header('Content-Type'),
+                'content_length' => $response->header('Content-Length'),
+                'file_size_kb'   => file_exists($zipPath) ? round(filesize($zipPath) / 1024) : 'file assente',
+            ]);
+
+            if (! $response->successful()) {
+                Log::error('[CatalogSync] Download fallito', [
+                    'status' => $response->status(),
+                    'body'   => substr($response->body(), 0, 500),
+                ]);
+                throw new \RuntimeException("Download catalogo fallito: HTTP {$response->status()}");
+            }
+
+            $sizeKb = round(filesize($zipPath) / 1024);
+            $this->line("  ZIP scaricato ({$sizeKb} KB) — estrazione...");
+            Log::info('[CatalogSync] Inizio estrazione ZIP', ['size_kb' => $sizeKb]);
+
+            $data = $this->extractJsonFromZip($zipPath);
+
+            Log::info('[CatalogSync] Estrazione completata', [
+                'products' => count($data['products'] ?? []),
+                'ships'    => count($data['ships'] ?? []),
+                'ports'    => count($data['ports'] ?? []),
+                'areas'    => count($data['areas'] ?? []),
+            ]);
+
+            return $data;
+
+        } catch (\Throwable $e) {
+            Log::error('[CatalogSync] Eccezione durante download/estrazione', [
+                'message' => $e->getMessage(),
+                'class'   => get_class($e),
+                'file'    => $e->getFile() . ':' . $e->getLine(),
+            ]);
+            throw $e;
         } finally {
             @unlink($zipPath);
         }
