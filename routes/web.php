@@ -140,3 +140,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/user/index', [UserController::class, 'index'])->name('user.index');
 });
+
+// Endpoint interno per sync asincrono — protetto da token, niente auth/CSRF
+Route::post('/internal/catalog-sync', [AdminCatalogController::class, 'runInternalSync']);

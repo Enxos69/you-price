@@ -109,25 +109,21 @@ class AdminCatalogController extends Controller
                 );
                 Log::info('[CatalogSync] CMD Windows', ['cmd' => $cmd]);
                 pclose(popen($cmd, 'r'));
-            } elseif (function_exists('fastcgi_finish_request')) {
-                // PHP-FPM (Hostinger): chiude la connessione HTTP e gira il sync in-process
-                Log::info('[CatalogSync] PHP-FPM: avvio via fastcgi_finish_request', ['log_id' => $logId]);
-                app()->terminating(function () use ($logId) {
-                    fastcgi_finish_request();
-                    set_time_limit(0);
-                    ignore_user_abort(true);
-                    \Artisan::call('catalog:sync', [
-                        '--source' => 'manual',
-                        '--log-id' => $logId,
-                    ]);
-                });
             } else {
-                // Linux/Mac: dispatch alla queue (nessun exec necessario)
-                Log::info('[CatalogSync] Queue dispatch', ['log_id' => $logId]);
-                \Artisan::queue('catalog:sync', [
-                    '--source' => 'manual',
-                    '--log-id' => $logId,
-                ])->onConnection('database');
+                // Linux/Mac: HTTP self-request con timeout 2s
+                // ignore_user_abort(true) nell'endpoint interno garantisce che il sync
+                // continui anche dopo il timeout della richiesta (exec() non necessario)
+                $secret = hash('sha256', config('app.key') . ':' . $logId);
+                Log::info('[CatalogSync] HTTP self-request', ['log_id' => $logId]);
+                try {
+                    Http::timeout(2)
+                        ->withoutVerifying()
+                        ->withHeader('X-Sync-Secret', $secret)
+                        ->post(url('/internal/catalog-sync'), ['log_id' => $logId]);
+                } catch (\Throwable $e) {
+                    // Timeout atteso: il sync sta girando in background
+                    Log::info('[CatalogSync] Self-request timeout (atteso)', ['log_id' => $logId]);
+                }
             }
         } catch (\Throwable $e) {
             Log::error('[CatalogSync] Errore avvio processo', ['error' => $e->getMessage()]);
@@ -147,6 +143,28 @@ class AdminCatalogController extends Controller
             'message'  => 'Sincronizzazione avviata.',
             'log_file' => basename($logFile),
         ]);
+    }
+
+    public function runInternalSync(Request $request)
+    {
+        $logId    = (int) $request->input('log_id');
+        $secret   = (string) $request->header('X-Sync-Secret');
+        $expected = hash('sha256', config('app.key') . ':' . $logId);
+
+        if (! $logId || ! hash_equals($expected, $secret)) {
+            return response()->json(['error' => 'Non autorizzato'], 403);
+        }
+
+        ignore_user_abort(true);
+        set_time_limit(0);
+
+        \Artisan::call('catalog:sync', [
+            '--source' => 'manual',
+            '--log-id' => $logId,
+            '--force'  => true,
+        ]);
+
+        return response()->json(['done' => true]);
     }
 
     public function syncStatus(int $logId)
