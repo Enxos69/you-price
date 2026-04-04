@@ -61,6 +61,7 @@ Route::post('password/confirm', [ConfirmPasswordController::class, 'confirm']);
 Route::get('/crociere', [CrocieraController::class, 'index'])->name('crociere.index');
 Route::post('/crociere/search', [CrocieraController::class, 'search'])->name('crociere.search');
 Route::get('/crociere/stats', [CrocieraController::class, 'getStats'])->name('crociere.stats');
+Route::get('/crociere/ports/search', [CrocieraController::class, 'searchPorts'])->name('crociere.ports.search');
 
 // Dettagli singola crociera (solo utenti autenticati)
 Route::get('/crociere/{id}', [CrocieraController::class, 'show'])

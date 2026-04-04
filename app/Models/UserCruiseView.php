@@ -38,6 +38,7 @@ class UserCruiseView extends Model
     public static function getMostViewedByUser(int $userId, int $limit = 10)
     {
         return self::where('user_id', $userId)
+                   ->whereHas('departure')
                    ->orderByDesc('view_count')
                    ->orderByDesc('last_viewed_at')
                    ->with(['departure.product.ship', 'departure.product.cruiseLine'])

@@ -67,7 +67,7 @@
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-number">{{ $stats['total_searches'] }}</div>
+                        <div class="stat-number" id="stat-total-searches">{{ $stats['total_searches'] }}</div>
                         <small class="text-muted">Ricerche Effettuate</small>
                     </div>
                     <i class="fas fa-search fa-2x text-primary opacity-25"></i>
@@ -79,7 +79,7 @@
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-number">{{ $stats['cruises_viewed'] }}</div>
+                        <div class="stat-number" id="stat-cruises-viewed">{{ $stats['cruises_viewed'] }}</div>
                         <small class="text-muted">Crociere Viste</small>
                     </div>
                     <i class="fas fa-eye fa-2x text-info opacity-25"></i>
@@ -92,7 +92,7 @@
                 <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <div class="stat-number">{{ $stats['favorites_count'] }}</div>
+                            <div class="stat-number" id="stat-favorites-count">{{ $stats['favorites_count'] }}</div>
                             <small class="text-muted">Preferiti</small>
                         </div>
                         <i class="fas fa-heart fa-2x text-danger opacity-25"></i>
@@ -308,4 +308,21 @@
 @section('scripts')
 <script src="{{ asset('js/dashboard.js') }}"></script>
 @include('crociere.assets.js_modal_details')
+<script>
+(function () {
+    fetch('{{ route('api.dashboard.stats') }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+            var map = {
+                'stat-total-searches':  s.total_searches,
+                'stat-cruises-viewed':  s.cruises_viewed,
+                'stat-favorites-count': s.favorites_count,
+            };
+            Object.keys(map).forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && map[id] !== undefined) el.textContent = map[id];
+            });
+        });
+})();
+</script>
 @endsection

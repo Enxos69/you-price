@@ -36,6 +36,7 @@ class CrocieraController extends Controller
 
         $searchResults = null;
         $errorMessage  = null;
+        $user          = Auth::user();
 
         try {
             $dateRange = explode(' - ', $data['date_range']);
@@ -153,6 +154,9 @@ class CrocieraController extends Controller
 
         try {
             SearchLog::createFromRequest($data, $searchResults, $searchDuration, $errorMessage);
+            if (Auth::check()) {
+                Cache::forget("dashboard_user_{$user->id}");
+            }
         } catch (\Exception $e) {
             Log::warning('Errore logging ricerca: ' . $e->getMessage());
         }
@@ -199,6 +203,22 @@ class CrocieraController extends Controller
     // -------------------------------------------------------------------------
     // Statistiche globali
     // -------------------------------------------------------------------------
+
+    public function searchPorts(Request $request)
+    {
+        $q = trim($request->input('q', ''));
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $ports = \App\Models\Port::where('name', 'LIKE', '%' . $q . '%')
+            ->orderBy('name')
+            ->limit(10)
+            ->pluck('name');
+
+        return response()->json($ports);
+    }
 
     public function getStats()
     {

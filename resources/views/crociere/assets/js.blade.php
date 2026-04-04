@@ -1489,26 +1489,6 @@
         // Aggiornamento iniziale
         updateDynamicMessage();
 
-        // Suggerimenti di auto-completamento per porto
-        const commonPorts = [
-            'Civitavecchia', 'Barcellona', 'Venezia', 'Genova', 'Napoli', 'Palermo',
-            'Marsiglia', 'Savona', 'La Spezia', 'Bari', 'Catania', 'Cagliari',
-            'Miami', 'Fort Lauderdale', 'Southampton', 'Copenhagen'
-        ];
-
-        $('#port_start').on('input', function() {
-            const value = $(this).val().toLowerCase();
-            const suggestions = commonPorts.filter(port =>
-                port.toLowerCase().includes(value)
-            );
-
-            // Aggiorna datalist dinamicamente
-            const datalist = $('#ports-start');
-            datalist.empty();
-            suggestions.forEach(port => {
-                datalist.append(`<option value="${port}">`);
-            });
-        });
 
         // Keyboard shortcuts migliorati
         $(document).on('keydown', function(e) {

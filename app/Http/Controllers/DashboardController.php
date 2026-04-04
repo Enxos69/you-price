@@ -120,6 +120,7 @@ class DashboardController extends Controller
     private function getFavorites(User $user)
     {
         return UserFavorite::forUser($user->id)
+            ->whereHas('departure')
             ->with([
                 'departure.product.ship',
                 'departure.product.cruiseLine',
@@ -171,6 +172,7 @@ class DashboardController extends Controller
     {
         return PriceAlert::forUser($user->id)
             ->active()
+            ->whereHas('departure')
             ->with([
                 'departure.product.ship',
                 'departure.product.cruiseLine',

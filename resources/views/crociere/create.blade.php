@@ -69,7 +69,7 @@
         </div>
 
         {{-- Search Form --}}
-        <div class="row mb-4">
+        <div class="row mb-4" style="position:relative;z-index:10;">
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
@@ -111,24 +111,12 @@
                                 </div>
                                 <div class="col-md-6 col-lg-3 mb-3">
                                     <label for="port_start" class="form-label">Porto di Imbarco</label>
-                                    <input type="text" name="port_start" id="port_start" class="form-control"
-                                        placeholder="Es. Civitavecchia" list="ports-start" data-field="porto">
-                                    <datalist id="ports-start">
-                                        <option value="Civitavecchia">
-                                        <option value="Barcellona">
-                                        <option value="Venezia">
-                                        <option value="Genova">
-                                        <option value="Napoli">
-                                        <option value="Palermo">
-                                        <option value="Rio de Janeiro">
-                                        <option value="Fort Lauderdale">
-                                        <option value="Port Canaveral">
-                                        <option value="San Juan">
-                                        <option value="Galveston">
-                                        <option value="Los Angeles">
-                                        <option value="San Francisco">
-                                        <option value="Miami">
-                                    </datalist>
+                                    <div class="port-autocomplete-wrapper" style="position:relative;">
+                                        <input type="text" name="port_start" id="port_start" class="form-control"
+                                            placeholder="Es. Civitavecchia" autocomplete="off" data-field="porto">
+                                        <ul id="port-suggestions" class="list-group shadow-sm"
+                                            style="position:absolute;z-index:1000;width:100%;display:none;max-height:220px;overflow-y:auto;"></ul>
+                                    </div>
                                 </div>
                                 <div class="col-md-12 col-lg-12 mb-12 " style="text-align: center">
                                     <button type="submit" class="btn btn-primary me-2" id="search-btn">
@@ -518,6 +506,51 @@
     @include('crociere.assets.css')
     @include('crociere.assets.js')
     @include('crociere.assets.js_modal_details')
+    <script>
+    (function () {
+        var input      = document.getElementById('port_start');
+        var list       = document.getElementById('port-suggestions');
+        var searchUrl  = '{{ route('crociere.ports.search') }}';
+        var timer      = null;
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            var q = this.value.trim();
+            if (q.length < 2) { list.style.display = 'none'; return; }
+            timer = setTimeout(function () {
+                fetch(searchUrl + '?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (ports) {
+                        list.innerHTML = '';
+                        if (!ports.length) { list.style.display = 'none'; return; }
+                        ports.forEach(function (name) {
+                            var li = document.createElement('li');
+                            li.className = 'list-group-item list-group-item-action py-1 px-2';
+                            li.style.cursor = 'pointer';
+                            li.textContent = name;
+                            li.addEventListener('click', function () {
+                                input.value = name;
+                                list.style.display = 'none';
+                            });
+                            list.appendChild(li);
+                        });
+                        list.style.display = 'block';
+                    })
+                    .catch(function () { list.style.display = 'none'; });
+            }, 250);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !list.contains(e.target)) {
+                list.style.display = 'none';
+            }
+        });
+
+        input.addEventListener('focus', function () {
+            if (list.children.length > 0) list.style.display = 'block';
+        });
+    })();
+    </script>
 
     @auth
     <script>
