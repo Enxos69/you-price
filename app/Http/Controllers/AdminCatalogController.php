@@ -147,6 +147,11 @@ class AdminCatalogController extends Controller
 
     public function runInternalSync(Request $request)
     {
+        Log::info('[CatalogSync] runInternalSync raggiunto', [
+            'log_id' => $request->input('log_id'),
+            'has_secret' => $request->hasHeader('X-Sync-Secret'),
+        ]);
+
         $logId    = (int) $request->input('log_id');
         $secret   = (string) $request->header('X-Sync-Secret');
         $expected = hash('sha256', config('app.key') . ':' . $logId);
