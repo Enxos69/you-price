@@ -585,30 +585,51 @@ class CatalogSyncCommand extends Command
                         'recorded_at'   => $now,
                         'source'        => 'catalog',
                     ];
-
-                    $stats['prices_recorded']++;
                 }
             }
 
-            // Insert prezzi a blocchi per non superare i limiti di MySQL
-            foreach (array_chunk($priceRows, 500) as $chunk) {
-                DB::table('price_history')->insert($chunk);
-            }
-
-            // Aggiorna min_price denormalizzato sulle partenze di questo prodotto
+            // Inserisce solo i prezzi cambiati rispetto all'ultimo rilevamento
             if (! empty($priceRows)) {
                 $depIds = array_unique(array_column($priceRows, 'departure_id'));
-                $placeholders = implode(',', array_fill(0, count($depIds), '?'));
-                DB::statement("
-                    UPDATE departures d
-                    INNER JOIN (
-                        SELECT departure_id, MIN(price) AS min_p
-                        FROM price_history
-                        WHERE departure_id IN ({$placeholders})
-                        GROUP BY departure_id
-                    ) ph ON d.id = ph.departure_id
-                    SET d.min_price = ph.min_p
-                ", $depIds);
+
+                // Ultimo prezzo noto per ogni (departure_id, category_code)
+                $lastPrices = DB::table('price_history')
+                    ->select('departure_id', 'category_code', 'price')
+                    ->whereIn('id', function ($q) use ($depIds) {
+                        $q->select(DB::raw('MAX(id)'))
+                          ->from('price_history')
+                          ->whereIn('departure_id', $depIds)
+                          ->groupBy('departure_id', 'category_code');
+                    })
+                    ->get()
+                    ->keyBy(fn ($r) => $r->departure_id . '|' . $r->category_code);
+
+                $changedRows = array_values(array_filter($priceRows, function ($row) use ($lastPrices) {
+                    $last = $lastPrices->get($row['departure_id'] . '|' . $row['category_code']);
+                    return ! $last || (float) $last->price !== (float) $row['price'];
+                }));
+
+                foreach (array_chunk($changedRows, 500) as $chunk) {
+                    DB::table('price_history')->insert($chunk);
+                }
+
+                $stats['prices_recorded'] += count($changedRows);
+
+                // Aggiorna min_price solo sulle partenze con variazione di prezzo
+                if (! empty($changedRows)) {
+                    $changedDepIds = array_unique(array_column($changedRows, 'departure_id'));
+                    $placeholders  = implode(',', array_fill(0, count($changedDepIds), '?'));
+                    DB::statement("
+                        UPDATE departures d
+                        INNER JOIN (
+                            SELECT departure_id, MIN(price) AS min_p
+                            FROM price_history
+                            WHERE departure_id IN ({$placeholders})
+                            GROUP BY departure_id
+                        ) ph ON d.id = ph.departure_id
+                        SET d.min_price = ph.min_p
+                    ", $changedDepIds);
+                }
             }
         }
 
