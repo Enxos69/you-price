@@ -471,7 +471,7 @@ class CatalogSyncCommand extends Command
         $this->line('  products (' . count($products) . ')...');
         $now = now();
 
-        // Auto-inserisci aree mancanti (placeholder) per evitare FK violation
+        // ── 0. Aree mancanti (placeholder) per evitare FK violation ──────────
         $missingAreaIds = [];
         foreach ($products as $product) {
             $areaId = (string) $product['area'];
@@ -481,64 +481,67 @@ class CatalogSyncCommand extends Command
         }
         if ($missingAreaIds) {
             $this->warn('  ' . count($missingAreaIds) . ' area_id sconosciute — inserisco placeholder.');
-            foreach (array_keys($missingAreaIds) as $missingId) {
-                DB::table('areas')->upsert(
-                    [
-                        'id'         => $missingId,
-                        'parent_id'  => null,
-                        'name'       => 'Area ' . $missingId,
-                        'slug'       => 'area-' . $missingId,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ],
-                    ['id'],
-                    ['updated_at']
-                );
-                $areaIds[$missingId] = true;
+            $missingRows = array_map(fn($id) => [
+                'id'         => $id,
+                'parent_id'  => null,
+                'name'       => 'Area ' . $id,
+                'slug'       => 'area-' . $id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ], array_keys($missingAreaIds));
+            DB::table('areas')->upsert($missingRows, ['id'], ['updated_at']);
+            foreach (array_keys($missingAreaIds) as $id) {
+                $areaIds[$id] = true;
             }
         }
+
+        // ── 1. Pre-fetch ultimi prezzi registrati (1 query per tutto il sync) ─
+        // Con l'indice (departure_id, category_code, id) MySQL usa un loose
+        // index scan per MAX(id) GROUP BY → nessuna scansione full-table.
+        $lastPrices = DB::table('price_history')
+            ->select('departure_id', 'category_code', 'price')
+            ->whereIn('id', function ($q) {
+                $q->select(DB::raw('MAX(id)'))
+                  ->from('price_history')
+                  ->groupBy('departure_id', 'category_code');
+            })
+            ->get()
+            ->keyBy(fn($r) => $r->departure_id . '|' . $r->category_code);
+
+        // ── 2. Raccolta dati: loop puro PHP, zero query ───────────────────────
+        $productRows    = [];
+        $itinProductIds = [];   // product_id da cui eliminare le vecchie righe
+        $itinRows       = [];
+        $departureRows  = [];
+        $allPriceRows   = [];
 
         foreach ($products as $product) {
             $currency = $this->currencyFromMatchcode($product['matchcode'] ?? '');
 
-            DB::table('products')->upsert(
-                [
-                    'id'             => $product['productID'],
-                    'cruise_line_id' => $product['cruiseline'],
-                    'ship_id'        => $product['shipCode'],
-                    'area_id'        => (string) $product['area'],
-                    'port_from_id'   => $product['fromPort'],
-                    'port_to_id'     => $product['toPort'],
-                    'cruise_name'    => $product['cruiseName'],
-                    'is_package'     => (bool) $product['isPackage'],
-                    'matchcode'      => $product['matchcode'] ?? null,
-                    'sea'            => (bool) $product['sea'],
-                    'created_at'     => $now,
-                    'updated_at'     => $now,
-                ],
-                ['id'],
-                ['cruise_line_id', 'ship_id', 'area_id', 'port_from_id', 'port_to_id',
-                 'cruise_name', 'is_package', 'matchcode', 'sea', 'updated_at']
-            );
+            $productRows[] = [
+                'id'             => $product['productID'],
+                'cruise_line_id' => $product['cruiseline'],
+                'ship_id'        => $product['shipCode'],
+                'area_id'        => (string) $product['area'],
+                'port_from_id'   => $product['fromPort'],
+                'port_to_id'     => $product['toPort'],
+                'cruise_name'    => $product['cruiseName'],
+                'is_package'     => (bool) $product['isPackage'],
+                'matchcode'      => $product['matchcode'] ?? null,
+                'sea'            => (bool) $product['sea'],
+                'created_at'     => $now,
+                'updated_at'     => $now,
+            ];
 
-            $stats['products_imported']++;
-
-            // Itinerario: itin[]{day, sort, arrival, departure, port}
-            // arrival/departure possono essere stringa vuota → null
+            // Itinerario — deduplica (day, port) in memoria
             if (! empty($product['itin'])) {
-                DB::table('product_itinerary')->where('product_id', $product['productID'])->delete();
-
-                // Deduplica: il JSON può avere la stessa (day, port) due volte
+                $itinProductIds[] = $product['productID'];
                 $itinSeen = [];
-                $itin = array_filter($product['itin'], function ($stop) use (&$itinSeen) {
+                foreach ($product['itin'] as $stop) {
                     $key = $stop['day'] . '|' . $stop['port'];
-                    if (isset($itinSeen[$key])) return false;
+                    if (isset($itinSeen[$key])) continue;
                     $itinSeen[$key] = true;
-                    return true;
-                });
-
-                DB::table('product_itinerary')->insert(
-                    array_map(fn($stop) => [
+                    $itinRows[] = [
                         'product_id'     => $product['productID'],
                         'port_id'        => $stop['port'],
                         'day_number'     => (int) $stop['day'],
@@ -546,38 +549,28 @@ class CatalogSyncCommand extends Command
                         'departure_time' => ($stop['departure'] !== '' && $stop['departure'] !== '00:00') ? $stop['departure'] : null,
                         'created_at'     => $now,
                         'updated_at'     => $now,
-                    ], $itin)
-                );
+                    ];
+                }
             }
 
             // Partenze e prezzi
-            // cruises[]{mastercruiseID, depDate, arrDate, categories[]{code, price}}
-            $priceRows = [];
-
             foreach ($product['cruises'] ?? [] as $cruise) {
                 $duration = $this->calcDuration($cruise['depDate'], $cruise['arrDate'], (int) $product['duration']);
 
-                DB::table('departures')->upsert(
-                    [
-                        'id'         => $cruise['mastercruiseID'],
-                        'product_id' => $product['productID'],
-                        'dep_date'   => $cruise['depDate'],
-                        'arr_date'   => $cruise['arrDate'],
-                        'duration'   => $duration,
-                        'synced_at'  => $now,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ],
-                    ['id'],
-                    ['dep_date', 'arr_date', 'duration', 'synced_at', 'updated_at']
-                );
+                $departureRows[] = [
+                    'id'         => $cruise['mastercruiseID'],
+                    'product_id' => $product['productID'],
+                    'dep_date'   => $cruise['depDate'],
+                    'arr_date'   => $cruise['arrDate'],
+                    'duration'   => $duration,
+                    'synced_at'  => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
                 foreach ($cruise['categories'] ?? [] as $cat) {
-                    if (! isset($cat['price'])) {
-                        continue;
-                    }
-
-                    $priceRows[] = [
+                    if (! isset($cat['price'])) continue;
+                    $allPriceRows[] = [
                         'departure_id'  => $cruise['mastercruiseID'],
                         'category_code' => $cat['code'],
                         'price'         => $cat['price'],
@@ -587,52 +580,65 @@ class CatalogSyncCommand extends Command
                     ];
                 }
             }
+        }
 
-            // Inserisce solo i prezzi cambiati rispetto all'ultimo rilevamento
-            if (! empty($priceRows)) {
-                $depIds = array_unique(array_column($priceRows, 'departure_id'));
+        $stats['products_imported'] = count($productRows);
 
-                // Ultimo prezzo noto per ogni (departure_id, category_code)
-                $lastPrices = DB::table('price_history')
-                    ->select('departure_id', 'category_code', 'price')
-                    ->whereIn('id', function ($q) use ($depIds) {
-                        $q->select(DB::raw('MAX(id)'))
-                          ->from('price_history')
-                          ->whereIn('departure_id', $depIds)
-                          ->groupBy('departure_id', 'category_code');
-                    })
-                    ->get()
-                    ->keyBy(fn ($r) => $r->departure_id . '|' . $r->category_code);
+        // ── 3. Upsert prodotti (bulk, chunk 500) ─────────────────────────────
+        foreach (array_chunk($productRows, 500) as $chunk) {
+            DB::table('products')->upsert(
+                $chunk,
+                ['id'],
+                ['cruise_line_id', 'ship_id', 'area_id', 'port_from_id', 'port_to_id',
+                 'cruise_name', 'is_package', 'matchcode', 'sea', 'updated_at']
+            );
+        }
 
-                $changedRows = array_values(array_filter($priceRows, function ($row) use ($lastPrices) {
-                    $last = $lastPrices->get($row['departure_id'] . '|' . $row['category_code']);
-                    return ! $last || (float) $last->price !== (float) $row['price'];
-                }));
-
-                foreach (array_chunk($changedRows, 500) as $chunk) {
-                    DB::table('price_history')->insert($chunk);
-                }
-
-                $stats['prices_recorded'] += count($changedRows);
-
-                // Aggiorna min_price solo sulle partenze con variazione di prezzo
-                if (! empty($changedRows)) {
-                    $changedDepIds = array_unique(array_column($changedRows, 'departure_id'));
-                    $placeholders  = implode(',', array_fill(0, count($changedDepIds), '?'));
-                    DB::statement("
-                        UPDATE departures d
-                        INNER JOIN (
-                            SELECT departure_id, MIN(price) AS min_p
-                            FROM price_history
-                            WHERE departure_id IN ({$placeholders})
-                            GROUP BY departure_id
-                        ) ph ON d.id = ph.departure_id
-                        SET d.min_price = ph.min_p
-                    ", $changedDepIds);
-                }
+        // ── 4. Itinerari: 1 delete bulk + insert bulk ────────────────────────
+        if ($itinProductIds) {
+            foreach (array_chunk($itinProductIds, 500) as $chunk) {
+                DB::table('product_itinerary')->whereIn('product_id', $chunk)->delete();
+            }
+            foreach (array_chunk($itinRows, 500) as $chunk) {
+                DB::table('product_itinerary')->insert($chunk);
             }
         }
 
+        // ── 5. Upsert partenze (bulk, chunk 500) ──────────────────────────────
+        foreach (array_chunk($departureRows, 500) as $chunk) {
+            DB::table('departures')->upsert(
+                $chunk,
+                ['id'],
+                ['dep_date', 'arr_date', 'duration', 'synced_at', 'updated_at']
+            );
+        }
+
+        // ── 6. Filtra prezzi cambiati (confronto in memoria, zero query) ──────
+        $changedPriceRows = array_values(array_filter($allPriceRows, function ($row) use ($lastPrices) {
+            $last = $lastPrices->get($row['departure_id'] . '|' . $row['category_code']);
+            return ! $last || (float) $last->price !== (float) $row['price'];
+        }));
+
+        // ── 7. Insert prezzi cambiati + aggiorna min_price (1 UPDATE finale) ──
+        if ($changedPriceRows) {
+            foreach (array_chunk($changedPriceRows, 500) as $chunk) {
+                DB::table('price_history')->insert($chunk);
+            }
+            $stats['prices_recorded'] = count($changedPriceRows);
+
+            $changedDepIds = array_unique(array_column($changedPriceRows, 'departure_id'));
+            $placeholders  = implode(',', array_fill(0, count($changedDepIds), '?'));
+            DB::statement("
+                UPDATE departures d
+                INNER JOIN (
+                    SELECT departure_id, MIN(price) AS min_p
+                    FROM price_history
+                    WHERE departure_id IN ({$placeholders})
+                    GROUP BY departure_id
+                ) ph ON d.id = ph.departure_id
+                SET d.min_price = ph.min_p
+            ", $changedDepIds);
+        }
     }
 
     // -------------------------------------------------------------------------
