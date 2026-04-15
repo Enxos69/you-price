@@ -166,7 +166,38 @@
         </div>
         @endif
 
-        {{-- Nave — Task 5 --}}
+        {{-- ── NAVE ──────────────────────────────────────────────────────── --}}
+        <div class="cd-section">
+          <div class="cd-section__header">
+            <i class="fas fa-ship"></i>
+            <h2>La Nave — {{ $ship->name }}</h2>
+          </div>
+          <div class="cd-section__body">
+            @if($ship->description)
+              <p class="cd-ship-desc">{{ $ship->description }}</p>
+            @endif
+
+            @if(!empty($ship->features))
+              <div class="cd-ship-features">
+                @foreach($ship->features as $feature)
+                  <span class="cd-feature-pill">{{ $feature }}</span>
+                @endforeach
+              </div>
+            @endif
+
+            @if(!empty($ship->decks))
+              @php
+                $deckCount = count($ship->decks);
+              @endphp
+              <div class="cd-ship-stats mt-3">
+                <div class="cd-ship-stat">
+                  <span class="cd-ship-stat__value">{{ $deckCount }}</span>
+                  <span class="cd-ship-stat__label">Ponti</span>
+                </div>
+              </div>
+            @endif
+          </div>
+        </div>
       </div>
 
       {{-- SIDEBAR --}}
