@@ -626,7 +626,7 @@ class CatalogSyncCommand extends Command
             }
             $stats['prices_recorded'] = count($changedPriceRows);
 
-            $changedDepIds = array_unique(array_column($changedPriceRows, 'departure_id'));
+            $changedDepIds = array_values(array_unique(array_column($changedPriceRows, 'departure_id')));
             $placeholders  = implode(',', array_fill(0, count($changedDepIds), '?'));
             DB::statement("
                 UPDATE departures d
