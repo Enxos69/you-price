@@ -1,10 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-<style>
-{{-- CSS sarà aggiunto nel Task 7 — placeholder --}}
-</style>
-
 <div class="cruise-detail-page">
 
   {{-- ═══ HERO ════════════════════════════════════════════════════════════ --}}
