@@ -122,7 +122,51 @@
         </div>
         @endif
 
-        {{-- Cabine e nave — Task 4/5 --}}
+        {{-- ── CABINE & PREZZI ─────────────────────────────────────────── --}}
+        @if($cabins->isNotEmpty())
+        <div class="cd-section">
+          <div class="cd-section__header">
+            <i class="fas fa-bed"></i>
+            <h2>Tipologie di cabina e prezzi</h2>
+          </div>
+          <div class="cd-section__body">
+            <div class="cd-cabins-grid">
+              @foreach($cabins as $cabin)
+              <div class="cd-cabin-card">
+                <div class="cd-cabin-img">
+                  @if($cabin['image_url'])
+                    <img src="{{ $cabin['image_url'] }}"
+                         alt="Cabina {{ $cabin['cl_cat'] }}"
+                         loading="lazy">
+                  @else
+                    <i class="fas fa-bed fa-2x text-muted"></i>
+                  @endif
+                  <span class="cd-cabin-badge">{{ $cabin['cl_cat'] }}</span>
+                </div>
+                <div class="cd-cabin-body">
+                  <div class="cd-cabin-code">{{ $cabin['category_code'] }}</div>
+                  @if($cabin['description'])
+                    <p class="cd-cabin-desc">{{ $cabin['description'] }}</p>
+                  @endif
+                  <div class="cd-cabin-price">
+                    {{ \App\Models\Departure::formatPrice($cabin['price']) }}
+                    <span class="cd-cabin-price-sub">/ persona</span>
+                  </div>
+                  @if($cabin['recorded_at'])
+                    <div class="cd-cabin-updated">
+                      agg. {{ \Carbon\Carbon::parse($cabin['recorded_at'])->format('d/m/Y') }}
+                    </div>
+                  @endif
+                </div>
+              </div>
+              @endforeach
+            </div>
+            <p class="cd-cabins-note">* Prezzi per persona in camera doppia. Soggetti a variazioni.</p>
+          </div>
+        </div>
+        @endif
+
+        {{-- Nave — Task 5 --}}
       </div>
 
       {{-- SIDEBAR --}}
