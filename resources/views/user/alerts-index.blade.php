@@ -159,10 +159,10 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button class="btn btn-primary btn-sm open-cruise-details"
-                                data-cruise-id="{{ $departure->id }}">
+                        <a href="{{ route('crociere.show', $departure->id) }}"
+                           class="btn btn-primary btn-sm">
                             <i class="fas fa-eye me-2"></i>Vedi Crociera
-                        </button>
+                        </a>
                         @if($alert->notification_sent && $alert->is_active)
                         <button class="btn btn-outline-secondary btn-sm reset-notification"
                                 data-alert-id="{{ $alert->id }}">
@@ -182,7 +182,6 @@
     @endif
 </div>
 
-@include('partials.cruise-detail-modal')
 @endsection
 
 @push('styles')
@@ -191,5 +190,4 @@
 
 @push('scripts')
 <script src="{{ asset('js/alerts.js') }}"></script>
-@include('crociere.assets.js_modal_details')
 @endpush

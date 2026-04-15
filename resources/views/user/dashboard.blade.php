@@ -281,9 +281,8 @@
                                                 <h5 class="text-success mb-0">{{ $favorite['price_formatted'] }}</h5>
                                                 <small class="text-muted">a persona</small>
                                             </div>
-                                            <a href="#" 
-                                               class="btn btn-sm btn-primary open-cruise-details"
-                                               data-cruise-id="{{ $favorite['id'] }}">
+                                            <a href="{{ route('crociere.show', $favorite['id']) }}"
+                                               class="btn btn-sm btn-primary">
                                                 <i class="fas fa-eye me-1"></i>Dettagli
                                             </a>
                                         </div>
@@ -300,14 +299,10 @@
     @endif
 </div>
 
-{{-- Modal Dettaglio Crociera --}}
-@include('partials.cruise-detail-modal')
-
 @endsection
 
 @section('scripts')
 <script src="{{ asset('js/dashboard.js') }}"></script>
-@include('crociere.assets.js_modal_details')
 <script>
 (function () {
     fetch('{{ route('api.dashboard.stats') }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })

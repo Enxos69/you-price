@@ -647,11 +647,11 @@
                 </td>
                 ${isAuthenticated && item.id ? `
                 <td class="text-center">
-                    <button class="btn btn-sm btn-primary btn-action-detail open-cruise-details" 
-                            data-cruise-id="${item.id}"
-                            title="Visualizza dettagli completi">
+                    <a class="btn btn-sm btn-primary btn-action-detail"
+                       href="/crociere/${item.id}"
+                       title="Visualizza dettagli completi">
                         <i class="fas fa-info-circle"></i> Dettagli
-                    </button>
+                    </a>
                 </td>
                 ` : ''}
             `;
@@ -689,11 +689,11 @@
                 </td>
                 ${isAuthenticated && item.id ? `
                 <td class="text-center">
-                    <button class="btn btn-sm btn-warning btn-action-detail open-cruise-details" 
-                            data-cruise-id="${item.id}"
-                            title="Visualizza dettagli completi">
+                    <a class="btn btn-sm btn-warning btn-action-detail"
+                       href="/crociere/${item.id}"
+                       title="Visualizza dettagli completi">
                         <i class="fas fa-info-circle"></i> Dettagli
-                    </button>
+                    </a>
                 </td>
                 ` : ''}
             `;

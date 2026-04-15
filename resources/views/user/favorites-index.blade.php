@@ -129,10 +129,10 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button class="btn btn-primary btn-sm open-cruise-details"
-                                data-cruise-id="{{ $depId }}">
+                        <a href="{{ route('crociere.show', $depId) }}"
+                           class="btn btn-primary btn-sm">
                             <i class="fas fa-eye me-2"></i>Vedi Dettagli
-                        </button>
+                        </a>
                         <button class="btn btn-outline-secondary btn-sm"
                                 data-bs-toggle="modal"
                                 data-bs-target="#noteModal{{ $depId }}">
@@ -181,7 +181,6 @@
     @endif
 </div>
 
-@include('partials.cruise-detail-modal')
 @endsection
 
 @push('styles')
@@ -190,5 +189,4 @@
 
 @push('scripts')
 <script src="{{ asset('js/favorites.js') }}"></script>
-@include('crociere.assets.js_modal_details')
 @endpush

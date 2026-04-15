@@ -379,9 +379,6 @@
         </div>
     </div>
 
-    {{-- Modal Dettaglio Crociera --}}
-    @include('partials.cruise-detail-modal')
-
     {{-- Modal Quotazione Personalizzata --}}
     @auth
     <div class="modal fade" id="modalQuotazioneCustom" tabindex="-1" role="dialog"
@@ -505,7 +502,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
     @include('crociere.assets.css')
     @include('crociere.assets.js')
-    @include('crociere.assets.js_modal_details')
     <script>
     (function () {
         var input      = document.getElementById('port_start');
