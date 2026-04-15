@@ -1,6 +1,121 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+/* ── CRUISE DETAIL PAGE ──────────────────────────────────────────── */
+.cruise-detail-page { background: #f4f6f8; min-height: 100vh; }
+
+/* Hero */
+.cd-hero {
+  background: linear-gradient(135deg, #0d4f5c 0%, #1a7a8a 100%);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  padding: 80px 0 32px;
+}
+.cd-hero__eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: .75; margin-bottom: 6px; }
+.cd-hero__title   { font-size: 28px; font-weight: 700; margin-bottom: 6px; line-height: 1.25; }
+.cd-hero__subtitle { font-size: 15px; opacity: .85; margin-bottom: 0; }
+.cd-badge { display: inline-block; border-radius: 20px; padding: 2px 10px; font-size: 12px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3); }
+.cd-badge--green  { background: #4caf50; border-color: #4caf50; }
+
+/* Barra fatti */
+.cd-facts-bar { background: #fff; border-bottom: 2px solid #e8ecef; display: flex; overflow-x: auto; padding: 0 8px; }
+.cd-fact { flex: 1; min-width: 110px; display: flex; flex-direction: column; align-items: center; padding: 12px 8px; border-right: 1px solid #e8ecef; text-align: center; }
+.cd-fact:last-child  { border-right: none; }
+.cd-fact i           { color: #1a7a8a; margin-bottom: 4px; }
+.cd-fact__value      { font-size: 14px; font-weight: 700; color: #1a7a8a; }
+.cd-fact__label      { font-size: 10px; text-transform: uppercase; color: #999; letter-spacing: .5px; }
+.cd-fact--price .cd-fact__value { font-size: 16px; color: #4caf50; }
+
+/* Layout principale */
+.cd-main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+.cd-left-col    { display: flex; flex-direction: column; gap: 20px; }
+.cd-sidebar     { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 80px; }
+
+/* Sezioni */
+.cd-section         { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.cd-section__header { padding: 14px 20px; border-bottom: 1px solid #e8ecef; display: flex; align-items: center; gap: 10px; }
+.cd-section__header i  { color: #1a7a8a; font-size: 16px; }
+.cd-section__header h2 { font-size: 15px; font-weight: 700; color: #1a7a8a; margin: 0; }
+.cd-section__body   { padding: 16px 20px; }
+
+/* Itinerario */
+.cd-itinerary { list-style: none; padding: 0; margin: 0; position: relative; }
+.cd-itinerary::before { content:''; position:absolute; left:20px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom,#1a7a8a,#4caf50); }
+.cd-itin-item { display: flex; align-items: flex-start; gap: 14px; padding: 8px 0; position: relative; }
+.cd-itin-day  { width: 40px; height: 40px; border-radius: 50%; background: #1a7a8a; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; text-align: center; line-height: 1.2; }
+.cd-itin-day--accent { background: #4caf50; }
+.cd-itin-info   { flex: 1; padding-top: 6px; }
+.cd-itin-port   { font-weight: 600; font-size: 14px; color: #222; }
+.cd-itin-tag    { display: inline-block; background: #1a7a8a; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+.cd-itin-tag--end { background: #4caf50; }
+.cd-itin-times  { font-size: 11px; color: #888; margin-top: 3px; }
+.cd-itin-times span { background: #f0f7ff; border-radius: 4px; padding: 1px 6px; margin-right: 4px; display: inline-block; margin-bottom: 2px; }
+
+/* Cabine */
+.cd-cabins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.cd-cabin-card  { border: 1px solid #e8ecef; border-radius: 10px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+.cd-cabin-card:hover { box-shadow: 0 4px 12px rgba(26,122,138,.15); border-color: #1a7a8a; }
+.cd-cabin-img   { height: 110px; background: #d0e8ec; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+.cd-cabin-img img { width: 100%; height: 100%; object-fit: cover; }
+.cd-cabin-badge { position: absolute; top: 8px; left: 8px; background: #1a7a8a; color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.cd-cabin-body  { padding: 10px 12px; }
+.cd-cabin-code  { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
+.cd-cabin-desc  { font-size: 12px; color: #666; line-height: 1.4; margin-bottom: 8px; min-height: 34px; }
+.cd-cabin-price { font-size: 20px; font-weight: 800; color: #1a7a8a; }
+.cd-cabin-price-sub { font-size: 11px; font-weight: 400; color: #aaa; }
+.cd-cabin-updated { font-size: 10px; color: #ccc; margin-top: 3px; }
+.cd-cabins-note { font-size: 11px; color: #bbb; margin-top: 12px; margin-bottom: 0; }
+
+/* Nave */
+.cd-ship-desc     { font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 14px; }
+.cd-ship-features { display: flex; flex-wrap: wrap; gap: 8px; }
+.cd-feature-pill  { background: #f0f9fa; border: 1px solid #c8e6e9; border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #1a7a8a; }
+.cd-ship-stats    { display: flex; gap: 12px; flex-wrap: wrap; }
+.cd-ship-stat     { background: #f0f9fa; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 90px; }
+.cd-ship-stat__value { display: block; font-size: 22px; font-weight: 800; color: #1a7a8a; }
+.cd-ship-stat__label { display: block; font-size: 11px; color: #888; }
+
+/* Sidebar */
+.cd-price-box        { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.1); border: 2px solid #1a7a8a; }
+.cd-price-box__header{ background: #1a7a8a; color: #fff; padding: 16px 20px; }
+.cd-price-from       { font-size: 11px; opacity: .8; margin-bottom: 2px; }
+.cd-price-main       { font-size: 34px; font-weight: 800; line-height: 1; }
+.cd-price-sub        { font-size: 11px; opacity: .7; margin-top: 4px; margin-bottom: 0; }
+.cd-price-box__body  { padding: 16px 20px; }
+.cd-price-box__cats-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; margin-bottom: 8px; }
+.cd-price-row        { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f5f5f5; }
+.cd-price-row:last-of-type { border-bottom: none; }
+.cd-price-row__cat   { color: #666; }
+.cd-price-row__val   { font-weight: 700; color: #1a7a8a; }
+.cd-btn-cta          { background: #4caf50; border-color: #4caf50; font-weight: 700; }
+.cd-btn-cta:hover    { background: #43a047; border-color: #43a047; }
+
+.cd-alert-box        { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.cd-alert-box h3     { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 8px; }
+.cd-alert-box p      { font-size: 12px; color: #888; margin-bottom: 10px; }
+
+.cd-info-mini        { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+.cd-info-mini__title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; margin-bottom: 8px; }
+.cd-info-row         { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; border-bottom: 1px solid #f5f5f5; }
+.cd-info-row:last-child { border-bottom: none; }
+.cd-info-row__lbl    { color: #999; }
+.cd-info-row__val    { font-weight: 600; color: #333; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cd-main-layout { grid-template-columns: 1fr; }
+  .cd-sidebar { position: static; }
+  .cd-hero { padding: 70px 0 24px; }
+  .cd-hero__title { font-size: 22px; }
+  .cd-cabins-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .cd-cabins-grid { grid-template-columns: 1fr; }
+  .cd-facts-bar { gap: 0; }
+}
+</style>
 <div class="cruise-detail-page">
 
   {{-- ═══ HERO ════════════════════════════════════════════════════════════ --}}
