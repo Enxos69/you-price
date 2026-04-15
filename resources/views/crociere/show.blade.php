@@ -79,7 +79,50 @@
 
       {{-- COLONNA SINISTRA --}}
       <div class="cd-left-col">
-        {{-- Sezioni: itinerario, cabine, nave — Task 3/4/5 --}}
+        {{-- ── ITINERARIO ─────────────────────────────────────────────── --}}
+        @if($itinerary->isNotEmpty())
+        <div class="cd-section">
+          <div class="cd-section__header">
+            <i class="fas fa-map-marked-alt"></i>
+            <h2>Itinerario</h2>
+          </div>
+          <div class="cd-section__body">
+            <ul class="cd-itinerary">
+              @foreach($itinerary as $stop)
+              @php
+                $isFirst = $loop->first;
+                $isLast  = $loop->last;
+              @endphp
+              <li class="cd-itin-item">
+                <div class="cd-itin-day {{ $isFirst || $isLast ? 'cd-itin-day--accent' : '' }}">
+                  Gg {{ $stop->day_number }}
+                </div>
+                <div class="cd-itin-info">
+                  <div class="cd-itin-port">
+                    {{ $stop->port->name ?? 'N/D' }}
+                    @if($isFirst) <span class="cd-itin-tag">imbarco</span> @endif
+                    @if($isLast)  <span class="cd-itin-tag cd-itin-tag--end">sbarco</span> @endif
+                  </div>
+                  <div class="cd-itin-times">
+                    @if($stop->arrival_time)
+                      <span><i class="fas fa-circle text-success" style="font-size:7px;vertical-align:middle;"></i> arr. {{ \Carbon\Carbon::parse($stop->arrival_time)->format('H:i') }}</span>
+                    @endif
+                    @if($stop->departure_time)
+                      <span><i class="fas fa-circle text-danger" style="font-size:7px;vertical-align:middle;"></i> prt. {{ \Carbon\Carbon::parse($stop->departure_time)->format('H:i') }}</span>
+                    @endif
+                    @if(!$stop->arrival_time && !$stop->departure_time)
+                      <span class="text-muted" style="font-style:italic;">navigazione in mare</span>
+                    @endif
+                  </div>
+                </div>
+              </li>
+              @endforeach
+            </ul>
+          </div>
+        </div>
+        @endif
+
+        {{-- Cabine e nave — Task 4/5 --}}
       </div>
 
       {{-- SIDEBAR --}}
