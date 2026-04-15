@@ -202,7 +202,70 @@
 
       {{-- SIDEBAR --}}
       <div class="cd-sidebar">
-        {{-- Price box, alert, riepilogo — Task 6 --}}
+        {{-- ── PRICE BOX ───────────────────────────────────────────────── --}}
+        <div class="cd-price-box">
+          <div class="cd-price-box__header">
+            <p class="cd-price-from">Prezzo a partire da</p>
+            <div class="cd-price-main">{{ \App\Models\Departure::formatPrice($departure->min_price) }}</div>
+            <p class="cd-price-sub">per persona · camera doppia · tasse incluse</p>
+          </div>
+          <div class="cd-price-box__body">
+            @if($cabins->isNotEmpty())
+              <div class="cd-price-box__cats-label">Tutte le categorie</div>
+              @foreach($cabins as $cabin)
+                <div class="cd-price-row">
+                  <span class="cd-price-row__cat">{{ $cabin['cl_cat'] ?: $cabin['category_code'] }}</span>
+                  <span class="cd-price-row__val">{{ \App\Models\Departure::formatPrice($cabin['price']) }}</span>
+                </div>
+              @endforeach
+            @endif
+
+            <a href="{{ route('richiesta.store') }}"
+               class="btn btn-success btn-block cd-btn-cta mt-3">
+              <i class="fas fa-paper-plane mr-2"></i>Richiedi preventivo
+            </a>
+
+            <button id="cd-favorite-btn"
+                    class="btn btn-block mt-2 {{ $isFavorite ? 'btn-danger' : 'btn-outline-danger' }}"
+                    data-departure-id="{{ $departure->id }}"
+                    data-is-favorite="{{ $isFavorite ? '1' : '0' }}">
+              <i id="cd-favorite-icon" class="{{ $isFavorite ? 'fas' : 'far' }} fa-heart mr-2"></i>
+              <span id="cd-favorite-text">{{ $isFavorite ? 'Rimuovi dai Preferiti' : 'Aggiungi ai Preferiti' }}</span>
+            </button>
+          </div>
+        </div>
+
+        {{-- ── ALERT PREZZO ─────────────────────────────────────────────── --}}
+        <div class="cd-alert-box">
+          <h3><i class="fas fa-bell mr-2 text-warning"></i>Monitora il prezzo</h3>
+          <p>Ricevi una notifica email quando il prezzo scende sotto la soglia.</p>
+          <a href="{{ route('alerts.index') }}" class="btn btn-warning btn-sm btn-block">
+            Gestisci i tuoi alert
+          </a>
+        </div>
+
+        {{-- ── RIEPILOGO RAPIDO ─────────────────────────────────────────── --}}
+        <div class="cd-info-mini">
+          <div class="cd-info-mini__title">Riepilogo</div>
+          <div class="cd-info-row">
+            <span class="cd-info-row__lbl">Compagnia</span>
+            <span class="cd-info-row__val">{{ $line->name ?? 'N/D' }}</span>
+          </div>
+          @if($area)
+          <div class="cd-info-row">
+            <span class="cd-info-row__lbl">Area</span>
+            <span class="cd-info-row__val">{{ $area->name }}</span>
+          </div>
+          @endif
+          <div class="cd-info-row">
+            <span class="cd-info-row__lbl">Tipo</span>
+            <span class="cd-info-row__val">{{ $departure->product->is_package ? 'Pacchetto' : 'Solo crociera' }}</span>
+          </div>
+          <div class="cd-info-row">
+            <span class="cd-info-row__lbl">Codice</span>
+            <span class="cd-info-row__val" style="font-size:11px;">{{ $departure->product->matchcode ?? $departure->id }}</span>
+          </div>
+        </div>
       </div>
 
     </div>{{-- /cd-main-layout --}}
@@ -212,5 +275,48 @@
 @endsection
 
 @section('scripts')
-{{-- Script favoriti + alert — Task 6 --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const btn  = document.getElementById('cd-favorite-btn');
+  if (!btn) return;
+
+  btn.addEventListener('click', async function () {
+    const depId = btn.dataset.departureId;
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(`/departures/${depId}/favorite/toggle`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+      });
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.message || 'Errore');
+
+      const icon = document.getElementById('cd-favorite-icon');
+      const text = document.getElementById('cd-favorite-text');
+
+      if (data.is_favorite) {
+        btn.classList.replace('btn-outline-danger', 'btn-danger');
+        icon.classList.replace('far', 'fas');
+        text.textContent = 'Rimuovi dai Preferiti';
+        btn.dataset.isFavorite = '1';
+      } else {
+        btn.classList.replace('btn-danger', 'btn-outline-danger');
+        icon.classList.replace('fas', 'far');
+        text.textContent = 'Aggiungi ai Preferiti';
+        btn.dataset.isFavorite = '0';
+      }
+    } catch (e) {
+      alert('Errore durante l\'operazione');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
 @endsection
