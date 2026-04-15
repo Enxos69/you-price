@@ -174,11 +174,13 @@ class CrocieraController extends Controller
     {
         try {
             $departure = Departure::with([
-                'product.ship',
+                'product.ship.cabinImages',
+                'product.ship.categories',
                 'product.cruiseLine',
                 'product.portFrom',
                 'product.portTo',
                 'product.itinerary.port',
+                'product.area',
                 'latestPrices',
             ])->findOrFail($id);
 
@@ -189,14 +191,51 @@ class CrocieraController extends Controller
                 ]);
             }
 
-            return response()->json([
-                'success'   => true,
-                'departure' => $departure,
-            ]);
+            // Risposta JSON per chiamate AJAX legacy
+            if (request()->wantsJson()) {
+                return response()->json([
+                    'success'   => true,
+                    'departure' => $departure,
+                ]);
+            }
+
+            $ship = $departure->product->ship;
+
+            // Merge prezzi + categorie + immagini per category_code
+            $cabins = $departure->latestPrices
+                ->groupBy('category_code')
+                ->map(function ($prices, $categoryCode) use ($ship) {
+                    $category = $ship->categories->firstWhere('cruisehost_cat', $categoryCode);
+                    $image    = $ship->cabinImages->firstWhere('category_code', $categoryCode);
+
+                    return [
+                        'category_code' => $categoryCode,
+                        'price'         => (float) $prices->first()->price,
+                        'description'   => $category->description ?? null,
+                        'cl_cat'        => $category->cl_cat ?? $categoryCode,
+                        'image_url'     => $image->image_url ?? null,
+                        'recorded_at'   => $prices->first()->recorded_at,
+                    ];
+                })
+                ->sortBy('price')
+                ->values();
+
+            $isFavorite = Auth::check()
+                ? UserFavorite::where('user_id', Auth::id())
+                              ->where('departure_id', $departure->id)
+                              ->exists()
+                : false;
+
+            return view('crociere.show', compact('departure', 'cabins', 'isFavorite'));
 
         } catch (\Exception $e) {
             Log::error('Errore recupero dettagli partenza: ' . $e->getMessage());
-            return response()->json(['success' => false, 'error' => 'Crociera non trovata'], 404);
+
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'error' => 'Crociera non trovata'], 404);
+            }
+
+            abort(404, 'Crociera non trovata');
         }
     }
 
