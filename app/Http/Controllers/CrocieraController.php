@@ -185,10 +185,14 @@ class CrocieraController extends Controller
             ])->findOrFail($id);
 
             if (Auth::check()) {
-                UserCruiseView::recordView(Auth::id(), $departure->id);
-                UserActivity::log(Auth::id(), 'view', $departure, [
-                    'cruise_name' => $departure->product->cruise_name,
-                ]);
+                try {
+                    UserCruiseView::recordView(Auth::id(), $departure->id);
+                    UserActivity::log(Auth::id(), 'view', $departure, [
+                        'cruise_name' => $departure->product->cruise_name,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Errore logging attività: ' . $e->getMessage());
+                }
             }
 
             // Risposta JSON per chiamate AJAX legacy
