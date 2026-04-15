@@ -221,9 +221,7 @@ class CrocieraController extends Controller
                 ->values();
 
             $isFavorite = Auth::check()
-                ? UserFavorite::where('user_id', Auth::id())
-                              ->where('departure_id', $departure->id)
-                              ->exists()
+                ? UserFavorite::isFavorite(Auth::id(), $departure->id)
                 : false;
 
             return view('crociere.show', compact('departure', 'cabins', 'isFavorite'));
