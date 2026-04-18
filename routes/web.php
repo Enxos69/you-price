@@ -5,6 +5,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminCatalogController;
+use App\Http\Controllers\AdminPriceHistoryController;
 use App\Http\Controllers\CrocieraController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FavoritesController;
@@ -94,6 +95,15 @@ Route::middleware('auth')->group(function () {
     // ─── Admin ───────────────────────────────────────────────────────────────
 
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');
+
+    // Storico Prezzi
+    Route::get('/admin/price-history', [AdminPriceHistoryController::class, 'index'])->name('admin.price-history.index');
+
+    Route::prefix('api/admin/price-history')->name('api.admin.price-history.')->group(function () {
+        Route::get('/top-variations',  [AdminPriceHistoryController::class, 'topVariations'])->name('top-variations');
+        Route::get('/search',          [AdminPriceHistoryController::class, 'search'])->name('search');
+        Route::get('/{departureId}',   [AdminPriceHistoryController::class, 'departureHistory'])->name('departure');
+    });
 
     // Gestione Catalogo CruiseHost
     Route::get('/admin/catalog',                            [AdminCatalogController::class, 'index'])->name('admin.catalog.index');
