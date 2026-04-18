@@ -154,7 +154,10 @@ document.addEventListener('DOMContentLoaded', function () {
     async function loadDepartureDetail(departureId, cruiseName, from, to) {
         document.getElementById('detail-section').classList.remove('d-none');
         document.getElementById('detail-title').textContent = cruiseName;
-        showSpinner('detail-container');
+        document.getElementById('price-chart').innerHTML =
+            '<div class="text-center py-3"><div class="spinner-border text-primary" role="status">' +
+            '<span class="sr-only">Caricamento...</span></div></div>';
+        document.getElementById('detail-table-body').innerHTML = '';
 
         let url = '/api/admin/price-history/' + encodeURIComponent(departureId);
         const params = [];
@@ -169,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
             renderChart(data.series);
             renderDetailTable(data.series);
         } catch (e) {
-            showError('detail-container', 'Errore nel caricamento dati, riprova.');
+            showError('price-chart', 'Errore nel caricamento dati, riprova.');
         }
     }
 
