@@ -36,6 +36,11 @@
                             <i class="fas fa-chart-bar"></i> Analytics
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.price-history.index') }}">
+                            <i class="fas fa-tags"></i> Storico Prezzi
+                        </a>
+                    </li>
                 @elseif(Auth::user()->isUser())
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('dashboard') }}">
