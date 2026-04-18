@@ -40,20 +40,33 @@
 .cd-section__header h2 { font-size: 15px; font-weight: 700; color: #1a7a8a; margin: 0; }
 .cd-section__body   { padding: 16px 20px; }
 
-/* Itinerario */
-.cd-itinerary { list-style: none; padding: 0; margin: 0; position: relative; }
-.cd-itinerary::before { content:''; position:absolute; left:20px; top:0; bottom:0; width:2px; background:linear-gradient(to bottom,#1a7a8a,#4caf50); }
-.cd-itin-item { display: flex; align-items: flex-start; gap: 14px; padding: 8px 0; position: relative; }
-.cd-itin-day  { width: 40px; height: 40px; border-radius: 50%; background: #1a7a8a; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; text-align: center; line-height: 1.2; }
+/* Itinerario — griglia 2 colonne */
+.cd-itinerary { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.cd-itin-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 8px; background: #f8fdfe; border: 1px solid #e8f4f6; }
+.cd-itin-day  { min-width: 30px; height: 30px; border-radius: 6px; background: #1a7a8a; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; line-height: 1.2; }
 .cd-itin-day--accent { background: #4caf50; }
-.cd-itin-info   { flex: 1; padding-top: 6px; }
-.cd-itin-port   { font-weight: 600; font-size: 14px; color: #222; }
-.cd-itin-tag    { display: inline-block; background: #1a7a8a; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+.cd-itin-info   { flex: 1; min-width: 0; }
+.cd-itin-port   { font-weight: 600; font-size: 13px; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-itin-tag    { display: inline-block; background: #1a7a8a; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
 .cd-itin-tag--end { background: #4caf50; }
-.cd-itin-times  { font-size: 11px; color: #888; margin-top: 3px; }
-.cd-itin-times span { background: #f0f7ff; border-radius: 4px; padding: 1px 6px; margin-right: 4px; display: inline-block; margin-bottom: 2px; }
+.cd-itin-times  { font-size: 10px; color: #aaa; margin-top: 2px; }
+.cd-itin-times span { margin-right: 6px; }
 
-/* Cabine */
+/* Nave — foto */
+.cd-ship-photo { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 14px; }
+
+/* Cabine — accordion gruppi */
+.cd-cabin-group { border: 1px solid #e8ecef; border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.cd-cabin-group__header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #f8fdfe; cursor: pointer; user-select: none; }
+.cd-cabin-group__header:hover { background: #eef7f9; }
+.cd-cabin-group__icon { width: 32px; height: 32px; border-radius: 50%; background: #1a7a8a; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.cd-cabin-group__title { font-size: 15px; font-weight: 700; color: #1a7a8a; flex: 1; }
+.cd-cabin-group__meta { font-size: 12px; color: #888; white-space: nowrap; }
+.cd-cabin-group__chevron { color: #aaa; font-size: 12px; transition: transform .25s; flex-shrink: 0; }
+.cd-cabin-group__header[aria-expanded="true"] .cd-cabin-group__chevron { transform: rotate(180deg); }
+.cd-cabin-group .collapse, .cd-cabin-group .collapsing { padding: 14px; border-top: 1px solid #e8ecef; background: #fff; }
+
+/* Cabine — card */
 .cd-cabins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
 .cd-cabin-card  { border: 1px solid #e8ecef; border-radius: 10px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
 .cd-cabin-card:hover { box-shadow: 0 4px 12px rgba(26,122,138,.15); border-color: #1a7a8a; }
@@ -70,8 +83,6 @@
 
 /* Nave */
 .cd-ship-desc     { font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 14px; }
-.cd-ship-features { display: flex; flex-wrap: wrap; gap: 8px; }
-.cd-feature-pill  { background: #f0f9fa; border: 1px solid #c8e6e9; border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #1a7a8a; }
 .cd-ship-stats    { display: flex; gap: 12px; flex-wrap: wrap; }
 .cd-ship-stat     { background: #f0f9fa; border-radius: 8px; padding: 10px 16px; text-align: center; min-width: 90px; }
 .cd-ship-stat__value { display: block; font-size: 22px; font-weight: 800; color: #1a7a8a; }
@@ -113,7 +124,9 @@
 }
 @media (max-width: 480px) {
   .cd-cabins-grid { grid-template-columns: 1fr; }
+  .cd-cabin-group__meta { display: none; }
   .cd-facts-bar { gap: 0; }
+  .cd-itinerary { grid-template-columns: 1fr; }
 }
 </style>
 <div class="cruise-detail-page">
@@ -239,41 +252,71 @@
 
         {{-- ── CABINE & PREZZI ─────────────────────────────────────────── --}}
         @if($cabins->isNotEmpty())
+        @php
+            $cabinLabels = ['IS' => 'Cabina Interna', 'OS' => 'Cabina Esterna', 'BK' => 'Balcone', 'MS' => 'Mini Suite', 'SU' => 'Suite'];
+            $cabinOrder  = ['IS', 'OS', 'BK', 'MS', 'SU'];
+            $cabinIcons  = ['IS' => 'fa-moon', 'OS' => 'fa-sun', 'BK' => 'fa-door-open', 'MS' => 'fa-star-half-alt', 'SU' => 'fa-crown'];
+            $grouped = $cabins->groupBy('cruisehost_cat');
+            $firstKey = null;
+            foreach ($cabinOrder as $k) { if ($grouped->has($k)) { $firstKey = $k; break; } }
+        @endphp
         <div class="cd-section">
           <div class="cd-section__header">
             <i class="fas fa-bed"></i>
             <h2>Tipologie di cabina e prezzi</h2>
           </div>
           <div class="cd-section__body">
-            <div class="cd-cabins-grid">
-              @foreach($cabins as $cabin)
-              <div class="cd-cabin-card">
-                <div class="cd-cabin-img">
-                  @if($cabin['image_url'])
-                    <img src="{{ $cabin['image_url'] }}"
-                         alt="Cabina {{ $cabin['cl_cat'] }}"
-                         loading="lazy">
-                  @else
-                    <i class="fas fa-bed fa-2x text-muted"></i>
-                  @endif
-                  <span class="cd-cabin-badge">{{ $cabin['cl_cat'] }}</span>
+            <div id="accordionCabine">
+              @foreach($cabinOrder as $code)
+              @if($grouped->has($code))
+              @php $group = $grouped[$code]; $isFirst = ($code === $firstKey); @endphp
+              <div class="cd-cabin-group">
+                <div class="cd-cabin-group__header" data-toggle="collapse"
+                     data-target="#cabine-{{ $code }}"
+                     aria-expanded="{{ $isFirst ? 'true' : 'false' }}">
+                  <span class="cd-cabin-group__icon"><i class="fas {{ $cabinIcons[$code] }}"></i></span>
+                  <span class="cd-cabin-group__title">{{ $cabinLabels[$code] }}</span>
+                  <span class="cd-cabin-group__meta">
+                    {{ $group->count() }} {{ $group->count() === 1 ? 'categoria' : 'categorie' }}
+                    &nbsp;·&nbsp; da {{ \App\Models\Departure::formatPrice($group->min('price')) }}
+                  </span>
+                  <i class="fas fa-chevron-down cd-cabin-group__chevron"></i>
                 </div>
-                <div class="cd-cabin-body">
-                  <div class="cd-cabin-code">{{ $cabin['category_code'] }}</div>
-                  @if($cabin['description'])
-                    <p class="cd-cabin-desc">{{ $cabin['description'] }}</p>
-                  @endif
-                  <div class="cd-cabin-price">
-                    {{ \App\Models\Departure::formatPrice($cabin['price']) }}
-                    <span class="cd-cabin-price-sub">/ persona</span>
-                  </div>
-                  @if($cabin['recorded_at'])
-                    <div class="cd-cabin-updated">
-                      agg. {{ \Carbon\Carbon::parse($cabin['recorded_at'])->format('d/m/Y') }}
+                <div id="cabine-{{ $code }}" class="collapse {{ $isFirst ? 'show' : '' }}">
+                  <div class="cd-cabins-grid">
+                    @foreach($group as $cabin)
+                    <div class="cd-cabin-card">
+                      <div class="cd-cabin-img">
+                        @if($cabin['image_url'])
+                          <img src="{{ $cabin['image_url'] }}"
+                               alt="Cabina {{ $cabin['cl_cat'] }}"
+                               loading="lazy">
+                        @else
+                          <i class="fas fa-bed fa-2x text-muted"></i>
+                        @endif
+                        <span class="cd-cabin-badge">{{ $cabin['cl_cat'] }}</span>
+                      </div>
+                      <div class="cd-cabin-body">
+                        <div class="cd-cabin-code">{{ $cabin['category_code'] }}</div>
+                        @if($cabin['description'])
+                          <p class="cd-cabin-desc">{{ $cabin['description'] }}</p>
+                        @endif
+                        <div class="cd-cabin-price">
+                          {{ \App\Models\Departure::formatPrice($cabin['price']) }}
+                          <span class="cd-cabin-price-sub">/ persona</span>
+                        </div>
+                        @if($cabin['recorded_at'])
+                          <div class="cd-cabin-updated">
+                            agg. {{ \Carbon\Carbon::parse($cabin['recorded_at'])->format('d/m/Y') }}
+                          </div>
+                        @endif
+                      </div>
                     </div>
-                  @endif
+                    @endforeach
+                  </div>
                 </div>
               </div>
+              @endif
               @endforeach
             </div>
             <p class="cd-cabins-note">* Prezzi per persona in camera doppia. Soggetti a variazioni.</p>
@@ -288,16 +331,11 @@
             <h2>La Nave — {{ $ship->name }}</h2>
           </div>
           <div class="cd-section__body">
+            @if($ship->image_url)
+              <img src="{{ $ship->image_url }}" alt="{{ $ship->name }}" class="cd-ship-photo">
+            @endif
             @if($ship->description)
               <p class="cd-ship-desc">{{ $ship->description }}</p>
-            @endif
-
-            @if(!empty($ship->features))
-              <div class="cd-ship-features">
-                @foreach($ship->features as $feature)
-                  <span class="cd-feature-pill">{{ $feature }}</span>
-                @endforeach
-              </div>
             @endif
 
             @if(!empty($ship->decks))
@@ -326,12 +364,19 @@
           </div>
           <div class="cd-price-box__body">
             @if($cabins->isNotEmpty())
-              <div class="cd-price-box__cats-label">Tutte le categorie</div>
-              @foreach($cabins as $cabin)
+              @php
+                $sbLabels = ['IS' => 'Cabina Interna', 'OS' => 'Cabina Esterna', 'BK' => 'Balcone', 'MS' => 'Mini Suite', 'SU' => 'Suite'];
+                $sbOrder  = ['IS', 'OS', 'BK', 'MS', 'SU'];
+                $sbGroups = $cabins->groupBy('cruisehost_cat');
+              @endphp
+              <div class="cd-price-box__cats-label">Prezzi per tipologia</div>
+              @foreach($sbOrder as $sbCode)
+                @if($sbGroups->has($sbCode))
                 <div class="cd-price-row">
-                  <span class="cd-price-row__cat">{{ $cabin['cl_cat'] ?: $cabin['category_code'] }}</span>
-                  <span class="cd-price-row__val">{{ \App\Models\Departure::formatPrice($cabin['price']) }}</span>
+                  <span class="cd-price-row__cat">{{ $sbLabels[$sbCode] }}</span>
+                  <span class="cd-price-row__val">da {{ \App\Models\Departure::formatPrice($sbGroups[$sbCode]->min('price')) }}</span>
                 </div>
+                @endif
               @endforeach
             @endif
 

@@ -209,16 +209,17 @@ class CrocieraController extends Controller
             $cabins = $departure->latestPrices
                 ->groupBy('category_code')
                 ->map(function ($prices, $categoryCode) use ($ship) {
-                    $category = $ship->categories->firstWhere('cruisehost_cat', $categoryCode);
-                    $image    = $ship->cabinImages->firstWhere('category_code', $categoryCode);
+                    $category = $ship->categories->firstWhere('cl_cat', $categoryCode);
+                    $image    = $ship->cabinImages->firstWhere('category_code', $category->cruisehost_cat ?? null);
 
                     return [
-                        'category_code' => $categoryCode,
-                        'price'         => (float) $prices->first()->price,
-                        'description'   => $category->description ?? null,
-                        'cl_cat'        => $category->cl_cat ?? $categoryCode,
-                        'image_url'     => $image->image_url ?? null,
-                        'recorded_at'   => $prices->first()->recorded_at,
+                        'category_code'  => $categoryCode,
+                        'price'          => (float) $prices->first()->price,
+                        'description'    => $category->description ?? null,
+                        'cl_cat'         => $category->cl_cat ?? $categoryCode,
+                        'cruisehost_cat' => $category->cruisehost_cat ?? null,
+                        'image_url'      => $image->image_url ?? null,
+                        'recorded_at'    => $prices->first()->recorded_at,
                     ];
                 })
                 ->sortBy('price')
