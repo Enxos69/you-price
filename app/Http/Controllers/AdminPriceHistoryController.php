@@ -4,14 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\PriceHistory;
 
 class AdminPriceHistoryController extends Controller
 {
     private function checkAdmin(): void
     {
-        if (Auth::user()->role !== '1') {
+        if (!Auth::check() || Auth::user()->role !== '1') {
             abort(403, 'Accesso negato');
         }
     }
