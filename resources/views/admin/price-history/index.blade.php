@@ -118,6 +118,46 @@
             </div>
         </div>
 
+        {{-- Analisi Stagionale --}}
+        <div id="seasonal-section" class="row mb-4 d-none">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar mr-2"></i>Analisi Stagionale —
+                            <span id="seasonal-itinerary-name" class="text-primary"></span>
+                        </h5>
+                        <div class="d-flex align-items-center mt-1 mt-md-0">
+                            <label for="seasonal-category" class="mr-2 mb-0 text-muted small">Categoria:</label>
+                            <select id="seasonal-category" class="form-control form-control-sm" style="width:auto;">
+                                <option value="IC">IC — Interior Cabin</option>
+                                <option value="BC">BC — Balcony Cabin</option>
+                                <option value="SC">SC — Sea View Cabin</option>
+                                <option value="SS">SS — Sea Suite</option>
+                                <option value="GS">GS — Grand Suite</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-3" id="seasonal-tabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-tab="weekly" href="#" role="tab">
+                                    <i class="fas fa-chart-line mr-1"></i>Evoluzione settimanale
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-tab="monthly" href="#" role="tab">
+                                    <i class="fas fa-calendar-alt mr-1"></i>Stagionalità mensile
+                                </a>
+                            </li>
+                        </ul>
+                        <div id="seasonal-chart"></div>
+                        <p id="seasonal-note" class="text-muted small mt-2 mb-0"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 @endsection

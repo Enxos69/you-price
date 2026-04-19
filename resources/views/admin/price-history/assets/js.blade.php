@@ -2,7 +2,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    let priceChart = null;
+    let priceChart           = null;
+    let seasonalChart        = null;
+    let seasonalMonthlyData  = null;
+    let currentDepartureId   = null;
+    let activeSeasonalTab    = 'weekly';
 
     loadTopVariations();
 
@@ -13,6 +17,42 @@ document.addEventListener('DOMContentLoaded', function () {
         .addEventListener('submit', function (e) {
             e.preventDefault();
             loadSearch();
+        });
+
+    // ── Tab stagionale ────────────────────────────────────────────────────────
+    document.getElementById('seasonal-tabs')
+        .addEventListener('click', function (e) {
+            e.preventDefault();
+            const link = e.target.closest('[data-tab]');
+            if (!link || !currentDepartureId) return;
+
+            document.querySelectorAll('#seasonal-tabs .nav-link')
+                .forEach(function (l) { l.classList.remove('active'); });
+            link.classList.add('active');
+            activeSeasonalTab = link.dataset.tab;
+
+            const cat = document.getElementById('seasonal-category').value;
+            if (activeSeasonalTab === 'monthly') {
+                if (seasonalMonthlyData) {
+                    renderSeasonalMonthlyChart(seasonalMonthlyData);
+                } else {
+                    loadSeasonalMonthly(currentDepartureId, cat);
+                }
+            } else {
+                loadSeasonalWeekly(currentDepartureId, cat);
+            }
+        });
+
+    // ── Selettore categoria stagionale ────────────────────────────────────────
+    document.getElementById('seasonal-category')
+        .addEventListener('change', function () {
+            if (!currentDepartureId) return;
+            seasonalMonthlyData = null;
+            if (activeSeasonalTab === 'monthly') {
+                loadSeasonalMonthly(currentDepartureId, this.value);
+            } else {
+                loadSeasonalWeekly(currentDepartureId, this.value);
+            }
         });
 
     document.getElementById('season-select')
@@ -159,6 +199,25 @@ document.addEventListener('DOMContentLoaded', function () {
             '<span class="sr-only">Caricamento...</span></div></div>';
         document.getElementById('detail-table-body').innerHTML = '';
 
+        // Stato stagionale — reset
+        currentDepartureId  = departureId;
+        seasonalMonthlyData = null;
+        activeSeasonalTab   = 'weekly';
+
+        // Pannello stagionale — prepara UI
+        document.getElementById('seasonal-section').classList.remove('d-none');
+        document.getElementById('seasonal-itinerary-name').textContent = cruiseName;
+        document.getElementById('seasonal-chart').innerHTML =
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border text-primary" role="status">' +
+            '<span class="sr-only">Caricamento...</span></div></div>';
+        document.getElementById('seasonal-note').textContent = '';
+
+        // Reset tab UI
+        document.querySelectorAll('#seasonal-tabs .nav-link')
+            .forEach(function (l) { l.classList.remove('active'); });
+        document.querySelector('#seasonal-tabs [data-tab="weekly"]').classList.add('active');
+
         let url = '/api/admin/price-history/' + encodeURIComponent(departureId);
         const params = [];
         if (from) params.push('from=' + from);
@@ -171,6 +230,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!res.ok) throw new Error(data.error || 'Errore');
             renderChart(data.series);
             renderDetailTable(data.series);
+            document.getElementById('detail-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            loadSeasonalWeekly(departureId, document.getElementById('seasonal-category').value);
         } catch (e) {
             showError('price-chart', 'Errore nel caricamento dati, riprova.');
         }
@@ -242,6 +303,160 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<td><span class="badge badge-' + (p.source === 'api' ? 'info' : 'light') + '">' + p.source + '</span></td>' +
                 '</tr>';
         }).join('');
+    }
+
+    // ── Analisi stagionale — settimanale ────────────────────────────────────────
+
+    async function loadSeasonalWeekly(departureId, category) {
+        document.getElementById('seasonal-chart').innerHTML =
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border text-primary" role="status">' +
+            '<span class="sr-only">Caricamento...</span></div></div>';
+        document.getElementById('seasonal-note').textContent = '';
+
+        try {
+            const res  = await fetch(
+                '/api/admin/price-history/seasonal/weekly' +
+                '?departure_id=' + encodeURIComponent(departureId) +
+                '&category='     + encodeURIComponent(category)
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Errore');
+            updateSeasonalCategorySelect(data.available_categories);
+            renderSeasonalWeeklyChart(data);
+        } catch (e) {
+            document.getElementById('seasonal-chart').innerHTML =
+                '<div class="alert alert-danger mb-0">Errore nel caricamento dati stagionali.</div>';
+        }
+    }
+
+    function renderSeasonalWeeklyChart(data) {
+        var el = document.getElementById('seasonal-chart');
+        if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
+        el.innerHTML = '';
+
+        if (data.insufficient_data || !data.series || !data.series.length) {
+            el.innerHTML =
+                '<div class="alert alert-info mb-0">Dati insufficienti per il confronto — ' +
+                'meno di 2 stagioni disponibili per questo itinerario.</div>';
+            document.getElementById('seasonal-note').textContent = '';
+            return;
+        }
+
+        var weeklySeries = data.series.map(function (s) {
+            return {
+                name: s.name,
+                data: s.data.map(function (p) { return { x: -p.x, y: p.y }; }),
+            };
+        });
+
+        seasonalChart = new ApexCharts(el, {
+            chart:   { type: 'line', height: 320, toolbar: { show: false } },
+            series:  weeklySeries,
+            xaxis: {
+                type: 'numeric',
+                tickAmount: 8,
+                title: { text: 'Settimane prima della partenza' },
+                labels: { formatter: function (val) { return Math.abs(Math.round(val)) + ' sett.'; } },
+            },
+            yaxis: {
+                labels: { formatter: function (v) {
+                    return '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 });
+                }},
+            },
+            tooltip: {
+                x: { formatter: function (val) { return Math.abs(Math.round(val)) + ' settimane prima della partenza'; } },
+                y: { formatter: function (val) {
+                    return '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 });
+                }},
+            },
+            stroke:  { curve: 'smooth', width: 2 },
+            markers: { size: 4, hover: { size: 6 } },
+            legend:  { position: 'top' },
+            colors:  ['#1a7a8a', '#4caf50', '#ff9800', '#e91e63', '#9c27b0'],
+        });
+        seasonalChart.render();
+        document.getElementById('seasonal-note').textContent =
+            'Prezzi medi tra le partenze dello stesso itinerario alla stessa distanza temporale dalla data di imbarco.';
+    }
+
+    function updateSeasonalCategorySelect(availableCategories) {
+        var sel = document.getElementById('seasonal-category');
+        var currentVal = sel.value;
+        Array.from(sel.options).forEach(function (opt) {
+            opt.disabled = availableCategories.indexOf(opt.value) === -1;
+        });
+        if (availableCategories.indexOf(currentVal) === -1 && availableCategories.length) {
+            sel.value = availableCategories[0];
+        }
+    }
+
+    // ── Analisi stagionale — mensile ────────────────────────────────────────────
+
+    async function loadSeasonalMonthly(departureId, category) {
+        document.getElementById('seasonal-chart').innerHTML =
+            '<div class="text-center py-3">' +
+            '<div class="spinner-border text-primary" role="status">' +
+            '<span class="sr-only">Caricamento...</span></div></div>';
+        document.getElementById('seasonal-note').textContent = '';
+
+        try {
+            const res  = await fetch(
+                '/api/admin/price-history/seasonal/monthly' +
+                '?departure_id=' + encodeURIComponent(departureId) +
+                '&category='     + encodeURIComponent(category)
+            );
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Errore');
+            seasonalMonthlyData = data;
+            renderSeasonalMonthlyChart(data);
+        } catch (e) {
+            document.getElementById('seasonal-chart').innerHTML =
+                '<div class="alert alert-danger mb-0">Errore nel caricamento dati mensili.</div>';
+        }
+    }
+
+    function renderSeasonalMonthlyChart(data) {
+        var el = document.getElementById('seasonal-chart');
+        if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
+        el.innerHTML = '';
+
+        if (!data.series || !data.series.length) {
+            el.innerHTML =
+                '<div class="alert alert-info mb-0">Nessun dato mensile disponibile per questo itinerario.</div>';
+            document.getElementById('seasonal-note').textContent = '';
+            return;
+        }
+
+        seasonalChart = new ApexCharts(el, {
+            chart:   { type: 'line', height: 320, toolbar: { show: false } },
+            series:  data.series,
+            xaxis: {
+                categories: data.categories,
+                title: { text: 'Mese di partenza' },
+            },
+            yaxis: {
+                labels: { formatter: function (v) {
+                    return v != null
+                        ? '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 })
+                        : '';
+                }},
+            },
+            tooltip: {
+                y: { formatter: function (val) {
+                    return val != null
+                        ? '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 })
+                        : 'N/D';
+                }},
+            },
+            stroke:  { curve: 'smooth', width: 2 },
+            markers: { size: 4, hover: { size: 6 } },
+            legend:  { position: 'top' },
+            colors:  ['#1a7a8a', '#4caf50', '#ff9800', '#e91e63', '#9c27b0'],
+        });
+        seasonalChart.render();
+        document.getElementById('seasonal-note').textContent =
+            "Prezzo all'ultimo snapshot disponibile per ciascuna partenza. I mesi senza partenze appaiono vuoti.";
     }
 
     // ── Utility ───────────────────────────────────────────────────────────────
