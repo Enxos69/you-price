@@ -102,6 +102,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('api/admin/price-history')->name('api.admin.price-history.')->group(function () {
         Route::get('/top-variations',  [AdminPriceHistoryController::class, 'topVariations'])->name('top-variations');
         Route::get('/search',          [AdminPriceHistoryController::class, 'search'])->name('search');
+        Route::get('/seasonal/weekly', [AdminPriceHistoryController::class, 'seasonalWeekly'])->name('seasonal.weekly');
+        Route::get('/seasonal/monthly',[AdminPriceHistoryController::class, 'seasonalMonthly'])->name('seasonal.monthly');
         Route::get('/{departureId}',   [AdminPriceHistoryController::class, 'departureHistory'])->name('departure');
     });
 
