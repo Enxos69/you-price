@@ -92,6 +92,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/inactive',[PriceAlertsController::class, 'destroyInactive'])->name('destroy-inactive');
     });
 
+    // API storico prezzi crociera
+    Route::prefix('api/crociere/{id}/price')->name('api.crociere.price.')->group(function () {
+        Route::get('/seasonal/weekly',  [CrocieraController::class, 'priceSeasonalWeekly'])->name('seasonal.weekly');
+        Route::get('/seasonal/monthly', [CrocieraController::class, 'priceSeasonalMonthly'])->name('seasonal.monthly');
+    });
+
     // ─── Admin ───────────────────────────────────────────────────────────────
 
     Route::get('/admin/index', [AdminController::class, 'index'])->name('admin.index');

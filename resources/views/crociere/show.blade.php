@@ -324,6 +324,42 @@
         </div>
         @endif
 
+        {{-- ── STORICO PREZZI ─────────────────────────────────────────────── --}}
+        <div class="cd-section" id="cd-price-history-section">
+          <div class="cd-section__header">
+            <i class="fas fa-chart-line"></i>
+            <h2>Storico &amp; Stagionalità Prezzi</h2>
+          </div>
+          <div class="cd-section__body">
+            <div id="cd-ph-cat-wrapper" style="display:none;" class="d-flex align-items-center mb-3">
+              <label class="mr-2 mb-0" style="font-size:12px;color:#999;white-space:nowrap;">Categoria:</label>
+              <select id="cd-ph-cat-select" class="form-control form-control-sm" style="max-width:150px;"></select>
+            </div>
+            <ul class="nav nav-tabs mb-3" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#cd-ph-panel-weekly" role="tab">
+                  <i class="fas fa-calendar-week mr-1"></i>Evoluzione settimanale
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#cd-ph-panel-monthly" role="tab">
+                  <i class="fas fa-calendar-alt mr-1"></i>Stagionalità mensile
+                </a>
+              </li>
+            </ul>
+            <div class="tab-content">
+              <div class="tab-pane fade show active" id="cd-ph-panel-weekly" role="tabpanel">
+                <p id="cd-ph-weekly-msg" class="text-center text-muted py-3 mb-0" style="font-size:13px;">Caricamento...</p>
+                <div id="cd-ph-weekly-chart"></div>
+              </div>
+              <div class="tab-pane fade" id="cd-ph-panel-monthly" role="tabpanel">
+                <p id="cd-ph-monthly-msg" class="text-center text-muted py-3 mb-0" style="font-size:13px;">Caricamento...</p>
+                <div id="cd-ph-monthly-chart"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {{-- ── NAVE ──────────────────────────────────────────────────────── --}}
         <div class="cd-section">
           <div class="cd-section__header">
@@ -435,48 +471,168 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const btn  = document.getElementById('cd-favorite-btn');
-  if (!btn) return;
 
-  btn.addEventListener('click', async function () {
-    const depId = btn.dataset.departureId;
-    btn.disabled = true;
-
-    try {
-      const res = await fetch(`/departures/${depId}/favorite/toggle`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+  // ── Preferiti ──────────────────────────────────────────────────────────────
+  const btn = document.getElementById('cd-favorite-btn');
+  if (btn) {
+    btn.addEventListener('click', async function () {
+      const depId = btn.dataset.departureId;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/departures/${depId}/favorite/toggle`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+          }
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Errore');
+        const icon = document.getElementById('cd-favorite-icon');
+        const text = document.getElementById('cd-favorite-text');
+        if (data.is_favorite) {
+          btn.classList.replace('btn-outline-danger', 'btn-danger');
+          icon.classList.replace('far', 'fas');
+          text.textContent = 'Rimuovi dai Preferiti';
+          btn.dataset.isFavorite = '1';
+        } else {
+          btn.classList.replace('btn-danger', 'btn-outline-danger');
+          icon.classList.replace('fas', 'far');
+          text.textContent = 'Aggiungi ai Preferiti';
+          btn.dataset.isFavorite = '0';
         }
-      });
-      const data = await res.json();
-
-      if (!data.success) throw new Error(data.message || 'Errore');
-
-      const icon = document.getElementById('cd-favorite-icon');
-      const text = document.getElementById('cd-favorite-text');
-
-      if (data.is_favorite) {
-        btn.classList.replace('btn-outline-danger', 'btn-danger');
-        icon.classList.replace('far', 'fas');
-        text.textContent = 'Rimuovi dai Preferiti';
-        btn.dataset.isFavorite = '1';
-      } else {
-        btn.classList.replace('btn-danger', 'btn-outline-danger');
-        icon.classList.replace('fas', 'far');
-        text.textContent = 'Aggiungi ai Preferiti';
-        btn.dataset.isFavorite = '0';
+      } catch (e) {
+        alert('Errore durante l\'operazione');
+      } finally {
+        btn.disabled = false;
       }
+    });
+  }
+
+  // ── Storico prezzi ─────────────────────────────────────────────────────────
+  const DEP_ID      = '{{ $departure->id }}';
+  const MONTH_NAMES = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const COLORS      = ['#1a7a8a','#4caf50','#e67e22','#9b59b6','#e74c3c'];
+
+  let weeklyChart  = null;
+  let monthlyChart = null;
+
+  function fmtEur(val) {
+    return '€ ' + Number(val).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  function chartBase(title) {
+    return {
+      chart:  { type: 'line', height: 260, toolbar: { show: false }, fontFamily: 'inherit', zoom: { enabled: false } },
+      stroke: { width: 2, curve: 'smooth' },
+      colors: COLORS,
+      xaxis:  {},
+      yaxis:  { labels: { formatter: fmtEur } },
+      tooltip: { y: { formatter: fmtEur } },
+      legend: { position: 'bottom', fontSize: '12px' },
+      title:  { text: title, style: { fontSize: '13px', color: '#1a7a8a', fontWeight: 600 } },
+      noData: { text: 'Nessun dato disponibile' },
+    };
+  }
+
+  async function fetchJSON(url) {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  async function loadWeekly(category) {
+    const msg = document.getElementById('cd-ph-weekly-msg');
+    const el  = document.getElementById('cd-ph-weekly-chart');
+    try {
+      const url  = `/api/crociere/${DEP_ID}/price/seasonal/weekly` + (category ? `?category=${encodeURIComponent(category)}` : '');
+      const data = await fetchJSON(url);
+
+      if (!data.series || data.series.length === 0) {
+        msg.textContent = 'Dati insufficienti per l\'analisi settimanale.';
+        el.innerHTML = '';
+        return data;
+      }
+      msg.textContent = '';
+      if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
+
+      const opts = chartBase('Prezzo medio per settimane prima della partenza');
+      opts.series = data.series;
+      opts.xaxis  = {
+        type: 'numeric',
+        reversed: true,
+        title: { text: 'Settimane prima della partenza', style: { fontSize: '11px', color: '#999' } },
+        labels: { formatter: v => v + ' sett.' },
+      };
+      weeklyChart = new ApexCharts(el, opts);
+      weeklyChart.render();
+      return data;
     } catch (e) {
-      alert('Errore durante l\'operazione');
-    } finally {
-      btn.disabled = false;
+      msg.textContent = 'Errore nel caricamento dei dati.';
+      return null;
     }
-  });
+  }
+
+  async function loadMonthly(category) {
+    const msg = document.getElementById('cd-ph-monthly-msg');
+    const el  = document.getElementById('cd-ph-monthly-chart');
+    try {
+      const url  = `/api/crociere/${DEP_ID}/price/seasonal/monthly` + (category ? `?category=${encodeURIComponent(category)}` : '');
+      const data = await fetchJSON(url);
+
+      if (!data.series || data.series.length === 0) {
+        msg.textContent = 'Dati insufficienti per l\'analisi mensile.';
+        el.innerHTML = '';
+        return;
+      }
+      msg.textContent = '';
+      if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
+
+      const opts = chartBase('Prezzo medio per mese di partenza');
+      opts.series = data.series;
+      opts.xaxis  = {
+        categories: MONTH_NAMES,
+        title: { text: 'Mese di partenza', style: { fontSize: '11px', color: '#999' } },
+      };
+      monthlyChart = new ApexCharts(el, opts);
+      monthlyChart.render();
+    } catch (e) {
+      msg.textContent = 'Errore nel caricamento dei dati.';
+    }
+  }
+
+  async function initPriceHistory() {
+    const result = await loadWeekly(null);
+    if (!result) return;
+
+    const cats    = result.available_categories || [];
+    const selCat  = result.category;
+    const wrapper = document.getElementById('cd-ph-cat-wrapper');
+    const select  = document.getElementById('cd-ph-cat-select');
+
+    if (cats.length > 1) {
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        if (c === selCat) opt.selected = true;
+        select.appendChild(opt);
+      });
+      wrapper.style.display = '';
+      select.addEventListener('change', function () {
+        const cat = this.value;
+        loadWeekly(cat);
+        loadMonthly(cat);
+      });
+    }
+
+    loadMonthly(selCat);
+  }
+
+  initPriceHistory();
 });
 </script>
 @endsection
