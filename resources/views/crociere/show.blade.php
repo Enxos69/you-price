@@ -560,13 +560,19 @@ document.addEventListener('DOMContentLoaded', function () {
       msg.textContent = '';
       if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
 
+      // Categorie esplicite in ordine decrescente (dalla più lontana alla più vicina)
+      const allWeeks = [...new Set(data.series.flatMap(s => s.data.map(d => d.x)))].sort((a, b) => b - a);
       const opts = chartBase('Prezzo medio per settimane prima della partenza');
-      opts.series = data.series;
-      opts.xaxis  = {
-        type: 'numeric',
-        reversed: true,
+      opts.series = data.series.map(s => ({
+        name: s.name,
+        data: allWeeks.map(w => { const pt = s.data.find(d => d.x === w); return pt ? pt.y : null; }),
+      }));
+      opts.xaxis = {
+        type: 'category',
+        categories: allWeeks.map(w => w + ' sett.'),
         title: { text: 'Settimane prima della partenza', style: { fontSize: '11px', color: '#999' } },
-        labels: { formatter: v => v + ' sett.' },
+        tickPlacement: 'on',
+        labels: { rotate: -45, style: { fontSize: '10px' } },
       };
       weeklyChart = new ApexCharts(el, opts);
       weeklyChart.render();
