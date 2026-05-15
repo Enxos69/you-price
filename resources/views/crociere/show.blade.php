@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
 /* ── CRUISE DETAIL PAGE ──────────────────────────────────────────── */
 .cruise-detail-page { background: #f4f6f8; min-height: 100vh; }
@@ -40,17 +41,14 @@
 .cd-section__header h2 { font-size: 15px; font-weight: 700; color: #1a7a8a; margin: 0; }
 .cd-section__body   { padding: 16px 20px; }
 
-/* Itinerario — griglia 2 colonne */
-.cd-itinerary { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
-.cd-itin-item { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 8px; background: #f8fdfe; border: 1px solid #e8f4f6; }
-.cd-itin-day  { min-width: 30px; height: 30px; border-radius: 6px; background: #1a7a8a; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; line-height: 1.2; }
-.cd-itin-day--accent { background: #4caf50; }
-.cd-itin-info   { flex: 1; min-width: 0; }
-.cd-itin-port   { font-weight: 600; font-size: 13px; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cd-itin-tag    { display: inline-block; background: #1a7a8a; color: #fff; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-left: 4px; vertical-align: middle; }
-.cd-itin-tag--end { background: #4caf50; }
-.cd-itin-times  { font-size: 10px; color: #aaa; margin-top: 2px; }
-.cd-itin-times span { margin-right: 6px; }
+/* Itinerario — layout mappa + lista */
+.cd-itin-split      { display: flex; gap: 16px; align-items: stretch; }
+.cd-itin-map-wrap   { flex: 1; min-width: 0; border-radius: 8px; overflow: hidden; border: 1px solid #dde9eb; }
+#cd-itin-map        { width: 100%; height: 360px; }
+.cd-itin-list-wrap  { flex: 1; min-width: 0; }
+#cd-itin-route      { width: 100%; overflow: visible; }
+.cd-route-stop      { cursor: pointer; }
+.cd-route-stop:hover circle { filter: brightness(1.15); }
 
 /* Nave — foto */
 .cd-ship-photo { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 14px; }
@@ -126,7 +124,9 @@
   .cd-cabins-grid { grid-template-columns: 1fr; }
   .cd-cabin-group__meta { display: none; }
   .cd-facts-bar { gap: 0; }
-  .cd-itinerary { grid-template-columns: 1fr; }
+  .cd-itin-split    { flex-direction: column; }
+  .cd-itin-map-wrap { flex: none; }
+  #cd-itin-map      { height: 220px; }
 }
 </style>
 <div class="cruise-detail-page">
@@ -209,43 +209,48 @@
       <div class="cd-left-col">
         {{-- ── ITINERARIO ─────────────────────────────────────────────── --}}
         @if($itinerary->isNotEmpty())
+        @php
+          $itinArr   = $itinerary->values();
+          $itinCount = $itinArr->count();
+          $mapPorts  = [];
+          $routeStops = [];
+          foreach ($itinArr as $idx => $stop) {
+            $hasCoords = $stop->port && $stop->port->latitude && $stop->port->longitude;
+            if ($hasCoords) {
+              $mapPorts[] = [
+                'lat'  => (float) $stop->port->latitude,
+                'lng'  => (float) $stop->port->longitude,
+                'name' => $stop->port->name,
+                'day'  => $stop->day_number,
+                'type' => $idx === 0 ? 'start' : ($idx === $itinCount - 1 ? 'end' : 'stop'),
+              ];
+            }
+            $routeStops[] = [
+              'day'     => $stop->day_number,
+              'name'    => $stop->port ? $stop->port->name : null,
+              'lat'     => $hasCoords ? (float) $stop->port->latitude : null,
+              'lng'     => $hasCoords ? (float) $stop->port->longitude : null,
+              'arr'     => $stop->arrival_time   ? \Carbon\Carbon::parse($stop->arrival_time)->format('H:i')   : null,
+              'dep'     => $stop->departure_time ? \Carbon\Carbon::parse($stop->departure_time)->format('H:i') : null,
+              'isFirst' => $idx === 0,
+              'isLast'  => $idx === $itinCount - 1,
+            ];
+          }
+        @endphp
         <div class="cd-section">
           <div class="cd-section__header">
             <i class="fas fa-map-marked-alt"></i>
             <h2>Itinerario</h2>
           </div>
           <div class="cd-section__body">
-            <ul class="cd-itinerary">
-              @foreach($itinerary as $stop)
-              @php
-                $isFirst = $loop->first;
-                $isLast  = $loop->last;
-              @endphp
-              <li class="cd-itin-item">
-                <div class="cd-itin-day {{ $isFirst || $isLast ? 'cd-itin-day--accent' : '' }}">
-                  Gg {{ $stop->day_number }}
-                </div>
-                <div class="cd-itin-info">
-                  <div class="cd-itin-port">
-                    {{ $stop->port->name ?? 'N/D' }}
-                    @if($isFirst) <span class="cd-itin-tag">imbarco</span> @endif
-                    @if($isLast)  <span class="cd-itin-tag cd-itin-tag--end">sbarco</span> @endif
-                  </div>
-                  <div class="cd-itin-times">
-                    @if($stop->arrival_time)
-                      <span><i class="fas fa-circle text-success" style="font-size:7px;vertical-align:middle;"></i> arr. {{ \Carbon\Carbon::parse($stop->arrival_time)->format('H:i') }}</span>
-                    @endif
-                    @if($stop->departure_time)
-                      <span><i class="fas fa-circle text-danger" style="font-size:7px;vertical-align:middle;"></i> prt. {{ \Carbon\Carbon::parse($stop->departure_time)->format('H:i') }}</span>
-                    @endif
-                    @if(!$stop->arrival_time && !$stop->departure_time)
-                      <span class="text-muted" style="font-style:italic;">navigazione in mare</span>
-                    @endif
-                  </div>
-                </div>
-              </li>
-              @endforeach
-            </ul>
+            <div class="cd-itin-split">
+              <div class="cd-itin-map-wrap">
+                <div id="cd-itin-map"></div>
+              </div>
+              <div class="cd-itin-list-wrap">
+                <div id="cd-itin-route"></div>
+              </div>
+            </div>
           </div>
         </div>
         @endif
@@ -331,9 +336,15 @@
             <h2>Storico &amp; Stagionalità Prezzi</h2>
           </div>
           <div class="cd-section__body">
-            <div id="cd-ph-cat-wrapper" style="display:none;" class="d-flex align-items-center mb-3">
-              <label class="mr-2 mb-0" style="font-size:12px;color:#999;white-space:nowrap;">Categoria:</label>
-              <select id="cd-ph-cat-select" class="form-control form-control-sm" style="max-width:150px;"></select>
+            <div id="cd-ph-cat-wrapper" style="display:none;" class="d-flex align-items-center flex-wrap mb-3" style="gap:12px;">
+              <div class="d-flex align-items-center mr-3">
+                <label class="mr-2 mb-0" style="font-size:12px;color:#999;white-space:nowrap;">Tipo cabina:</label>
+                <select id="cd-ph-macro-select" class="form-control form-control-sm" style="max-width:180px;"></select>
+              </div>
+              <div class="d-flex align-items-center" id="cd-ph-sub-wrapper" style="display:none!important;">
+                <label class="mr-2 mb-0" style="font-size:12px;color:#999;white-space:nowrap;">Cabina:</label>
+                <select id="cd-ph-sub-select" class="form-control form-control-sm" style="max-width:120px;"></select>
+              </div>
             </div>
             <ul class="nav nav-tabs mb-3" role="tablist">
               <li class="nav-item">
@@ -471,9 +482,212 @@
 @endsection
 
 @section('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+  // ── Mappa itinerario ───────────────────────────────────────────────────────
+  const mapPorts = @json($mapPorts ?? []);
+  const mapEl = document.getElementById('cd-itin-map');
+  let itinMap = null;
+
+  if (mapEl && mapPorts.length > 0) {
+    // Partenza e arrivo coincidono: unifica in un unico marker bicolore
+    if (mapPorts.length > 1) {
+      const first = mapPorts[0], last = mapPorts[mapPorts.length - 1];
+      if (first.lat === last.lat && first.lng === last.lng) {
+        first.type = 'both';
+        mapPorts.pop();
+      }
+    }
+
+    itinMap = L.map('cd-itin-map', { zoomControl: true, scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18
+    }).addTo(itinMap);
+
+    const latlngs = mapPorts.map(p => [p.lat, p.lng]);
+
+    mapPorts.forEach(p => {
+      let bg, label;
+      if (p.type === 'both') {
+        bg = 'linear-gradient(135deg, #4caf50 50%, #e05252 50%)';
+        label = ' — imbarco / sbarco';
+      } else if (p.type === 'start') {
+        bg = '#4caf50'; label = ' — imbarco';
+      } else if (p.type === 'end') {
+        bg = '#e05252'; label = ' — sbarco';
+      } else {
+        bg = '#1a7a8a'; label = '';
+      }
+      const tipColor = p.type === 'end' ? '#e05252' : (p.type === 'both' ? '#4caf50' : bg);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative;width:28px;height:36px;text-align:center;">
+          <div style="background:${bg};width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;line-height:1;">${p.day}</div>
+          <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid ${tipColor};margin:0 auto;"></div>
+        </div>`,
+        iconSize: [28, 38],
+        iconAnchor: [14, 38],
+        popupAnchor: [0, -40]
+      });
+      L.marker([p.lat, p.lng], { icon }).addTo(itinMap)
+        .bindPopup(`<b>Gg ${p.day} — ${p.name}</b>${label}`);
+    });
+
+    itinMap.fitBounds(latlngs, { padding: [32, 32] });
+    setTimeout(() => itinMap.invalidateSize(), 0);
+  } else if (mapEl) {
+    mapEl.closest('.cd-itin-map-wrap').style.display = 'none';
+  }
+
+  // ── Toast avviso mappa ─────────────────────────────────────────────────────
+  function showMapToast(msg) {
+    let t = document.getElementById('cd-map-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'cd-map-toast';
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:7px 18px;border-radius:20px;font-size:13px;z-index:9999;pointer-events:none;transition:opacity .3s;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._hide);
+    t._hide = setTimeout(() => t.style.opacity = '0', 2500);
+  }
+
+  // ── Rotta SVG itinerario ───────────────────────────────────────────────────
+  (function buildItineraryRoute() {
+    const stops = @json($routeStops ?? []);
+    const container = document.getElementById('cd-itin-route');
+    if (!container || stops.length === 0) return;
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const W       = container.clientWidth || 320;
+    const PAD_X   = 26;
+    const PAD_TOP = 22;
+    const PAD_BOT = 14;
+    const R       = 13;
+    const LABEL_H = 72;   // giorno + nome + tag + arr + prt
+    const ROW_GAP = 14;
+    const STEP_Y  = R * 2 + LABEL_H + ROW_GAP;
+
+    // Ports per row: min spacing 68px, max 6 per row
+    const n = stops.length;
+    const maxFit   = Math.max(2, Math.floor((W - PAD_X * 2) / 68) + 1);
+    const perRow   = Math.min(maxFit, 6, n);
+    const spacingX = perRow > 1 ? (W - PAD_X * 2) / (perRow - 1) : 0;
+    const rows     = Math.ceil(n / perRow);
+    const svgH     = PAD_TOP + rows * STEP_Y - ROW_GAP + PAD_BOT + R;
+
+    // Port positions (serpentine)
+    const pts = stops.map((stop, i) => {
+      const row    = Math.floor(i / perRow);
+      const posRow = i % perRow;
+      const ltr    = row % 2 === 0;
+      const col    = ltr ? posRow : (perRow - 1 - posRow);
+      return { x: PAD_X + col * spacingX, y: PAD_TOP + R + row * STEP_Y, stop };
+    });
+
+    // SVG path (dashed serpentine)
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], c = pts[i];
+      if (p.y === c.y) {
+        d += ` L ${c.x} ${c.y}`;
+      } else {
+        // U-curve bezier between rows
+        const ltr  = Math.floor((i - 1) / perRow) % 2 === 0;
+        const ext  = STEP_Y * 0.48 * (ltr ? 1 : -1);
+        d += ` C ${p.x + ext} ${p.y} ${c.x + ext} ${c.y} ${c.x} ${c.y}`;
+      }
+    }
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', svgH);
+    svg.setAttribute('viewBox', `0 0 ${W} ${svgH}`);
+    svg.style.overflow = 'visible';
+    svg.style.display  = 'block';
+
+    // Path
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', '#c5e4e9');
+    path.setAttribute('stroke-width', '2.5');
+    path.setAttribute('stroke-dasharray', '6 4');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('fill', 'none');
+    svg.appendChild(path);
+
+    // Max chars for port name based on spacing
+    const maxCh = Math.max(6, Math.floor(spacingX / 6.2));
+
+    pts.forEach(({ x, y, stop }) => {
+      const isSea   = !stop.name;
+      const color   = isSea ? '#b8cdd1' : (stop.isFirst ? '#4caf50' : (stop.isLast ? '#e05252' : '#1a7a8a'));
+      const g = document.createElementNS(NS, 'g');
+      g.classList.add('cd-route-stop');
+      if (stop.lat) g.dataset.lat = stop.lat;
+      if (stop.lng) g.dataset.lng = stop.lng;
+
+      // Circle
+      const circ = document.createElementNS(NS, 'circle');
+      circ.setAttribute('cx', x); circ.setAttribute('cy', y); circ.setAttribute('r', R);
+      circ.setAttribute('fill', color);
+      circ.setAttribute('stroke', '#fff'); circ.setAttribute('stroke-width', '2');
+      g.appendChild(circ);
+
+      const mk = (tag, attrs, text) => {
+        const el = document.createElementNS(NS, tag);
+        Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+        if (text !== undefined) el.textContent = text;
+        return el;
+      };
+
+      // Day number inside circle
+      g.appendChild(mk('text', { x, y: y + 4.5, 'text-anchor': 'middle', fill: '#fff', 'font-size': '12', 'font-weight': '700', 'font-family': 'inherit' }, stop.day));
+
+      // Line 1 — "Giorno X"
+      const L1 = y + R + 15;
+      g.appendChild(mk('text', { x, y: L1, 'text-anchor': 'middle', fill: isSea ? '#999' : '#1a7a8a', 'font-size': '13', 'font-weight': '700', 'font-family': 'inherit' }, `Giorno ${stop.day}`));
+
+      // Line 2 — port name
+      const name = isSea ? 'navigazione' : (stop.name.length > maxCh ? stop.name.slice(0, maxCh - 1) + '…' : stop.name);
+      g.appendChild(mk('text', { x, y: L1 + 15, 'text-anchor': 'middle', fill: isSea ? '#aaa' : '#333', 'font-size': '12', 'font-style': isSea ? 'italic' : 'normal', 'font-family': 'inherit' }, name));
+
+      // Line 3 — tag imbarco/sbarco (per prima e ultima tappa)
+      let timeOffsetY = L1 + 29;
+      if (stop.isFirst || stop.isLast) {
+        const tagColor = stop.isFirst ? '#4caf50' : '#e05252';
+        const tagLabel = stop.isFirst ? '▲ imbarco' : '▼ sbarco';
+        g.appendChild(mk('text', { x, y: timeOffsetY, 'text-anchor': 'middle', fill: tagColor, 'font-size': '10', 'font-weight': '700', 'font-family': 'inherit' }, tagLabel));
+        timeOffsetY += 13;
+      }
+
+      // Orari arrivo e partenza (tutte le tappe, incluso imbarco/sbarco)
+      if (!isSea) {
+        if (stop.arr) { g.appendChild(mk('text', { x, y: timeOffsetY,      'text-anchor': 'middle', fill: '#555', 'font-size': '10.5', 'font-family': 'inherit' }, `arr. ${stop.arr}`)); }
+        if (stop.dep) { g.appendChild(mk('text', { x, y: timeOffsetY + 13, 'text-anchor': 'middle', fill: '#555', 'font-size': '10.5', 'font-family': 'inherit' }, `prt. ${stop.dep}`)); }
+      }
+
+      // Click → centra mappa
+      g.addEventListener('click', () => {
+        if (stop.lat && stop.lng && itinMap) {
+          itinMap.flyTo([stop.lat, stop.lng], 9, { duration: 1.4 });
+        } else {
+          showMapToast('Tappa in navigazione — nessuna posizione sulla mappa');
+        }
+      });
+
+      svg.appendChild(g);
+    });
+
+    container.appendChild(svg);
+  })();
+
 
   // ── Preferiti ──────────────────────────────────────────────────────────────
   const btn = document.getElementById('cd-favorite-btn');
@@ -517,6 +731,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const DEP_ID      = '{{ $departure->id }}';
   const MONTH_NAMES = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
   const COLORS      = ['#1a7a8a','#4caf50','#e67e22','#9b59b6','#e74c3c'];
+  // Mapping codice cabina → macro categoria (da PHP)
+  const CABIN_MAP = @json($cabins->values()->map(fn($c) => ['code' => $c['category_code'], 'macro' => $c['cruisehost_cat'], 'price' => $c['price']]));
+  const MACRO_LABEL = { IS:'Cabina Interna', OS:'Cabina Esterna', BK:'Balcone', MS:'Mini Suite', SU:'Suite' };
+  const MACRO_ORDER = ['IS','OS','BK','MS','SU'];
 
   let weeklyChart  = null;
   let monthlyChart = null;
@@ -560,18 +778,29 @@ document.addEventListener('DOMContentLoaded', function () {
       msg.textContent = '';
       if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
 
-      // Categorie esplicite in ordine decrescente (dalla più lontana alla più vicina)
-      const allWeeks = [...new Set(data.series.flatMap(s => s.data.map(d => d.x)))].sort((a, b) => b - a);
+      // Asse X completo: tutte le settimane da maxWeek a 0 (proporzionale al tempo)
+      const maxWeek = Math.max(...data.series.flatMap(s => s.data.map(d => d.x)), 1);
+      const allWeeks = Array.from({ length: maxWeek + 1 }, (_, i) => maxWeek - i);
+
       const opts = chartBase('Prezzo medio per settimane prima della partenza');
-      opts.series = data.series.map(s => ({
-        name: s.name,
-        data: allWeeks.map(w => { const pt = s.data.find(d => d.x === w); return pt ? pt.y : null; }),
-      }));
+      opts.stroke = { width: 2, curve: 'straight' }; // linea piatta dove il prezzo non cambia
+      opts.series = data.series.map(s => {
+        const map     = new Map(s.data.map(d => [d.x, d.y]));
+        const minWeek = Math.min(...s.data.map(d => d.x)); // ultima settimana con dato reale
+        let last = null;
+        return {
+          name: s.name,
+          data: allWeeks.map(w => {
+            if (map.has(w)) last = map.get(w);
+            return w >= minWeek ? last : null; // null per settimane non ancora rilevate
+          }),
+        };
+      });
       opts.xaxis = {
         type: 'category',
-        categories: allWeeks.map(w => w + ' sett.'),
+        categories: allWeeks.map(w => w === 0 ? 'partenza' : `sett. ${w}`),
         title: { text: 'Settimane prima della partenza', style: { fontSize: '11px', color: '#999' } },
-        tickPlacement: 'on',
+        tickAmount: Math.min(allWeeks.length, 13), // max 13 label sull'asse
         labels: { rotate: -45, style: { fontSize: '10px' } },
       };
       weeklyChart = new ApexCharts(el, opts);
@@ -615,27 +844,71 @@ document.addEventListener('DOMContentLoaded', function () {
     const result = await loadWeekly(null);
     if (!result) return;
 
-    const cats    = result.available_categories || [];
-    const selCat  = result.category;
-    const wrapper = document.getElementById('cd-ph-cat-wrapper');
-    const select  = document.getElementById('cd-ph-cat-select');
+    const avail      = result.available_categories || [];
+    const wrapper    = document.getElementById('cd-ph-cat-wrapper');
+    const macroSel   = document.getElementById('cd-ph-macro-select');
+    const subSel     = document.getElementById('cd-ph-sub-select');
+    const subWrapper = document.getElementById('cd-ph-sub-wrapper');
 
-    if (cats.length > 1) {
-      cats.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c; opt.textContent = c;
-        if (c === selCat) opt.selected = true;
-        select.appendChild(opt);
-      });
-      wrapper.style.display = '';
-      select.addEventListener('change', function () {
-        const cat = this.value;
-        loadWeekly(cat);
-        loadMonthly(cat);
-      });
+    // Codici disponibili raggruppati per macro categoria
+    function subsFor(macro) {
+      return CABIN_MAP.filter(c => c.macro === macro && avail.includes(c.code))
+                      .sort((a, b) => a.price - b.price);
     }
 
-    loadMonthly(selCat);
+    // Macro disponibili, ordinate dal più economico
+    const availMacros = MACRO_ORDER
+      .filter(m => subsFor(m).length > 0)
+      .sort((a, b) => (subsFor(a)[0]?.price ?? Infinity) - (subsFor(b)[0]?.price ?? Infinity));
+
+    if (availMacros.length === 0) {
+      loadMonthly(result.category);
+      return;
+    }
+
+    // Popola select macro (solo categorie con mapping riconosciuto)
+    availMacros.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = MACRO_LABEL[m] || m;
+      macroSel.appendChild(opt);
+    });
+
+    // Popola sub-select e restituisce il codice selezionato
+    function populateSubs(macro) {
+      subSel.innerHTML = '';
+      const subs = subsFor(macro);
+      if (subs.length > 1) {
+        subs.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.code; opt.textContent = c.code;
+          subSel.appendChild(opt);
+        });
+        subWrapper.style.cssText = ''; // mostra
+      } else {
+        subWrapper.style.cssText = 'display:none!important';
+      }
+      return subs[0]?.code;
+    }
+
+    // Default: macro più economica → sub più economica
+    const defaultMacro = availMacros[0];
+    macroSel.value = defaultMacro;
+    let activeCat = populateSubs(defaultMacro);
+
+    // Carica mensile con la categoria di default
+    loadMonthly(activeCat);
+    wrapper.style.display = '';
+
+    macroSel.addEventListener('change', function () {
+      const cat = populateSubs(this.value);
+      loadWeekly(cat);
+      loadMonthly(cat);
+    });
+
+    subSel.addEventListener('change', function () {
+      loadWeekly(this.value);
+      loadMonthly(this.value);
+    });
   }
 
   initPriceHistory();
