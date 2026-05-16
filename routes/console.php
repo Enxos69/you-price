@@ -16,3 +16,11 @@ Schedule::command('catalog:sync --source=cron')
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[CatalogSync] Esecuzione schedulata fallita.');
     });
+
+// Controllo alert prezzi — ogni giorno alle 03:30 (dopo il catalog:sync)
+Schedule::command('alerts:check')
+    ->dailyAt('03:30')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[AlertsCheck] Esecuzione schedulata fallita.');
+    });

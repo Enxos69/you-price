@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use App\Models\Departure;
 use App\Models\PriceAlert;
 use App\Models\PriceHistory;
@@ -19,13 +20,18 @@ class PriceAlertsController extends Controller
 
     public function index()
     {
-        $alerts = PriceAlert::forUser(Auth::id())
-            ->with(['departure.product.ship', 'departure.product.cruiseLine'])
-            ->orderByDesc('is_active')
+        $alertGroups = PriceAlert::forUser(Auth::id())
+            ->with(['departure.product.ship', 'departure.product.cruiseLine',
+                    'departure.product.portFrom', 'departure.product.portTo'])
             ->orderByDesc('created_at')
-            ->paginate(12);
+            ->get()
+            ->groupBy('departure_id')
+            ->sortBy(function ($group) {
+                $dep = $group->first()->departure;
+                return ($dep->dep_date->isPast() ? '1' : '0') . $dep->dep_date->format('Y-m-d');
+            });
 
-        return view('user.alerts-index', compact('alerts'));
+        return view('user.alerts-index', compact('alertGroups'));
     }
 
     public function store(Request $request)
@@ -54,6 +60,24 @@ class PriceAlertsController extends Controller
             ], 422);
         }
 
+        $departure->load('product');
+        $clCats = DB::table('ship_categories')
+            ->where('ship_id', $departure->product->ship_id)
+            ->where('cruisehost_cat', $validated['category_code'])
+            ->pluck('cl_cat');
+
+        $currentPrice = null;
+        if ($clCats->isNotEmpty()) {
+            $currentPrice = PriceHistory::whereIn('id', function ($sub) use ($departure) {
+                    $sub->selectRaw('MAX(id)')
+                        ->from('price_history')
+                        ->where('departure_id', $departure->id)
+                        ->groupBy('category_code');
+                })
+                ->whereIn('category_code', $clCats)
+                ->min('price');
+        }
+
         $alert = PriceAlert::create([
             'user_id'              => $user->id,
             'departure_id'         => $departure->id,
@@ -62,6 +86,8 @@ class PriceAlertsController extends Controller
             'alert_type'           => $validated['alert_type'] ?? 'fixed_price',
             'percentage_threshold' => $validated['percentage_threshold'] ?? null,
             'is_active'            => true,
+            'current_price'        => $currentPrice,
+            'last_checked_at'      => $currentPrice ? now() : null,
         ]);
 
         UserActivity::log($user->id, 'alert_create', $alert, [
@@ -200,6 +226,53 @@ class PriceAlertsController extends Controller
         Cache::forget("dashboard_user_{$user->id}");
 
         return response()->json(['success' => true, 'message' => "Rimossi {$count} alert inattivi", 'deleted_count' => $count]);
+    }
+
+    public function destroyForDeparture(string $departureId)
+    {
+        $user  = Auth::user();
+        $count = PriceAlert::where('user_id', $user->id)
+            ->where('departure_id', $departureId)
+            ->delete();
+
+        Cache::forget("dashboard_user_{$user->id}");
+
+        return response()->json(['success' => true, 'message' => "Eliminati {$count} alert", 'deleted_count' => $count]);
+    }
+
+    public function toggleAllForDeparture(string $departureId)
+    {
+        $user    = Auth::user();
+        $alerts  = PriceAlert::where('user_id', $user->id)->where('departure_id', $departureId)->get();
+        $anyActive = $alerts->where('is_active', true)->count() > 0;
+        $newState  = ! $anyActive;
+
+        PriceAlert::where('user_id', $user->id)->where('departure_id', $departureId)->update(
+            $newState
+                ? ['is_active' => true,  'notification_sent' => false]
+                : ['is_active' => false]
+        );
+
+        Cache::forget("dashboard_user_{$user->id}");
+
+        return response()->json([
+            'success'   => true,
+            'is_active' => $newState,
+            'message'   => $newState ? 'Tutti gli alert attivati' : 'Tutti gli alert disattivati',
+        ]);
+    }
+
+    public function destroyExpired()
+    {
+        $user = Auth::user();
+
+        $count = PriceAlert::where('user_id', $user->id)
+            ->whereHas('departure', fn($q) => $q->where('dep_date', '<', today()))
+            ->delete();
+
+        Cache::forget("dashboard_user_{$user->id}");
+
+        return response()->json(['success' => true, 'message' => "Rimossi {$count} alert per partenze già avvenute", 'deleted_count' => $count]);
     }
 
     public function resetNotification(PriceAlert $alert)

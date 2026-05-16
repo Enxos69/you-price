@@ -84,12 +84,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/alert-prezzi',              [PriceAlertsController::class, 'store'])->name('alerts.store');
     Route::patch('/alert-prezzi/{alert}',     [PriceAlertsController::class, 'update'])->name('alerts.update');
     Route::delete('/alert-prezzi/{alert}',    [PriceAlertsController::class, 'destroy'])->name('alerts.destroy');
-    Route::post('/alert-prezzi/{alert}/toggle',[PriceAlertsController::class, 'toggleActive'])->name('alerts.toggle');
+    Route::post('/alert-prezzi/{alert}/toggle',            [PriceAlertsController::class, 'toggleActive'])->name('alerts.toggle');
+    Route::post('/alert-prezzi/{alert}/reset-notification',[PriceAlertsController::class, 'resetNotification'])->name('alerts.reset-notification');
 
     Route::prefix('api/alerts')->name('api.alerts.')->group(function () {
-        Route::get('/',          [PriceAlertsController::class, 'getAlerts'])->name('list');
-        Route::get('/active',    [PriceAlertsController::class, 'getActiveAlerts'])->name('active');
-        Route::delete('/inactive',[PriceAlertsController::class, 'destroyInactive'])->name('destroy-inactive');
+        Route::get('/',                                    [PriceAlertsController::class, 'getAlerts'])->name('list');
+        Route::get('/active',                              [PriceAlertsController::class, 'getActiveAlerts'])->name('active');
+        Route::delete('/inactive',                         [PriceAlertsController::class, 'destroyInactive'])->name('destroy-inactive');
+        Route::delete('/expired',                          [PriceAlertsController::class, 'destroyExpired'])->name('destroy-expired');
+        Route::delete('/departure/{departureId}',          [PriceAlertsController::class, 'destroyForDeparture'])->name('destroy-departure');
+        Route::post('/departure/{departureId}/toggle-all', [PriceAlertsController::class, 'toggleAllForDeparture'])->name('toggle-all-departure');
     });
 
     // API storico prezzi crociera

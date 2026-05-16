@@ -47,6 +47,11 @@
                             <i class="fas fa-tachometer-alt"></i> La Mia Dashboard
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('alerts.index') }}">
+                            <i class="fas fa-bell"></i> I Miei Alert
+                        </a>
+                    </li>
                 @endif
             @endauth
         </ul>
