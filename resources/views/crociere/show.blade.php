@@ -104,6 +104,16 @@
 .cd-alert-box        { background: #fff; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
 .cd-alert-box h3     { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 8px; }
 .cd-alert-box p      { font-size: 12px; color: #888; margin-bottom: 10px; }
+.cd-ai-item          { display: flex; align-items: center; justify-content: space-between; background: rgba(255,193,7,.1); border: 1px solid rgba(255,193,7,.35); border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; }
+.cd-ai-item__info    { display: flex; flex-direction: column; line-height: 1.2; }
+.cd-ai-item__cat     { font-size: 11px; color: #666; }
+.cd-ai-item__price   { font-size: 14px; font-weight: 700; color: #c49000; }
+.cd-ai-item__del     { background: none; border: none; color: #dc3545; padding: 2px 5px; line-height: 1; cursor: pointer; }
+.cd-ai-item__del:hover { color: #a71d2a; }
+.am-row              { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+.am-row:last-child   { border-bottom: none; }
+.am-row__macro       { font-weight: 600; font-size: 14px; color: #1a7a8a; margin-bottom: 2px; }
+.am-row__current     { font-size: 12px; color: #999; margin-bottom: 8px; }
 
 .cd-info-mini        { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
 .cd-info-mini__title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #999; margin-bottom: 8px; }
@@ -446,9 +456,10 @@
         <div class="cd-alert-box">
           <h3><i class="fas fa-bell mr-2 text-warning"></i>Monitora il prezzo</h3>
           <p>Ricevi una notifica email quando il prezzo scende sotto la soglia.</p>
-          <a href="{{ route('alerts.index') }}" class="btn btn-warning btn-sm btn-block">
-            Gestisci i tuoi alert
-          </a>
+          <div id="cd-alert-active-list"></div>
+          <button id="cd-alert-modal-btn" class="btn btn-warning btn-sm btn-block mt-1">
+            <i class="fas fa-bell mr-1"></i>Gestisci i tuoi alert
+          </button>
         </div>
 
         {{-- ── RIEPILOGO RAPIDO ─────────────────────────────────────────── --}}
@@ -479,6 +490,33 @@
   </div>
 
 </div>{{-- /cruise-detail-page --}}
+
+{{-- ── MODAL ALERT PREZZI ────────────────────────────────────────────────── --}}
+<div class="modal fade" id="alertPriceModal" tabindex="-1" role="dialog" aria-labelledby="alertPriceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="alertPriceModalLabel">
+          <i class="fas fa-bell mr-2 text-warning"></i>Alert Prezzi
+        </h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">Inserisci il prezzo soglia per ciascuna categoria. Riceverai un'email quando il prezzo scenderà sotto il valore indicato. Lascia vuoto o a zero per non impostare l'alert.</p>
+        <div id="alert-modal-rows"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Annulla</button>
+        <button type="button" class="btn btn-warning btn-sm" id="alert-modal-save-btn">
+          <i class="fas fa-save mr-1"></i>Salva
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -912,6 +950,163 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   initPriceHistory();
+
+  // ── Alert Prezzi Modale ──────────────────────────────────────────────────────
+  (function () {
+    const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Stato corrente degli alert (aggiornato client-side)
+    let alertsByCategory = {};
+    const initAlerts = @json($userAlerts->map(fn($a) => ['id' => $a->id, 'category_code' => $a->category_code, 'target_price' => (float) $a->target_price])->values());
+    initAlerts.forEach(function (a) { alertsByCategory[a.category_code] = a; });
+
+    // Macro groups disponibili per questa partenza (da CABIN_MAP)
+    const macroGroups = {};
+    CABIN_MAP.forEach(function (c) {
+      if (!c.macro) return;
+      if (!macroGroups[c.macro] || c.price < macroGroups[c.macro].price) {
+        macroGroups[c.macro] = { code: c.macro, price: c.price };
+      }
+    });
+
+    function fmtPrice(val) {
+      return '€ ' + Number(val).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function renderAlertBoxes() {
+      const container = document.getElementById('cd-alert-active-list');
+      if (!container) return;
+      container.innerHTML = '';
+      MACRO_ORDER.forEach(function (code) {
+        const alert = alertsByCategory[code];
+        if (!alert) return;
+        const div = document.createElement('div');
+        div.className = 'cd-ai-item';
+        div.innerHTML =
+          '<div class="cd-ai-item__info">' +
+            '<span class="cd-ai-item__cat">' + (MACRO_LABEL[code] || code) + '</span>' +
+            '<span class="cd-ai-item__price">' + fmtPrice(alert.target_price) + '</span>' +
+          '</div>' +
+          '<button class="cd-ai-item__del" data-alert-id="' + alert.id + '" title="Elimina">' +
+            '<i class="fas fa-times"></i>' +
+          '</button>';
+        container.appendChild(div);
+      });
+    }
+
+    function populateModal() {
+      const container = document.getElementById('alert-modal-rows');
+      container.innerHTML = '';
+      MACRO_ORDER.forEach(function (code) {
+        if (!macroGroups[code]) return;
+        const existing = alertsByCategory[code];
+        const row = document.createElement('div');
+        row.className = 'am-row';
+        row.innerHTML =
+          '<div class="am-row__macro">' + (MACRO_LABEL[code] || code) + '</div>' +
+          '<div class="am-row__current">Prezzo attuale: ' + fmtPrice(macroGroups[code].price) + '</div>' +
+          '<div class="input-group input-group-sm">' +
+            '<div class="input-group-prepend"><span class="input-group-text">€</span></div>' +
+            '<input type="number" class="form-control alert-price-input" placeholder="Es. 800"' +
+              ' data-macro="' + code + '"' +
+              ' data-alert-id="' + (existing ? existing.id : '') + '"' +
+              ' value="' + (existing ? existing.target_price : '') + '"' +
+              ' min="0" step="1">' +
+          '</div>';
+        container.appendChild(row);
+      });
+    }
+
+    async function doDelete(alertId) {
+      const res = await fetch('/alert-prezzi/' + alertId, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+      });
+      return res.json();
+    }
+
+    // Apri modale
+    document.getElementById('cd-alert-modal-btn').addEventListener('click', function () {
+      populateModal();
+      $('#alertPriceModal').modal('show');
+    });
+
+    // Elimina alert dalle box
+    document.getElementById('cd-alert-active-list').addEventListener('click', function (e) {
+      const btn = e.target.closest('.cd-ai-item__del');
+      if (!btn) return;
+      const alertId = btn.dataset.alertId;
+      doDelete(alertId).then(function (data) {
+        if (data.success) {
+          for (const code in alertsByCategory) {
+            if (alertsByCategory[code].id == alertId) { delete alertsByCategory[code]; break; }
+          }
+          renderAlertBoxes();
+        }
+      }).catch(function () {});
+    });
+
+    // Salva alert
+    document.getElementById('alert-modal-save-btn').addEventListener('click', async function () {
+      const saveBtn = this;
+      saveBtn.disabled = true;
+      const inputs = document.querySelectorAll('.alert-price-input');
+      const promises = [];
+
+      inputs.forEach(function (input) {
+        const macro   = input.dataset.macro;
+        const alertId = input.dataset.alertId;
+        const val     = parseFloat(input.value);
+
+        if (!val || val <= 0) {
+          if (alertId) {
+            promises.push(
+              doDelete(alertId).then(function (data) {
+                if (data.success) delete alertsByCategory[macro];
+              })
+            );
+          }
+          return;
+        }
+
+        if (alertId) {
+          promises.push(
+            fetch('/alert-prezzi/' + alertId, {
+              method: 'PATCH',
+              headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ target_price: val }),
+            })
+            .then(r => r.json())
+            .then(function (data) {
+              if (data.success) alertsByCategory[macro].target_price = val;
+            })
+          );
+        } else {
+          promises.push(
+            fetch('/alert-prezzi', {
+              method: 'POST',
+              headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ departure_id: DEP_ID, category_code: macro, target_price: val, alert_type: 'fixed_price' }),
+            })
+            .then(r => r.json())
+            .then(function (data) {
+              if (data.success && data.alert) {
+                alertsByCategory[macro] = { id: data.alert.id, category_code: macro, target_price: val };
+              }
+            })
+          );
+        }
+      });
+
+      await Promise.all(promises).catch(function () {});
+      renderAlertBoxes();
+      $('#alertPriceModal').modal('hide');
+      saveBtn.disabled = false;
+    });
+
+    // Render iniziale box
+    renderAlertBoxes();
+  })();
 });
 </script>
 @endsection

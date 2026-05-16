@@ -9,6 +9,7 @@ use App\Models\PriceHistory;
 use App\Models\SearchLog;
 use App\Models\UserActivity;
 use App\Models\UserCruiseView;
+use App\Models\PriceAlert;
 use App\Models\UserFavorite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -226,11 +227,15 @@ class CrocieraController extends Controller
                 ->sortBy('price')
                 ->values();
 
-            $isFavorite = Auth::check()
-                ? UserFavorite::isFavorite(Auth::id(), $departure->id)
-                : false;
+            $isFavorite = UserFavorite::isFavorite(Auth::id(), $departure->id);
 
-            return view('crociere.show', compact('departure', 'cabins', 'isFavorite'));
+            $userAlerts = PriceAlert::where('user_id', Auth::id())
+                ->where('departure_id', $departure->id)
+                ->where('is_active', true)
+                ->get(['id', 'category_code', 'target_price'])
+                ->keyBy('category_code');
+
+            return view('crociere.show', compact('departure', 'cabins', 'isFavorite', 'userAlerts'));
 
         } catch (\Exception $e) {
             Log::error('Errore recupero dettagli partenza: ' . $e->getMessage());
