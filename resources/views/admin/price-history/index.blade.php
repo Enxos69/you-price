@@ -98,21 +98,23 @@
                         </h5>
                     </div>
                     <div class="card-body" id="detail-container">
+                        <div id="ph-cat-pills" class="d-none mb-3"></div>
                         <div id="price-chart" class="mb-4"></div>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>Data rilevazione</th>
-                                        <th>Categoria</th>
-                                        <th>Prezzo</th>
-                                        <th>Δ vs precedente</th>
-                                        <th>Fonte</th>
+                                        <th>Cabina</th>
+                                        <th>Prezzo min</th>
+                                        <th>Prezzo max</th>
+                                        <th>Prezzo attuale</th>
+                                        <th>Δ primo rilievo → attuale</th>
                                     </tr>
                                 </thead>
                                 <tbody id="detail-table-body"></tbody>
                             </table>
                         </div>
+                        <p id="ph-table-note" class="text-muted small mt-1 mb-0"></p>
                     </div>
                 </div>
             </div>
@@ -122,36 +124,45 @@
         <div id="seasonal-section" class="row mb-4 d-none">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-chart-bar mr-2"></i>Analisi Stagionale —
                             <span id="seasonal-itinerary-name" class="text-primary"></span>
                         </h5>
-                        <div class="d-flex align-items-center mt-1 mt-md-0">
-                            <label for="seasonal-category" class="mr-2 mb-0 text-muted small">Categoria:</label>
-                            <select id="seasonal-category" class="form-control form-control-sm" style="width:auto;">
-                                <option value="IC">IC — Interior Cabin</option>
-                                <option value="BC">BC — Balcony Cabin</option>
-                                <option value="SC">SC — Sea View Cabin</option>
-                                <option value="SS">SS — Sea Suite</option>
-                                <option value="GS">GS — Grand Suite</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="card-body">
+                        <div id="seasonal-cat-wrapper" class="d-none d-flex align-items-center flex-wrap mb-3" style="gap:12px;">
+                            <div class="d-flex align-items-center mr-3">
+                                <label class="mr-2 mb-0 text-muted small" style="white-space:nowrap;">Tipo cabina:</label>
+                                <select id="seasonal-macro-select" class="form-control form-control-sm" style="max-width:180px;"></select>
+                            </div>
+                            <div id="seasonal-sub-wrapper" class="d-flex align-items-center" style="display:none!important;">
+                                <label class="mr-2 mb-0 text-muted small">Cabina:</label>
+                                <select id="seasonal-sub-select" class="form-control form-control-sm" style="max-width:120px;"></select>
+                            </div>
+                        </div>
                         <ul class="nav nav-tabs mb-3" id="seasonal-tabs" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link active" data-tab="weekly" href="#" role="tab">
+                                <a class="nav-link active" data-toggle="tab" href="#seasonal-panel-weekly" role="tab">
                                     <i class="fas fa-chart-line mr-1"></i>Evoluzione settimanale
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" data-tab="monthly" href="#" role="tab">
+                                <a class="nav-link" data-toggle="tab" href="#seasonal-panel-monthly" role="tab">
                                     <i class="fas fa-calendar-alt mr-1"></i>Stagionalità mensile
                                 </a>
                             </li>
                         </ul>
-                        <div id="seasonal-chart"></div>
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="seasonal-panel-weekly" role="tabpanel">
+                                <p id="seasonal-weekly-msg" class="text-center text-muted py-3 mb-0" style="font-size:13px;"></p>
+                                <div id="seasonal-weekly-chart"></div>
+                            </div>
+                            <div class="tab-pane fade" id="seasonal-panel-monthly" role="tabpanel">
+                                <p id="seasonal-monthly-msg" class="text-center text-muted py-3 mb-0" style="font-size:13px;"></p>
+                                <div id="seasonal-monthly-chart"></div>
+                            </div>
+                        </div>
                         <p id="seasonal-note" class="text-muted small mt-2 mb-0"></p>
                     </div>
                 </div>

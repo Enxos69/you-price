@@ -126,14 +126,29 @@ class AdminPriceHistoryController extends Controller
             return response()->json(['error' => 'Partenza non trovata'], 404);
         }
 
-        $history = PriceHistory::where('departure_id', $departureId)
-            ->when($from, fn($q) => $q->where('recorded_at', '>=', $from))
-            ->when($to,   fn($q) => $q->where('recorded_at', '<=', $to . ' 23:59:59'))
-            ->orderBy('recorded_at')
-            ->get(['category_code', 'price', 'recorded_at', 'source']);
+        $history = DB::table('price_history as ph')
+            ->join('departures as d', 'd.id', '=', 'ph.departure_id')
+            ->join('products as p', 'p.id', '=', 'd.product_id')
+            ->leftJoin('ship_categories as sc', function ($join) {
+                $join->on('sc.ship_id', '=', 'p.ship_id')
+                     ->on('sc.cl_cat', '=', 'ph.category_code');
+            })
+            ->where('ph.departure_id', $departureId)
+            ->when($from, fn($q) => $q->where('ph.recorded_at', '>=', $from))
+            ->when($to,   fn($q) => $q->where('ph.recorded_at', '<=', $to . ' 23:59:59'))
+            ->orderBy('ph.recorded_at')
+            ->select(
+                'ph.category_code',
+                'ph.price',
+                'ph.recorded_at',
+                'ph.source',
+                DB::raw("COALESCE(sc.cruisehost_cat, 'ND') as cruisehost_cat")
+            )
+            ->get();
 
         $series = [];
         foreach ($history->groupBy('category_code') as $category => $records) {
+            $macro     = $records->first()->cruisehost_cat ?? 'ND';
             $data      = [];
             $prevPrice = null;
             foreach ($records as $record) {
@@ -144,7 +159,7 @@ class AdminPriceHistoryController extends Controller
                     ? round(((float) $record->price - $prevPrice) / $prevPrice * 100, 2)
                     : null;
                 $data[] = [
-                    'x'         => $record->recorded_at->format('Y-m-d H:i:s'),
+                    'x'         => $record->recorded_at,
                     'y'         => (float) $record->price,
                     'delta_eur' => $deltaEur,
                     'delta_pct' => $deltaPct,
@@ -152,7 +167,7 @@ class AdminPriceHistoryController extends Controller
                 ];
                 $prevPrice = (float) $record->price;
             }
-            $series[] = ['name' => $category, 'data' => $data];
+            $series[] = ['name' => $category, 'macro' => $macro, 'data' => $data];
         }
 
         return response()->json(['departure' => $departure, 'series' => $series]);
@@ -254,7 +269,7 @@ class AdminPriceHistoryController extends Controller
             'category'             => $category,
             'available_categories' => $availableCats,
             'series'               => $series,
-            'insufficient_data'    => count($series) < 2,
+            'insufficient_data'    => count($series) < 1,
         ]);
     }
 

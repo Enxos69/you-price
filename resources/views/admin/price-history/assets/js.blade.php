@@ -3,10 +3,12 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     let priceChart           = null;
-    let seasonalChart        = null;
-    let seasonalMonthlyData  = null;
+    let seasonalWeeklyChart  = null;
+    let seasonalMonthlyChart = null;
     let currentDepartureId   = null;
-    let activeSeasonalTab    = 'weekly';
+    let allSeries            = [];
+    let selectedCategory     = null;
+    let seasonalGroups       = {};
 
     loadTopVariations();
 
@@ -19,40 +21,28 @@ document.addEventListener('DOMContentLoaded', function () {
             loadSearch();
         });
 
-    // ── Tab stagionale ────────────────────────────────────────────────────────
+    // ── Tab stagionale (Bootstrap native) ────────────────────────────────────
     document.getElementById('seasonal-tabs')
-        .addEventListener('click', function (e) {
-            e.preventDefault();
-            const link = e.target.closest('[data-tab]');
-            if (!link || !currentDepartureId) return;
-
-            document.querySelectorAll('#seasonal-tabs .nav-link')
-                .forEach(function (l) { l.classList.remove('active'); });
-            link.classList.add('active');
-            activeSeasonalTab = link.dataset.tab;
-
-            const cat = document.getElementById('seasonal-category').value;
-            if (activeSeasonalTab === 'monthly') {
-                if (seasonalMonthlyData) {
-                    renderSeasonalMonthlyChart(seasonalMonthlyData);
-                } else {
-                    loadSeasonalMonthly(currentDepartureId, cat);
-                }
-            } else {
-                loadSeasonalWeekly(currentDepartureId, cat);
+        .addEventListener('shown.bs.tab', function (e) {
+            if (!currentDepartureId) return;
+            const target = e.target.getAttribute('href');
+            if (target === '#seasonal-panel-monthly' && !seasonalMonthlyChart) {
+                loadSeasonalMonthly(currentDepartureId, getSeasonalCategory());
             }
         });
 
-    // ── Selettore categoria stagionale ────────────────────────────────────────
-    document.getElementById('seasonal-category')
+    // ── Selettori macro / sotto-cabina stagionali ─────────────────────────────
+    document.getElementById('seasonal-macro-select')
         .addEventListener('change', function () {
             if (!currentDepartureId) return;
-            seasonalMonthlyData = null;
-            if (activeSeasonalTab === 'monthly') {
-                loadSeasonalMonthly(currentDepartureId, this.value);
-            } else {
-                loadSeasonalWeekly(currentDepartureId, this.value);
-            }
+            populateSeasonalSubs(this.value);
+            reloadSeasonalCharts(getSeasonalCategory());
+        });
+
+    document.getElementById('seasonal-sub-select')
+        .addEventListener('change', function () {
+            if (!currentDepartureId) return;
+            reloadSeasonalCharts(this.value);
         });
 
     document.getElementById('season-select')
@@ -198,25 +188,34 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="text-center py-3"><div class="spinner-border text-primary" role="status">' +
             '<span class="sr-only">Caricamento...</span></div></div>';
         document.getElementById('detail-table-body').innerHTML = '';
+        document.getElementById('ph-table-note').textContent = '';
+        document.getElementById('ph-cat-pills').classList.add('d-none');
+        document.getElementById('ph-cat-pills').innerHTML = '';
+        allSeries        = [];
+        selectedCategory = null;
 
         // Stato stagionale — reset
-        currentDepartureId  = departureId;
-        seasonalMonthlyData = null;
-        activeSeasonalTab   = 'weekly';
+        currentDepartureId = departureId;
+        if (seasonalWeeklyChart)  { seasonalWeeklyChart.destroy();  seasonalWeeklyChart  = null; }
+        if (seasonalMonthlyChart) { seasonalMonthlyChart.destroy(); seasonalMonthlyChart = null; }
 
         // Pannello stagionale — prepara UI
         document.getElementById('seasonal-section').classList.remove('d-none');
         document.getElementById('seasonal-itinerary-name').textContent = cruiseName;
-        document.getElementById('seasonal-chart').innerHTML =
-            '<div class="text-center py-3">' +
-            '<div class="spinner-border text-primary" role="status">' +
-            '<span class="sr-only">Caricamento...</span></div></div>';
+        document.getElementById('seasonal-weekly-chart').innerHTML  = '';
+        document.getElementById('seasonal-monthly-chart').innerHTML = '';
+        document.getElementById('seasonal-weekly-msg').textContent  = 'Caricamento...';
+        document.getElementById('seasonal-monthly-msg').textContent = '';
         document.getElementById('seasonal-note').textContent = '';
+        document.getElementById('seasonal-cat-wrapper').classList.add('d-none');
 
-        // Reset tab UI
-        document.querySelectorAll('#seasonal-tabs .nav-link')
-            .forEach(function (l) { l.classList.remove('active'); });
-        document.querySelector('#seasonal-tabs [data-tab="weekly"]').classList.add('active');
+        // Riporta il tab settimanale attivo
+        const wPanel = document.getElementById('seasonal-panel-weekly');
+        const mPanel = document.getElementById('seasonal-panel-monthly');
+        wPanel.classList.add('show', 'active');
+        mPanel.classList.remove('show', 'active');
+        document.querySelector('#seasonal-tabs .nav-link[href="#seasonal-panel-weekly"]').classList.add('active');
+        document.querySelector('#seasonal-tabs .nav-link[href="#seasonal-panel-monthly"]').classList.remove('active');
 
         let url = '/api/admin/price-history/' + encodeURIComponent(departureId);
         const params = [];
@@ -228,13 +227,84 @@ document.addEventListener('DOMContentLoaded', function () {
             const res  = await fetch(url);
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Errore');
-            renderChart(data.series);
-            renderDetailTable(data.series);
+            allSeries = data.series || [];
+            buildCategoryPills(allSeries);
+            const firstMacro = MACRO_ORDER.find(function (m) {
+                return allSeries.some(function (s) { return s.macro === m; });
+            }) || (allSeries[0] ? allSeries[0].macro : null);
+            if (firstMacro) applyMacro(firstMacro);
+
+            // Popola selettori stagionali e carica il grafico settimanale
+            const defaultSeasonalCat = populateSeasonalSelectors(allSeries);
             document.getElementById('detail-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            loadSeasonalWeekly(departureId, document.getElementById('seasonal-category').value);
+            if (defaultSeasonalCat) loadSeasonalWeekly(departureId, defaultSeasonalCat);
         } catch (e) {
             showError('price-chart', 'Errore nel caricamento dati, riprova.');
         }
+    }
+
+    const MACRO_LABELS = { IS: 'Interna', OS: 'Esterna', BK: 'Balcone', MS: 'Mini Suite', SU: 'Suite', ND: 'N/D' };
+    const MACRO_ORDER  = ['IS', 'OS', 'BK', 'MS', 'SU', 'ND'];
+    const CHART_COLORS = ['#1a7a8a', '#4caf50', '#e67e22', '#9b59b6', '#e74c3c', '#3498db', '#f39c12', '#1abc9c'];
+
+    function buildCategoryPills(series) {
+        const pills = document.getElementById('ph-cat-pills');
+        if (!series.length) return;
+
+        // Raggruppa per macro, mantenendo l'ordine MACRO_ORDER
+        const macros = [];
+        const seen   = new Set();
+        MACRO_ORDER.forEach(function (m) {
+            if (!seen.has(m) && series.some(function (s) { return s.macro === m; })) {
+                macros.push(m);
+                seen.add(m);
+            }
+        });
+        // Qualsiasi macro non in MACRO_ORDER (fallback)
+        series.forEach(function (s) {
+            if (!seen.has(s.macro)) { macros.push(s.macro); seen.add(s.macro); }
+        });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'd-flex flex-wrap align-items-center';
+        wrap.style.gap = '6px';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'text-muted small mr-2 flex-shrink-0';
+        lbl.textContent = 'Tipo cabina:';
+        wrap.appendChild(lbl);
+
+        macros.forEach(function (macro, i) {
+            const count = series.filter(function (s) { return s.macro === macro; }).length;
+            const btn   = document.createElement('button');
+            btn.type    = 'button';
+            btn.className = 'btn btn-sm ' + (i === 0 ? 'btn-primary' : 'btn-outline-secondary');
+            btn.dataset.macro = macro;
+            btn.innerHTML = (MACRO_LABELS[macro] || macro) +
+                ' <span class="badge badge-' + (i === 0 ? 'light text-primary' : 'secondary') +
+                ' ml-1">' + count + '</span>';
+            btn.addEventListener('click', function () {
+                wrap.querySelectorAll('button').forEach(function (b) {
+                    b.className = 'btn btn-sm btn-outline-secondary';
+                    b.querySelector('.badge').className = 'badge badge-secondary ml-1';
+                });
+                this.className = 'btn btn-sm btn-primary';
+                this.querySelector('.badge').className = 'badge badge-light text-primary ml-1';
+                applyMacro(this.dataset.macro);
+            });
+            wrap.appendChild(btn);
+        });
+
+        pills.innerHTML = '';
+        pills.appendChild(wrap);
+        pills.classList.remove('d-none');
+    }
+
+    function applyMacro(macro) {
+        selectedCategory = macro;
+        const filtered = allSeries.filter(function (s) { return s.macro === macro; });
+        renderChart(filtered);
+        renderDetailTable(filtered, macro);
     }
 
     function renderChart(series) {
@@ -247,8 +317,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const multiLine = series.length > 1;
         priceChart = new ApexCharts(el, {
-            chart:  { type: 'line', height: 350, zoom: { enabled: true }, toolbar: { show: true } },
+            chart:  { type: 'line', height: 300, zoom: { enabled: true }, toolbar: { show: true } },
             series: series.map(function (s) {
                 return {
                     name: s.name,
@@ -257,62 +328,131 @@ document.addEventListener('DOMContentLoaded', function () {
                     }),
                 };
             }),
-            xaxis:  { type: 'datetime', labels: { datetimeUTC: false, format: 'dd/MM/yy' } },
-            yaxis:  { labels: { formatter: function (v) {
+            xaxis:   { type: 'datetime', labels: { datetimeUTC: false, format: 'dd/MM/yy' } },
+            yaxis:   { labels: { formatter: function (v) {
                 return '€' + v.toLocaleString('it-IT', { minimumFractionDigits: 0 });
             }}},
-            tooltip: { x: { format: 'dd/MM/yyyy HH:mm' } },
-            stroke:  { curve: 'smooth', width: 2 },
-            legend:  { position: 'top' },
-            markers: { size: 4 },
+            tooltip: { x: { format: 'dd/MM/yyyy' } },
+            stroke:  { curve: 'stepline', width: 2 },
+            legend:  { show: multiLine, position: 'top' },
+            markers: { size: 4, hover: { size: 6 } },
             noData:  { text: 'Nessun dato disponibile' },
-            colors:  ['#1a7a8a', '#4caf50', '#ff9800', '#e91e63', '#9c27b0'],
+            colors:  CHART_COLORS,
         });
         priceChart.render();
     }
 
-    function renderDetailTable(series) {
+    function renderDetailTable(series, macro) {
         const tbody = document.getElementById('detail-table-body');
+        const note  = document.getElementById('ph-table-note');
 
-        const rows = [];
-        series.forEach(function (s) {
-            s.data.forEach(function (p) { rows.push(Object.assign({}, p, { category: s.name })); });
-        });
-        rows.sort(function (a, b) { return new Date(a.x) - new Date(b.x); });
-
-        if (!rows.length) {
+        if (!series.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nessun dato</td></tr>';
+            note.textContent = '';
             return;
         }
 
-        tbody.innerHTML = rows.map(function (p) {
-            let delta = '<span class="text-muted">—</span>';
-            if (p.delta_eur !== null) {
-                const cls  = p.delta_eur < 0 ? 'text-success' : 'text-danger';
-                const sign = p.delta_eur > 0 ? '+' : '';
-                delta = '<span class="' + cls + '">' +
-                    sign + '€' + Math.abs(p.delta_eur).toLocaleString('it-IT', { minimumFractionDigits: 2 }) +
-                    ' (' + sign + p.delta_pct + '%)' +
-                    '</span>';
-            }
+        const rows = series.map(function (s) {
+            const pts = s.data;
+            if (!pts.length) return null;
+            let minPt = pts[0], maxPt = pts[0];
+            pts.forEach(function (p) {
+                if (p.y < minPt.y) minPt = p;
+                if (p.y > maxPt.y) maxPt = p;
+            });
+            const current  = pts[pts.length - 1];
+            const first    = pts[0];
+            const deltaEur = current.y - first.y;
+            const deltaPct = first.y > 0 ? (deltaEur / first.y * 100) : 0;
+            return { cabin: s.name, minPt, maxPt, current, deltaEur, deltaPct };
+        }).filter(Boolean);
+
+        note.textContent = (MACRO_LABELS[macro] || macro) + ' — ' + rows.length +
+            ' cabin' + (rows.length === 1 ? 'a' : 'e') + '.';
+
+        tbody.innerHTML = rows.map(function (r) {
+            const cls   = r.deltaEur < 0 ? 'text-success' : (r.deltaEur > 0 ? 'text-danger' : 'text-muted');
+            const arrow = r.deltaEur < 0 ? '▼' : (r.deltaEur > 0 ? '▲' : '—');
+            const sign  = r.deltaEur > 0 ? '+' : '';
+            const delta = r.deltaEur !== 0
+                ? '<span class="' + cls + ' font-weight-bold">' + arrow + ' ' +
+                  sign + '€' + Math.abs(r.deltaEur).toLocaleString('it-IT', { minimumFractionDigits: 2 }) +
+                  ' (' + sign + r.deltaPct.toFixed(1) + '%)</span>'
+                : '<span class="text-muted">—</span>';
+
             return '<tr>' +
-                '<td>' + fmtDate(p.x) + '</td>' +
-                '<td><span class="badge badge-secondary">' + p.category + '</span></td>' +
-                '<td>' + fmtEur(p.y) + '</td>' +
+                '<td><span class="badge badge-secondary">' + r.cabin + '</span></td>' +
+                '<td>' + fmtEur(r.minPt.y) + '<br><small class="text-muted">' + fmtDate(r.minPt.x) + '</small></td>' +
+                '<td>' + fmtEur(r.maxPt.y) + '<br><small class="text-muted">' + fmtDate(r.maxPt.x) + '</small></td>' +
+                '<td class="font-weight-bold">' + fmtEur(r.current.y) + '<br><small class="text-muted">' + fmtDate(r.current.x) + '</small></td>' +
                 '<td>' + delta + '</td>' +
-                '<td><span class="badge badge-' + (p.source === 'api' ? 'info' : 'light') + '">' + p.source + '</span></td>' +
                 '</tr>';
         }).join('');
     }
 
-    // ── Analisi stagionale — settimanale ────────────────────────────────────────
+    // ── Selettori stagionali ─────────────────────────────────────────────────
+
+    function populateSeasonalSelectors(series) {
+        seasonalGroups = {};
+        series.forEach(function (s) {
+            const m = s.macro || 'ND';
+            if (!seasonalGroups[m]) seasonalGroups[m] = [];
+            if (seasonalGroups[m].indexOf(s.name) === -1) seasonalGroups[m].push(s.name);
+        });
+
+        const macroSel = document.getElementById('seasonal-macro-select');
+        const wrapper  = document.getElementById('seasonal-cat-wrapper');
+        const availMacros = MACRO_ORDER.filter(function (m) { return seasonalGroups[m]; });
+
+        if (!availMacros.length) { wrapper.classList.add('d-none'); return null; }
+
+        macroSel.innerHTML = '';
+        availMacros.forEach(function (m) {
+            const opt = document.createElement('option');
+            opt.value = m; opt.textContent = MACRO_LABELS[m] || m;
+            macroSel.appendChild(opt);
+        });
+
+        const defaultCat = populateSeasonalSubs(availMacros[0]);
+        wrapper.classList.remove('d-none');
+        return defaultCat;
+    }
+
+    function populateSeasonalSubs(macro) {
+        const subSel     = document.getElementById('seasonal-sub-select');
+        const subWrapper = document.getElementById('seasonal-sub-wrapper');
+        const subs = seasonalGroups[macro] || [];
+        subSel.innerHTML = '';
+        subs.forEach(function (cat) {
+            const opt = document.createElement('option');
+            opt.value = cat; opt.textContent = cat;
+            subSel.appendChild(opt);
+        });
+        subWrapper.style.cssText = subs.length > 1 ? '' : 'display:none!important';
+        return subs[0] || null;
+    }
+
+    function getSeasonalCategory() {
+        return document.getElementById('seasonal-sub-select').value || null;
+    }
+
+    function reloadSeasonalCharts(cat) {
+        if (!cat) return;
+        if (seasonalMonthlyChart) { seasonalMonthlyChart.destroy(); seasonalMonthlyChart = null; }
+        loadSeasonalWeekly(currentDepartureId, cat);
+        if (document.getElementById('seasonal-panel-monthly').classList.contains('active')) {
+            loadSeasonalMonthly(currentDepartureId, cat);
+        }
+    }
+
+    // ── Analisi stagionale — settimanale ─────────────────────────────────────
 
     async function loadSeasonalWeekly(departureId, category) {
-        document.getElementById('seasonal-chart').innerHTML =
-            '<div class="text-center py-3">' +
-            '<div class="spinner-border text-primary" role="status">' +
-            '<span class="sr-only">Caricamento...</span></div></div>';
-        document.getElementById('seasonal-note').textContent = '';
+        const msg = document.getElementById('seasonal-weekly-msg');
+        const el  = document.getElementById('seasonal-weekly-chart');
+        msg.textContent = 'Caricamento...';
+        el.innerHTML = '';
+        if (seasonalWeeklyChart) { seasonalWeeklyChart.destroy(); seasonalWeeklyChart = null; }
 
         try {
             const res  = await fetch(
@@ -322,83 +462,57 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Errore');
-            updateSeasonalCategorySelect(data.available_categories);
+            msg.textContent = '';
             renderSeasonalWeeklyChart(data);
         } catch (e) {
-            document.getElementById('seasonal-chart').innerHTML =
-                '<div class="alert alert-danger mb-0">Errore nel caricamento dati stagionali.</div>';
+            msg.textContent = '';
+            el.innerHTML = '<div class="alert alert-danger mb-0">Errore nel caricamento dati stagionali.</div>';
         }
     }
 
     function renderSeasonalWeeklyChart(data) {
-        var el = document.getElementById('seasonal-chart');
-        if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
-        el.innerHTML = '';
+        const msg = document.getElementById('seasonal-weekly-msg');
+        const el  = document.getElementById('seasonal-weekly-chart');
 
         if (data.insufficient_data || !data.series || !data.series.length) {
-            el.innerHTML =
-                '<div class="alert alert-info mb-0">Dati insufficienti per il confronto — ' +
-                'meno di 2 stagioni disponibili per questo itinerario.</div>';
+            el.innerHTML = '<div class="alert alert-info mb-0">Nessun dato disponibile per questo itinerario.</div>';
             document.getElementById('seasonal-note').textContent = '';
             return;
         }
 
-        var weeklySeries = data.series.map(function (s) {
-            return {
-                name: s.name,
-                data: s.data.map(function (p) { return { x: -p.x, y: p.y }; }),
-            };
-        });
-
-        seasonalChart = new ApexCharts(el, {
+        seasonalWeeklyChart = new ApexCharts(el, {
             chart:   { type: 'line', height: 320, toolbar: { show: false } },
-            series:  weeklySeries,
+            series:  data.series.map(function (s) {
+                return { name: s.name, data: s.data.map(function (p) { return { x: -p.x, y: p.y }; }) };
+            }),
             xaxis: {
-                type: 'numeric',
-                tickAmount: 8,
+                type: 'numeric', tickAmount: 8,
                 title: { text: 'Settimane prima della partenza' },
                 labels: { formatter: function (val) { return Math.abs(Math.round(val)) + ' sett.'; } },
             },
-            yaxis: {
-                labels: { formatter: function (v) {
-                    return '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 });
-                }},
-            },
+            yaxis: { labels: { formatter: function (v) {
+                return '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 });
+            }}},
             tooltip: {
                 x: { formatter: function (val) { return Math.abs(Math.round(val)) + ' settimane prima della partenza'; } },
-                y: { formatter: function (val) {
-                    return '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 });
-                }},
+                y: { formatter: function (val) { return '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 }); }},
             },
-            stroke:  { curve: 'smooth', width: 2 },
-            markers: { size: 4, hover: { size: 6 } },
-            legend:  { position: 'top' },
-            colors:  ['#1a7a8a', '#4caf50', '#ff9800', '#e91e63', '#9c27b0'],
+            stroke: { curve: 'smooth', width: 2 }, markers: { size: 4, hover: { size: 6 } },
+            legend: { position: 'top' }, colors: CHART_COLORS,
         });
-        seasonalChart.render();
+        seasonalWeeklyChart.render();
         document.getElementById('seasonal-note').textContent =
             'Prezzi medi tra le partenze dello stesso itinerario alla stessa distanza temporale dalla data di imbarco.';
     }
 
-    function updateSeasonalCategorySelect(availableCategories) {
-        var sel = document.getElementById('seasonal-category');
-        var currentVal = sel.value;
-        Array.from(sel.options).forEach(function (opt) {
-            opt.disabled = availableCategories.indexOf(opt.value) === -1;
-        });
-        if (availableCategories.indexOf(currentVal) === -1 && availableCategories.length) {
-            sel.value = availableCategories[0];
-        }
-    }
-
-    // ── Analisi stagionale — mensile ────────────────────────────────────────────
+    // ── Analisi stagionale — mensile ──────────────────────────────────────────
 
     async function loadSeasonalMonthly(departureId, category) {
-        document.getElementById('seasonal-chart').innerHTML =
-            '<div class="text-center py-3">' +
-            '<div class="spinner-border text-primary" role="status">' +
-            '<span class="sr-only">Caricamento...</span></div></div>';
-        document.getElementById('seasonal-note').textContent = '';
+        const msg = document.getElementById('seasonal-monthly-msg');
+        const el  = document.getElementById('seasonal-monthly-chart');
+        msg.textContent = 'Caricamento...';
+        el.innerHTML = '';
+        if (seasonalMonthlyChart) { seasonalMonthlyChart.destroy(); seasonalMonthlyChart = null; }
 
         try {
             const res  = await fetch(
@@ -408,53 +522,36 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Errore');
-            seasonalMonthlyData = data;
+            msg.textContent = '';
             renderSeasonalMonthlyChart(data);
         } catch (e) {
-            document.getElementById('seasonal-chart').innerHTML =
-                '<div class="alert alert-danger mb-0">Errore nel caricamento dati mensili.</div>';
+            msg.textContent = '';
+            el.innerHTML = '<div class="alert alert-danger mb-0">Errore nel caricamento dati mensili.</div>';
         }
     }
 
     function renderSeasonalMonthlyChart(data) {
-        var el = document.getElementById('seasonal-chart');
-        if (seasonalChart) { seasonalChart.destroy(); seasonalChart = null; }
-        el.innerHTML = '';
+        const el = document.getElementById('seasonal-monthly-chart');
 
         if (!data.series || !data.series.length) {
-            el.innerHTML =
-                '<div class="alert alert-info mb-0">Nessun dato mensile disponibile per questo itinerario.</div>';
-            document.getElementById('seasonal-note').textContent = '';
+            el.innerHTML = '<div class="alert alert-info mb-0">Nessun dato mensile disponibile per questo itinerario.</div>';
             return;
         }
 
-        seasonalChart = new ApexCharts(el, {
+        seasonalMonthlyChart = new ApexCharts(el, {
             chart:   { type: 'line', height: 320, toolbar: { show: false } },
             series:  data.series,
-            xaxis: {
-                categories: data.categories,
-                title: { text: 'Mese di partenza' },
-            },
-            yaxis: {
-                labels: { formatter: function (v) {
-                    return v != null
-                        ? '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 })
-                        : '';
-                }},
-            },
-            tooltip: {
-                y: { formatter: function (val) {
-                    return val != null
-                        ? '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 })
-                        : 'N/D';
-                }},
-            },
-            stroke:  { curve: 'smooth', width: 2 },
-            markers: { size: 4, hover: { size: 6 } },
-            legend:  { position: 'top' },
-            colors:  ['#1a7a8a', '#4caf50', '#ff9800', '#e91e63', '#9c27b0'],
+            xaxis: { categories: data.categories, title: { text: 'Mese di partenza' } },
+            yaxis: { labels: { formatter: function (v) {
+                return v != null ? '€' + parseFloat(v).toLocaleString('it-IT', { minimumFractionDigits: 0 }) : '';
+            }}},
+            tooltip: { y: { formatter: function (val) {
+                return val != null ? '€' + parseFloat(val).toLocaleString('it-IT', { minimumFractionDigits: 2 }) : 'N/D';
+            }}},
+            stroke: { curve: 'smooth', width: 2 }, markers: { size: 4, hover: { size: 6 } },
+            legend: { position: 'top' }, colors: CHART_COLORS,
         });
-        seasonalChart.render();
+        seasonalMonthlyChart.render();
         document.getElementById('seasonal-note').textContent =
             "Prezzo all'ultimo snapshot disponibile per ciascuna partenza. I mesi senza partenze appaiono vuoti.";
     }
