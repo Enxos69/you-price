@@ -20,114 +20,150 @@ class CheckPriceAlertsCommand extends Command
     {
         $dryRun = $this->option('dry-run');
 
-        $alerts = PriceAlert::query()
-            ->where('is_active', true)
-            ->whereHas('departure', fn($q) => $q->where('dep_date', '>', now()))
-            ->with(['departure.product', 'user'])
-            ->get();
+        $logId = $dryRun ? null : DB::table('price_alerts_check_log')->insertGetId([
+            'started_at' => now(),
+            'status'     => 'running',
+        ]);
 
-        if ($alerts->isEmpty()) {
-            $this->info('Nessun alert attivo da controllare.');
-            return self::SUCCESS;
-        }
+        $this->info('Check avviato' . ($dryRun ? ' [DRY-RUN]' : " (log ID: {$logId})"));
 
-        $this->info("Alert da controllare: {$alerts->count()}");
+        $log = function (array $data) use (&$logId): void {
+            if ($logId) {
+                DB::table('price_alerts_check_log')->where('id', $logId)->update($data);
+            }
+        };
 
-        $checked   = 0;
-        $triggered = 0;
-        $failed    = 0;
+        try {
+            $alerts = PriceAlert::query()
+                ->where('is_active', true)
+                ->whereHas('departure', fn($q) => $q->where('dep_date', '>', now()))
+                ->with(['departure.product', 'user'])
+                ->get();
 
-        foreach ($alerts as $alert) {
-            $shipId = $alert->departure->product->ship_id ?? null;
-
-            if (! $shipId) {
-                $this->line("  [SKIP] Alert #{$alert->id} — nave non trovata per departure {$alert->departure_id}");
-                continue;
+            if ($alerts->isEmpty()) {
+                $this->info('Nessun alert attivo da controllare.');
+                $log(['finished_at' => now(), 'status' => 'completed', 'notes' => 'Nessun alert attivo.']);
+                return self::SUCCESS;
             }
 
-            // Traduce cruisehost_cat → cl_cat (stesso mapping usato in store())
-            $clCats = DB::table('ship_categories')
-                ->where('ship_id', $shipId)
-                ->where('cruisehost_cat', $alert->category_code)
-                ->pluck('cl_cat');
+            $this->info("Alert da controllare: {$alerts->count()}");
 
-            if ($clCats->isEmpty()) {
-                $this->line("  [SKIP] Alert #{$alert->id} — categoria '{$alert->category_code}' non mappata per nave {$shipId}");
-                continue;
-            }
+            $checked   = 0;
+            $triggered = 0;
+            $skipped   = 0;
+            $failed    = 0;
 
-            // Prezzo minimo tra i cl_cat corrispondenti (stesso approccio di store())
-            $currentPrice = DB::table('price_history')
-                ->whereIn('id', function ($sub) use ($alert) {
-                    $sub->select(DB::raw('MAX(id)'))
-                        ->from('price_history')
-                        ->where('departure_id', $alert->departure_id)
-                        ->groupBy('category_code');
-                })
-                ->whereIn('category_code', $clCats)
-                ->min('price');
+            foreach ($alerts as $alert) {
+                $shipId = $alert->departure->product->ship_id ?? null;
 
-            if ($currentPrice === null) {
-                $this->line("  [SKIP] Alert #{$alert->id} — nessun prezzo per cl_cat [" . $clCats->implode(', ') . "]");
-                continue;
-            }
-
-            $alert->current_price   = $currentPrice;
-            $alert->last_checked_at = now();
-
-            if (! $alert->isPriceReached() || $alert->notification_sent) {
-                if (! $dryRun) {
-                    $alert->save();
+                if (! $shipId) {
+                    $this->line("  [SKIP] Alert #{$alert->id} — nave non trovata per departure {$alert->departure_id}");
+                    $skipped++;
+                    continue;
                 }
+
+                $clCats = DB::table('ship_categories')
+                    ->where('ship_id', $shipId)
+                    ->where('cruisehost_cat', $alert->category_code)
+                    ->pluck('cl_cat');
+
+                if ($clCats->isEmpty()) {
+                    $this->line("  [SKIP] Alert #{$alert->id} — categoria '{$alert->category_code}' non mappata per nave {$shipId}");
+                    $skipped++;
+                    continue;
+                }
+
+                $currentPrice = DB::table('price_history')
+                    ->whereIn('id', function ($sub) use ($alert) {
+                        $sub->select(DB::raw('MAX(id)'))
+                            ->from('price_history')
+                            ->where('departure_id', $alert->departure_id)
+                            ->groupBy('category_code');
+                    })
+                    ->whereIn('category_code', $clCats)
+                    ->min('price');
+
+                if ($currentPrice === null) {
+                    $this->line("  [SKIP] Alert #{$alert->id} — nessun prezzo per cl_cat [" . $clCats->implode(', ') . "]");
+                    $skipped++;
+                    continue;
+                }
+
+                $alert->current_price   = $currentPrice;
+                $alert->last_checked_at = now();
+
+                if (! $alert->isPriceReached() || $alert->notification_sent) {
+                    if (! $dryRun) {
+                        $alert->save();
+                    }
+                    $checked++;
+                    continue;
+                }
+
+                // Target raggiunto e notifica non ancora inviata
+                $this->line("  [TRIGGERED] Alert #{$alert->id} — prezzo {$alert->current_price} ≤ target {$alert->target_price} (utente #{$alert->user_id})");
+
+                if ($dryRun) {
+                    $triggered++;
+                    continue;
+                }
+
+                try {
+                    $alert->load(['departure.product.ship', 'departure.product.cruiseLine']);
+                    Mail::to($alert->user->email)->send(new PriceAlertTriggered($alert));
+
+                    $alert->notification_sent         = true;
+                    $alert->last_notification_sent_at = now();
+                    $alert->save();
+
+                    $triggered++;
+
+                    Log::info('[AlertsCheck] Notifica inviata', [
+                        'log_id'        => $logId,
+                        'alert_id'      => $alert->id,
+                        'user_id'       => $alert->user_id,
+                        'departure_id'  => $alert->departure_id,
+                        'category_code' => $alert->category_code,
+                        'current_price' => $alert->current_price,
+                        'target_price'  => $alert->target_price,
+                    ]);
+
+                } catch (\Throwable $e) {
+                    $failed++;
+                    $alert->save();
+
+                    Log::error('[AlertsCheck] Invio email fallito', [
+                        'log_id'   => $logId,
+                        'alert_id' => $alert->id,
+                        'error'    => $e->getMessage(),
+                    ]);
+
+                    $this->error("  Invio email fallito per alert #{$alert->id}: {$e->getMessage()}");
+                }
+
                 $checked++;
-                continue;
             }
 
-            // Target raggiunto e notifica non ancora inviata
-            $this->line("  [TRIGGERED] Alert #{$alert->id} — prezzo {$alert->current_price} ≤ target {$alert->target_price} (utente #{$alert->user_id})");
+            $prefix = $dryRun ? '[DRY-RUN] ' : '';
+            $summary = "controllati: {$checked}, notifiche inviate: {$triggered}, saltati: {$skipped}, errori: {$failed}";
+            $this->info("{$prefix}Completato — {$summary}");
 
-            if ($dryRun) {
-                $triggered++;
-                continue;
-            }
+            $log([
+                'finished_at'      => now(),
+                'alerts_checked'   => $checked,
+                'alerts_triggered' => $triggered,
+                'alerts_skipped'   => $skipped,
+                'emails_failed'    => $failed,
+                'status'           => $failed > 0 ? 'failed' : 'completed',
+                'notes'            => $failed > 0 ? "Errori invio email: {$failed}" : null,
+            ]);
 
-            try {
-                $alert->load(['departure.product.ship', 'departure.product.cruiseLine']);
-                Mail::to($alert->user->email)->send(new PriceAlertTriggered($alert));
+            return $failed > 0 ? self::FAILURE : self::SUCCESS;
 
-                $alert->notification_sent         = true;
-                $alert->last_notification_sent_at = now();
-                $alert->save();
-
-                $triggered++;
-
-                Log::info('[AlertsCheck] Notifica inviata', [
-                    'alert_id'      => $alert->id,
-                    'user_id'       => $alert->user_id,
-                    'departure_id'  => $alert->departure_id,
-                    'category_code' => $alert->category_code,
-                    'current_price' => $alert->current_price,
-                    'target_price'  => $alert->target_price,
-                ]);
-
-            } catch (\Throwable $e) {
-                $failed++;
-                $alert->save();
-
-                Log::error('[AlertsCheck] Invio email fallito', [
-                    'alert_id' => $alert->id,
-                    'error'    => $e->getMessage(),
-                ]);
-
-                $this->error("  Invio email fallito per alert #{$alert->id}: {$e->getMessage()}");
-            }
-
-            $checked++;
+        } catch (\Throwable $e) {
+            $log(['finished_at' => now(), 'status' => 'failed', 'notes' => $e->getMessage()]);
+            $this->error('Check fallito: ' . $e->getMessage());
+            return self::FAILURE;
         }
-
-        $prefix = $dryRun ? '[DRY-RUN] ' : '';
-        $this->info("{$prefix}Completato — controllati: {$checked}, notifiche inviate: {$triggered}, errori: {$failed}");
-
-        return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }
