@@ -13,6 +13,7 @@ use App\Http\Controllers\RichiestaController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PriceAlertsController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\AdminAlertsLogController;
 use App\Http\Controllers\SearchAnalyticsController;
 use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -108,6 +109,9 @@ Route::middleware('auth')->group(function () {
 
     // Storico Prezzi
     Route::get('/admin/price-history', [AdminPriceHistoryController::class, 'index'])->name('admin.price-history.index');
+
+    // Log Alert Prezzi
+    Route::get('/admin/alerts-log', [AdminAlertsLogController::class, 'index'])->name('admin.alerts-log.index');
 
     Route::prefix('api/admin/price-history')->name('api.admin.price-history.')->group(function () {
         Route::get('/top-variations',  [AdminPriceHistoryController::class, 'topVariations'])->name('top-variations');

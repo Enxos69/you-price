@@ -41,6 +41,11 @@
                             <i class="fas fa-tags"></i> Storico Prezzi
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.alerts-log.index') }}">
+                            <i class="fas fa-bell"></i> Log Alert
+                        </a>
+                    </li>
                 @elseif(Auth::user()->isUser())
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('dashboard') }}">
