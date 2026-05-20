@@ -218,6 +218,9 @@
 
         {{-- Righe alert --}}
         <div class="al-rows">
+          <div style="display:flex; justify-content:flex-end; padding:3px 8px 2px; font-size:10px; color:#bbb; letter-spacing:.3px; border-bottom:1px solid #f5f5f5;">
+            <span>Obiettivo&thinsp;&nbsp;→&thinsp;&nbsp;Prezzo attuale</span>
+          </div>
           @foreach($groupAlerts->sortBy(fn($a) => array_search($a->category_code, ['IS','OS','BK','MS','SU'])) as $alert)
           @php
             $isReached  = !$isExpired && $alert->isPriceReached();
@@ -225,7 +228,12 @@
             $macroCode  = $alert->category_code;
             $macroLabel = $macroLabels[$macroCode] ?? $macroCode;
             $macroIcon  = $macroIcons[$macroCode]  ?? 'fa-bed';
-            $progress   = $alert->getProgressPercentage();
+            if ($alert->alert_type === 'percentage_discount' && $alert->percentage_threshold && $hasPrice) {
+              $thresholdPrice = $alert->target_price * (1 - $alert->percentage_threshold / 100);
+              $progress = min(100, round(($thresholdPrice / $alert->current_price) * 100, 2));
+            } else {
+              $progress = $alert->getProgressPercentage();
+            }
 
             if ($isExpired)    $dotClass = 'al-row__dot--expired';
             elseif ($isReached) $dotClass = 'al-row__dot--reached';
@@ -246,7 +254,12 @@
 
             {{-- Prezzi --}}
             <div class="al-row__prices">
-              <span class="al-row__target">€&thinsp;{{ number_format($alert->target_price, 0, ',', '.') }}</span>
+              @if($alert->alert_type === 'percentage_discount')
+                <span class="al-row__target">-{{ number_format($alert->percentage_threshold, 0, ',', '.') }}%</span>
+                <span class="al-row__sep" title="Prezzo di riferimento">rif.&thinsp;€&thinsp;{{ number_format($alert->target_price, 0, ',', '.') }}</span>
+              @else
+                <span class="al-row__target">€&thinsp;{{ number_format($alert->target_price, 0, ',', '.') }}</span>
+              @endif
               @if($hasPrice)
                 <span class="al-row__sep">→</span>
                 <span class="al-row__current {{ $isReached ? 'al-row__current--ok' : 'al-row__current--wait' }}">

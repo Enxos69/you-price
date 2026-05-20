@@ -108,6 +108,7 @@
 .cd-ai-item__info    { display: flex; flex-direction: column; line-height: 1.2; }
 .cd-ai-item__cat     { font-size: 11px; color: #666; }
 .cd-ai-item__price   { font-size: 14px; font-weight: 700; color: #c49000; }
+.cd-ai-item__ref     { font-size: 10px; font-weight: 400; color: #999; }
 .cd-ai-item__del     { background: none; border: none; color: #dc3545; padding: 2px 5px; line-height: 1; cursor: pointer; }
 .cd-ai-item__del:hover { color: #a71d2a; }
 .am-row              { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
@@ -952,12 +953,21 @@ document.addEventListener('DOMContentLoaded', function () {
   initPriceHistory();
 
   // ── Alert Prezzi Modale ──────────────────────────────────────────────────────
+  @php
+    $alertsForJs = $userAlerts->map(fn($a) => [
+        'id'                   => $a->id,
+        'category_code'        => $a->category_code,
+        'target_price'         => (float) $a->target_price,
+        'alert_type'           => $a->alert_type,
+        'percentage_threshold' => $a->percentage_threshold !== null ? (float) $a->percentage_threshold : null,
+    ])->values();
+  @endphp
   (function () {
     const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     // Stato corrente degli alert (aggiornato client-side)
     let alertsByCategory = {};
-    const initAlerts = @json($userAlerts->map(fn($a) => ['id' => $a->id, 'category_code' => $a->category_code, 'target_price' => (float) $a->target_price])->values());
+    const initAlerts = @json($alertsForJs);
     initAlerts.forEach(function (a) { alertsByCategory[a.category_code] = a; });
 
     // Macro groups disponibili per questa partenza (da CABIN_MAP)
@@ -982,10 +992,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!alert) return;
         const div = document.createElement('div');
         div.className = 'cd-ai-item';
+        const isPctAlert  = alert.alert_type === 'percentage_discount';
+        const alertMain   = isPctAlert ? '-' + alert.percentage_threshold + '%' : fmtPrice(alert.target_price);
+        const alertRefHtml = isPctAlert ? '<span class="cd-ai-item__ref">rif. ' + fmtPrice(alert.target_price) + '</span>' : '';
         div.innerHTML =
           '<div class="cd-ai-item__info">' +
             '<span class="cd-ai-item__cat">' + (MACRO_LABEL[code] || code) + '</span>' +
-            '<span class="cd-ai-item__price">' + fmtPrice(alert.target_price) + '</span>' +
+            '<span class="cd-ai-item__price">' + alertMain + '</span>' +
+            alertRefHtml +
           '</div>' +
           '<button class="cd-ai-item__del" data-alert-id="' + alert.id + '" title="Elimina">' +
             '<i class="fas fa-times"></i>' +
@@ -999,23 +1013,60 @@ document.addEventListener('DOMContentLoaded', function () {
       container.innerHTML = '';
       MACRO_ORDER.forEach(function (code) {
         if (!macroGroups[code]) return;
-        const existing = alertsByCategory[code];
-        const row = document.createElement('div');
-        row.className = 'am-row';
+        const existing  = alertsByCategory[code];
+        const isPct     = existing && existing.alert_type === 'percentage_discount';
+        const alertId   = existing ? existing.id : '';
+        const row       = document.createElement('div');
+        row.className   = 'am-row';
+        row.dataset.macro = code;
         row.innerHTML =
           '<div class="am-row__macro">' + (MACRO_LABEL[code] || code) + '</div>' +
           '<div class="am-row__current">Prezzo attuale: ' + fmtPrice(macroGroups[code].price) + '</div>' +
-          '<div class="input-group input-group-sm">' +
-            '<div class="input-group-prepend"><span class="input-group-text">€</span></div>' +
-            '<input type="number" class="form-control alert-price-input" placeholder="Es. 800"' +
-              ' data-macro="' + code + '"' +
-              ' data-alert-id="' + (existing ? existing.id : '') + '"' +
-              ' value="' + (existing ? existing.target_price : '') + '"' +
-              ' min="0" step="1">' +
+          '<div class="btn-group btn-group-sm mb-2 w-100">' +
+            '<button type="button" class="btn btn-outline-secondary am-type-btn' + (!isPct ? ' active' : '') + '" data-type="fixed_price">€ Prezzo fisso</button>' +
+            '<button type="button" class="btn btn-outline-secondary am-type-btn' + (isPct  ? ' active' : '') + '" data-type="percentage_discount">% Sconto</button>' +
+          '</div>' +
+          '<div class="am-input-wrap am-input-fixed' + (isPct ? ' d-none' : '') + '">' +
+            '<div class="input-group input-group-sm">' +
+              '<div class="input-group-prepend"><span class="input-group-text">€</span></div>' +
+              '<input type="number" class="form-control alert-price-input" placeholder="Es. 800"' +
+                ' data-macro="' + code + '" data-alert-id="' + alertId + '"' +
+                ' value="' + (!isPct && existing ? existing.target_price : '') + '"' +
+                ' min="0" step="1">' +
+            '</div>' +
+          '</div>' +
+          '<div class="am-input-wrap am-input-pct' + (!isPct ? ' d-none' : '') + '">' +
+            '<div class="input-group input-group-sm">' +
+              '<input type="number" class="form-control alert-pct-input" placeholder="Es. 20"' +
+                ' data-macro="' + code + '" data-alert-id="' + alertId + '"' +
+                ' value="' + (isPct && existing && existing.percentage_threshold != null ? existing.percentage_threshold : '') + '"' +
+                ' min="1" max="99" step="1">' +
+              '<div class="input-group-append"><span class="input-group-text">% di sconto</span></div>' +
+            '</div>' +
           '</div>';
         container.appendChild(row);
       });
     }
+
+    // Toggle fixed/percentuale all'interno della modale
+    document.getElementById('alert-modal-rows').addEventListener('click', function (e) {
+      const btn = e.target.closest('.am-type-btn');
+      if (!btn) return;
+      const row  = btn.closest('.am-row');
+      const type = btn.dataset.type;
+      row.querySelectorAll('.am-type-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      const fixedWrap = row.querySelector('.am-input-fixed');
+      const pctWrap   = row.querySelector('.am-input-pct');
+      fixedWrap.classList.toggle('d-none', type !== 'fixed_price');
+      pctWrap.classList.toggle('d-none',   type !== 'percentage_discount');
+      // Svuota l'input che viene nascosto per evitare valori residui
+      if (type === 'fixed_price') {
+        pctWrap.querySelector('.alert-pct-input').value = '';
+      } else {
+        fixedWrap.querySelector('.alert-price-input').value = '';
+      }
+    });
 
     async function doDelete(alertId) {
       const res = await fetch('/alert-prezzi/' + alertId, {
@@ -1050,23 +1101,43 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('alert-modal-save-btn').addEventListener('click', async function () {
       const saveBtn = this;
       saveBtn.disabled = true;
-      const inputs = document.querySelectorAll('.alert-price-input');
+      const rows     = document.querySelectorAll('#alert-modal-rows .am-row');
       const promises = [];
 
-      inputs.forEach(function (input) {
-        const macro   = input.dataset.macro;
-        const alertId = input.dataset.alertId;
-        const val     = parseFloat(input.value);
+      rows.forEach(function (row) {
+        const macro      = row.dataset.macro;
+        const activeBtn  = row.querySelector('.am-type-btn.active');
+        const type       = activeBtn ? activeBtn.dataset.type : 'fixed_price';
+        const isPct      = type === 'percentage_discount';
+        const priceInput = row.querySelector('.alert-price-input');
+        const pctInput   = row.querySelector('.alert-pct-input');
+        const alertId    = isPct ? pctInput.dataset.alertId : priceInput.dataset.alertId;
+        const currentPrice = macroGroups[macro] ? macroGroups[macro].price : 0;
 
-        if (!val || val <= 0) {
-          if (alertId) {
-            promises.push(
-              doDelete(alertId).then(function (data) {
+        let payload = null;
+
+        if (isPct) {
+          const pct = parseFloat(pctInput.value);
+          if (!pct || pct <= 0) {
+            if (alertId) {
+              promises.push(doDelete(alertId).then(function (data) {
                 if (data.success) delete alertsByCategory[macro];
-              })
-            );
+              }));
+            }
+            return;
           }
-          return;
+          payload = { alert_type: 'percentage_discount', target_price: currentPrice, percentage_threshold: pct };
+        } else {
+          const val = parseFloat(priceInput.value);
+          if (!val || val <= 0) {
+            if (alertId) {
+              promises.push(doDelete(alertId).then(function (data) {
+                if (data.success) delete alertsByCategory[macro];
+              }));
+            }
+            return;
+          }
+          payload = { alert_type: 'fixed_price', target_price: val, percentage_threshold: null };
         }
 
         if (alertId) {
@@ -1074,11 +1145,16 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch('/alert-prezzi/' + alertId, {
               method: 'PATCH',
               headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ target_price: val }),
+              body: JSON.stringify(payload),
             })
             .then(r => r.json())
             .then(function (data) {
-              if (data.success) alertsByCategory[macro].target_price = val;
+              if (data.success) {
+                alertsByCategory[macro] = Object.assign(alertsByCategory[macro] || {}, {
+                  category_code: macro, alert_type: payload.alert_type,
+                  target_price: payload.target_price, percentage_threshold: payload.percentage_threshold,
+                });
+              }
             })
           );
         } else {
@@ -1086,12 +1162,16 @@ document.addEventListener('DOMContentLoaded', function () {
             fetch('/alert-prezzi', {
               method: 'POST',
               headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ departure_id: DEP_ID, category_code: macro, target_price: val, alert_type: 'fixed_price' }),
+              body: JSON.stringify(Object.assign({ departure_id: DEP_ID, category_code: macro }, payload)),
             })
             .then(r => r.json())
             .then(function (data) {
               if (data.success && data.alert) {
-                alertsByCategory[macro] = { id: data.alert.id, category_code: macro, target_price: val };
+                alertsByCategory[macro] = {
+                  id: data.alert.id, category_code: macro,
+                  alert_type: payload.alert_type, target_price: payload.target_price,
+                  percentage_threshold: payload.percentage_threshold,
+                };
               }
             })
           );
