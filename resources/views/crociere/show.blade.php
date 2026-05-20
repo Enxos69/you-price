@@ -718,6 +718,12 @@ document.addEventListener('DOMContentLoaded', function () {
           itinMap.flyTo([stop.lat, stop.lng], 9, { duration: 1.4 });
         } else {
           showMapToast('Tappa in navigazione — nessuna posizione sulla mappa');
+          if (itinMap && mapPorts.length > 0) {
+            const bounds = mapPorts.filter(p => p.lat && p.lng).map(p => [p.lat, p.lng]);
+            if (bounds.length > 0) {
+              itinMap.flyToBounds(bounds, { padding: [40, 40], duration: 1.2 });
+            }
+          }
         }
       });
 
