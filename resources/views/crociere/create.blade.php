@@ -268,6 +268,17 @@
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0 table-sm" id="matches-table">
+                                    <colgroup>
+                                        <col class="col-nave" />
+                                        <col class="col-cruise" />
+                                        <col class="col-company" />
+                                        <col class="col-duration" />
+                                        <col class="col-price" />
+                                        <col class="col-daily" />
+                                        @auth
+                                            <col class="col-actions" />
+                                        @endauth
+                                    </colgroup>
                                     <thead class="table-header">
                                         <tr>
                                             <th>NAVE</th>
@@ -305,6 +316,18 @@
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0 table-sm" id="alternatives-table">
+                                    <colgroup>
+                                        <col class="col-nave" />
+                                        <col class="col-cruise" />
+                                        <col class="col-company" />
+                                        <col class="col-duration" />
+                                        <col class="col-price" />
+                                        <col class="col-daily" />
+                                        <col class="col-benefit" />
+                                        @auth
+                                            <col class="col-actions" />
+                                        @endauth
+                                    </colgroup>
                                     <thead class="table-header">
                                         <tr>
                                             <th>NAVE</th>

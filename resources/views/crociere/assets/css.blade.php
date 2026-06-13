@@ -405,6 +405,55 @@
         margin-bottom: 0;
         background-color: var(--color-white);
         font-size: 0.85rem;
+        table-layout: auto;
+        width: 100%;
+        min-width: 720px;
+    }
+
+    .table th,
+    .table td {
+        min-width: 0;
+    }
+
+    .table col.col-nave {
+        width: 12%;
+    }
+
+    .table col.col-cruise {
+        width: 34%;
+    }
+
+    .table col.col-company {
+        width: 12%;
+    }
+
+    .table col.col-duration {
+        width: 8%;
+    }
+
+    .table col.col-price {
+        width: 13%;
+    }
+
+    .table col.col-daily {
+        width: 11%;
+    }
+
+    .table col.col-benefit {
+        width: 8%;
+    }
+
+    .table col.col-actions {
+        width: 10%;
+    }
+
+    .btn-action-detail {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        white-space: nowrap;
+        min-width: 6rem;
     }
 
     .table-sm th,
@@ -426,12 +475,29 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         vertical-align: middle;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .table td {
         padding: 0.5rem;
         vertical-align: middle;
         border-bottom: 1px solid #e3e6f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .table td .ship-name,
+    .table td .cruise-details,
+    .table td .price-total,
+    .table td .price-daily,
+    .table td .benefit-tag {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .table tbody tr:hover {
@@ -443,7 +509,27 @@
 
     .table-responsive {
         border-radius: var(--border-radius);
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: var(--color-primary);
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: var(--color-primary-dark);
     }
 
     /* Badges - Colori coordinati */
@@ -806,9 +892,12 @@
             padding: 0.5rem 0.25rem;
         }
 
-        .action-btn {
-            width: 1.75rem;
-            height: 1.75rem;
+        .action-btn,
+        .btn-action-detail {
+            width: auto;
+            min-width: 5rem;
+            height: auto;
+            white-space: nowrap;
             font-size: 0.7rem;
         }
 
@@ -845,6 +934,20 @@
 
         .action-btn {
             margin: 0.125rem;
+        }
+
+        .table {
+            min-width: 100%;
+        }
+
+        .table td,
+        .table th {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
         }
     }
 
