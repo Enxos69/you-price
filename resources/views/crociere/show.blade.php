@@ -92,6 +92,7 @@
 .cd-price-from       { font-size: 11px; opacity: .8; margin-bottom: 2px; }
 .cd-price-main       { font-size: 34px; font-weight: 800; line-height: 1; }
 .cd-price-sub        { font-size: 11px; opacity: .7; margin-top: 4px; margin-bottom: 0; }
+.cd-price-historic   { font-size: 13px; font-weight: 500; opacity: .85; margin-top: 8px; margin-bottom: 0; padding-top: 7px; border-top: 1px solid rgba(255,255,255,.25); }
 .cd-price-box__body  { padding: 16px 20px; }
 .cd-price-box__cats-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; margin-bottom: 8px; }
 .cd-price-row        { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f5f5f5; }
@@ -207,7 +208,7 @@
     </div>
     <div class="cd-fact cd-fact--price">
       <i class="fas fa-euro-sign"></i>
-      <span class="cd-fact__value">{{ \App\Models\Departure::formatPrice($departure->min_price) }}</span>
+      <span class="cd-fact__value">{{ \App\Models\Departure::formatPrice($currentMinPrice) }}</span>
       <span class="cd-fact__label">Da / persona</span>
     </div>
   </div>
@@ -416,9 +417,14 @@
         {{-- ── PRICE BOX ───────────────────────────────────────────────── --}}
         <div class="cd-price-box">
           <div class="cd-price-box__header">
-            <p class="cd-price-from">Prezzo a partire da</p>
-            <div class="cd-price-main">{{ \App\Models\Departure::formatPrice($departure->min_price) }}</div>
+            <p class="cd-price-from">Prezzo attuale da</p>
+            <div class="cd-price-main">{{ \App\Models\Departure::formatPrice($currentMinPrice) }}</div>
             <p class="cd-price-sub">per persona · camera doppia · tasse incluse</p>
+            @if($departure->min_price < $currentMinPrice)
+            <p class="cd-price-historic">
+              <i class="fas fa-chart-line mr-1"></i>Minimo storico: {{ \App\Models\Departure::formatPrice($departure->min_price) }}
+            </p>
+            @endif
           </div>
           <div class="cd-price-box__body">
             @if($cabins->isNotEmpty())

@@ -235,7 +235,11 @@ class CrocieraController extends Controller
                 ->get(['id', 'category_code', 'target_price'])
                 ->keyBy('category_code');
 
-            return view('crociere.show', compact('departure', 'cabins', 'isFavorite', 'userAlerts'));
+            // Prezzo attuale: minimo dalle sole categorie visualizzabili (IS/OS/BK/MS/SU)
+            $currentMinPrice = $cabins->whereIn('cruisehost_cat', ['IS', 'OS', 'BK', 'MS', 'SU'])->min('price')
+                ?? $departure->min_price;
+
+            return view('crociere.show', compact('departure', 'cabins', 'isFavorite', 'userAlerts', 'currentMinPrice'));
 
         } catch (\Exception $e) {
             Log::error('Errore recupero dettagli partenza: ' . $e->getMessage());
