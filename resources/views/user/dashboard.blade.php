@@ -1,303 +1,263 @@
 @extends('layouts.app')
-<link rel="stylesheet" href="{{ asset('/css/dashboard.css') }}">
+
 @section('title', 'Dashboard - You Price')
 
 @section('content')
-<!-- Hero Section -->
-<div class="hero-section">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h2 class="mb-2">👋 Benvenuto, {{ $user->name }} {{ $user->surname }}</h2>
-                <p class="mb-0 opacity-75">La tua prossima avventura in mare ti aspetta</p>
-            </div>
-            <div class="col-md-4 text-end">
-                <span class="badge bg-light text-dark px-3 py-2">
-                    <i class="fas fa-calendar me-2"></i>Membro da {{ $stats['member_since'] }}
-                </span>
-            </div>
+
+{{-- ═══ PROFILO HEADER ═══════════════════════════════════════════════════════ --}}
+<div class="dash-profile-header">
+  <div class="container">
+    <div class="row align-items-center">
+
+      <div class="col-auto">
+        <div class="dash-avatar">
+          {{ strtoupper(substr($user->name, 0, 1)) }}{{ strtoupper(substr($user->surname, 0, 1)) }}
         </div>
+      </div>
+
+      <div class="col">
+        <h4 class="mb-1">{{ $user->name }} {{ $user->surname }}</h4>
+        <p class="mb-2"><i class="fas fa-envelope mr-1"></i>{{ $user->email }}</p>
+        <div>
+          <span class="dash-pill"><i class="fas fa-calendar mr-1"></i>Membro da {{ $stats['member_since'] }}</span>
+          <span class="dash-pill"><i class="fas fa-user mr-1"></i>Utente registrato</span>
+          @if($stats['favorites_count'] > 0)
+            <span class="dash-pill"><i class="fas fa-heart mr-1"></i>{{ $stats['favorites_count'] }} preferit{{ $stats['favorites_count'] == 1 ? 'a' : 'e' }}</span>
+          @endif
+        </div>
+      </div>
+
+      <div class="col-auto d-none d-md-block">
+        <a href="{{ route('crociere.index') }}" class="btn btn-light btn-sm font-weight-bold">
+          <i class="fas fa-search mr-1"></i> Nuova Ricerca
+        </a>
+      </div>
+
     </div>
+  </div>
 </div>
 
-<div class="container mt-4">
-    <!-- Quick Actions -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h5><i class="fas fa-bolt text-warning me-2"></i>Azioni Rapide</h5>
+{{-- ═══ CORPO ══════════════════════════════════════════════════════════════════ --}}
+<div class="container mt-4 pb-5">
+
+  {{-- ── Stat Cards ────────────────────────────────────────────────────────── --}}
+  <div class="row mb-4">
+    <div class="col-md-4 mb-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number" id="stat-total-searches">{{ $stats['total_searches'] }}</div>
+            <div class="text-muted small">Ricerche effettuate</div>
+          </div>
+          <i class="fas fa-search fa-2x stat-icon"></i>
         </div>
-        
-        <div class="col-md-3 col-sm-6 mb-3">
-            <a href="{{ route('crociere.index') }}" class="text-decoration-none">
-                <div class="card quick-action-card text-center p-4 bg-primary text-white h-100">
-                    <i class="fas fa-search quick-action-icon"></i>
-                    <h6 class="mb-0">Nuova Ricerca</h6>
-                    <small class="opacity-75">Trova la tua crociera ideale</small>
-                </div>
-            </a>
-        </div> 
-       {{--  <div class="col-md-3 col-sm-6 mb-3">
-            <a href="{{ route('alerts.index') }}" class="text-decoration-none">
-                <div class="card quick-action-card text-center p-4 h-100">
-                    <i class="fas fa-bell quick-action-icon text-warning"></i>
-                    <h6 class="mb-0">Alert Prezzi</h6>
-                    <small class="text-muted">{{ $stats['active_alerts'] }} alert attivi</small>
-                </div>
-            </a>
-        </div> --}}
-        
-       {{--  <div class="col-md-3 col-sm-6 mb-3">
-            <a href="{{ route('admin.analytics.index') }}" class="text-decoration-none">
-                <div class="card quick-action-card text-center p-4 h-100">
-                    <i class="fas fa-chart-line quick-action-icon text-info"></i>
-                    <h6 class="mb-0">Le Mie Statistiche</h6>
-                    <small class="text-muted">Analizza le tue ricerche</small>
-                </div>
-            </a>
-        </div> --}}
+      </div>
     </div>
 
-    <!-- Statistiche -->
-    <div class="row mb-4">
-        <div class="col-12 mb-3">
-            <h5><i class="fas fa-chart-bar me-2"></i>Panoramica</h5>
+    <div class="col-md-4 mb-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="stat-number" id="stat-cruises-viewed">{{ $stats['cruises_viewed'] }}</div>
+            <div class="text-muted small">Crociere viste</div>
+          </div>
+          <i class="fas fa-eye fa-2x stat-icon"></i>
         </div>
-        
-        <div class="col-md-4 col-sm-6 mb-4">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-number" id="stat-total-searches">{{ $stats['total_searches'] }}</div>
-                        <small class="text-muted">Ricerche Effettuate</small>
-                    </div>
-                    <i class="fas fa-search fa-2x text-primary opacity-25"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 col-sm-6 mb-4">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-number" id="stat-cruises-viewed">{{ $stats['cruises_viewed'] }}</div>
-                        <small class="text-muted">Crociere Viste</small>
-                    </div>
-                    <i class="fas fa-eye fa-2x text-info opacity-25"></i>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 col-sm-6 mb-4">
-            <a href="#favorites-section" class="text-decoration-none" onclick="document.getElementById('favorites-section')?.scrollIntoView({behavior: 'smooth', block: 'start'});">
-                <div class="stat-card" style="cursor: pointer; transition: transform 0.2s;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-number" id="stat-favorites-count">{{ $stats['favorites_count'] }}</div>
-                            <small class="text-muted">Preferiti</small>
-                        </div>
-                        <i class="fas fa-heart fa-2x text-danger opacity-25"></i>
-                    </div>
-                </div>
-            </a>
-        </div>
-        
-       {{--  <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-number">{{ $stats['active_alerts'] }}</div>
-                        <small class="text-muted">Alert Attivi</small>
-                    </div>
-                    <i class="fas fa-bell fa-2x text-warning opacity-25"></i>
-                </div>
-            </div>
-        </div> --}}
+      </div>
     </div>
 
-    <div class="row">
-        <!-- Colonna Sinistra -->
-        <div class="col-lg-8">
-            <!-- Ricerche Recenti -->
-            @if($recent_searches->isNotEmpty())
-            <div class="card mb-4 border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i>Ricerche Recenti</h5>
-                    </div>
-                    
-                    @foreach($recent_searches as $search)
-                    <div class="recent-search-item">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div class="flex-grow-1">
-                                <p class="mb-1 fw-bold">{{ $search['search_params'] }}</p>
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>{{ $search['time_ago'] }}
-                                </small>
-                            </div>
-                            <div class="text-end">
-                                @if($search['total_matches'] > 0)
-                                    <span class="badge bg-success">{{ $search['total_matches'] }} risultati</span>
-                                @else
-                                    <span class="badge bg-secondary">Nessun risultato</span>
-                                @endif
-                            </div>
-                        </div>
-                        @if($search['avg_price_found'])
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">Prezzo medio trovato:</small>
-                            <small class="fw-bold text-success">{{ $search['avg_price_found'] }}</small>
-                        </div>
-                        @endif
-                    </div>
-                    @endforeach
-                </div>
+    <div class="col-md-4 mb-3">
+      <a href="#favorites-section" class="text-decoration-none"
+         onclick="event.preventDefault(); document.getElementById('favorites-section')?.scrollIntoView({behavior:'smooth'});">
+        <div class="stat-card" style="cursor:pointer;">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="stat-number" id="stat-favorites-count">{{ $stats['favorites_count'] }}</div>
+              <div class="text-muted small">Crociere preferite</div>
             </div>
-            @endif
+            <i class="fas fa-heart fa-2x" style="color:#e53935; opacity:.2;"></i>
+          </div>
         </div>
+      </a>
+    </div>
+  </div>
 
-        <!-- Colonna Destra -->
-        <div class="col-lg-4">
-            <!-- Alert Prezzi Attivi -->
-            @if($price_alerts->isNotEmpty())
-            <div class="card mb-4 border-0 shadow-sm price-alert">
-                <div class="card-body">
-                    <h6 class="mb-3">
-                        <i class="fas fa-bell text-danger me-2"></i>Alert Prezzi Attivi
-                        <span class="badge bg-danger float-end">{{ $price_alerts->count() }}</span>
-                    </h6>
-                    
-                    @foreach($price_alerts as $alert)
-                    <div class="{{ $loop->last ? '' : 'mb-3 pb-3 border-bottom' }}">
-                        <div class="d-flex justify-content-between mb-2">
-                            <small class="fw-bold">{{ $alert['ship'] }}</small>
-                            @if($alert['is_reached'])
-                                <span class="badge bg-success">Raggiunto!</span>
-                            @else
-                                <span class="badge bg-info">In monitoraggio</span>
-                            @endif
-                        </div>
-                        <small class="text-muted d-block mb-1">
-                            {{ $alert['itinerary'] }} • {{ $alert['departure_date'] }}
-                        </small>
-                        <small class="text-muted d-block mb-2">
-                            Categoria: {{ $alert['category_code'] }}
-                        </small>
-                        <div class="progress" style="height: 5px;">
-                            <div class="progress-bar {{ $alert['is_reached'] ? 'bg-success' : 'bg-info' }}" 
-                                 style="width: {{ $alert['progress_percentage'] }}%">
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between mt-1">
-                            <small class="text-muted">Target: {{ $alert['target_price_formatted'] }}</small>
-                            <small class="{{ $alert['is_reached'] ? 'text-success fw-bold' : 'text-muted' }}">
-                                Ora: {{ $alert['current_price_formatted'] }}
-                                @if($alert['is_reached']) <i class="fas fa-check-circle ms-1"></i> @endif
-                            </small>
-                        </div>
-                    </div>
-                    @endforeach
-                    
-                    <a href="{{ route('alerts.index') }}" class="btn btn-sm btn-outline-danger w-100 mt-3">
-                        Gestisci Alert
-                    </a>
-                </div>
-            </div>
-            @endif
+  {{-- ── Layout 2 colonne ──────────────────────────────────────────────────── --}}
+  <div class="row mb-2">
 
-            <!-- Attività Recente -->
-            @if($activity_timeline->isNotEmpty())
-            <div class="card mb-4 border-0 shadow-sm">
-                <div class="card-body">
-                    <h6 class="mb-3"><i class="fas fa-clock text-primary me-2"></i>Attività Recente</h6>
-                    
-                    @foreach($activity_timeline as $activity)
-                    <div class="timeline-item {{ $loop->last ? '' : 'mb-3' }}" 
-                         style="{{ $loop->last ? 'border-left: none; padding-bottom: 0;' : '' }}">
-                        <small class="text-muted d-block">{{ $activity['time_ago'] }}</small>
-                        <p class="mb-0 small">{!! $activity['description'] !!}</p>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            <!-- Consigli Personalizzati -->
-            @if($recommendations)
-            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <div class="card-body text-white">
-                    <h6 class="mb-3">
-                        <i class="fas fa-magic me-2"></i>Consiglio per Te
-                    </h6>
-                    <p class="small mb-3">
-                        {!! $recommendations['message'] !!}
-                    </p>
-                    <a href="{{ route('crociere.index') }}" class="btn btn-light btn-sm w-100">
-                        <i class="fas fa-arrow-right me-2"></i>Scopri le offerte
-                    </a>
-                </div>
-            </div>
-            @endif
+    {{-- Colonna sinistra: Ricerche Recenti ──────────────────────────────── --}}
+    <div class="col-lg-7 mb-4">
+      @if($recent_searches->isNotEmpty())
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-history mr-2" style="color:#1a7a8a;"></i>Ricerche Recenti</span>
+          <span class="badge badge-secondary">{{ $recent_searches->count() }}</span>
         </div>
+        <div class="card-body p-0">
+          @foreach($recent_searches as $search)
+          <div class="search-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1 mr-3">
+                <div class="search-item__params">{{ $search['search_params'] ?: 'Ricerca generica' }}</div>
+                <div class="search-item__meta">
+                  <i class="fas fa-clock mr-1"></i>{{ $search['time_ago'] }}
+                  @if($search['avg_price_found'])
+                    &nbsp;·&nbsp; Prezzo medio: <strong style="color:#4caf50;">{{ $search['avg_price_found'] }}</strong>
+                  @endif
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                @if($search['total_matches'] > 0)
+                  <span class="badge badge-success">{{ $search['total_matches'] }} risultati</span>
+                @else
+                  <span class="badge badge-secondary">Nessun risultato</span>
+                @endif
+              </div>
+            </div>
+          </div>
+          @endforeach
+        </div>
+      </div>
+      @else
+      <div class="card">
+        <div class="card-body text-center text-muted py-5">
+          <i class="fas fa-search fa-3x mb-3 d-block" style="opacity:.2;"></i>
+          <p class="mb-2">Nessuna ricerca ancora effettuata.</p>
+          <a href="{{ route('crociere.index') }}" class="btn btn-sm" style="background:#1a7a8a; color:#fff;">
+            Inizia a cercare
+          </a>
+        </div>
+      </div>
+      @endif
     </div>
 
-    <!-- Sezione Preferiti - Tutta Larghezza -->
-    @if($favorites->isNotEmpty())
-    <div class="row" id="favorites-section">
-        <div class="col-12">
-            <div class="card mb-4 border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="fas fa-heart text-danger me-2"></i>I Miei Preferiti</h5>
-                        <span class="badge bg-danger">{{ $stats['favorites_count'] }} {{ $stats['favorites_count'] == 1 ? 'crociera' : 'crociere' }}</span>
-                    </div>
-                    
-                    <div class="row">
-                        @foreach($favorites as $favorite)
-                        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                            <div class="card favorite-cruise-card border-0 h-100">
-                                <div class="favorite-badge">
-                                    <i class="fas fa-heart text-danger"></i>
-                                </div>
-                                <div class="card-body d-flex flex-column">
-                                    <span class="badge {{ $favorite['availability']['badge_class'] }} mb-2 align-self-start">
-                                        {{ $favorite['availability']['label'] }}
-                                    </span>
-                                    <h6 class="fw-bold">{{ $favorite['ship'] }}</h6>
-                                    <p class="text-muted mb-2 small">
-                                        <i class="fas fa-map-marker-alt me-1"></i>{{ $favorite['itinerary'] }}
-                                    </p>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <small class="text-muted">
-                                            <i class="fas fa-calendar me-1"></i>
-                                            {{ $favorite['departure_date'] ?? 'Data da definire' }}
-                                        </small>
-                                        <small class="text-muted">
-                                            <i class="fas fa-moon me-1"></i>{{ $favorite['duration'] }}
-                                        </small>
-                                    </div>
-                                    <div class="mt-auto">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h5 class="text-success mb-0">{{ $favorite['price_formatted'] }}</h5>
-                                                <small class="text-muted">a persona</small>
-                                            </div>
-                                            <a href="{{ route('crociere.show', $favorite['id']) }}"
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-eye me-1"></i>Dettagli
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
+    {{-- Colonna destra: Alert + Attività ────────────────────────────────── --}}
+    <div class="col-lg-5 mb-4">
+
+      {{-- Alert Prezzi Attivi --}}
+      @if($price_alerts->isNotEmpty())
+      <div class="card mb-4" style="border-left: 4px solid #e53935;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fas fa-bell mr-2 text-danger"></i>Alert Prezzi Attivi</span>
+          <span class="badge badge-danger">{{ $price_alerts->count() }}</span>
         </div>
+        <div class="card-body">
+          @foreach($price_alerts as $alert)
+          <div class="alert-card-inner">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong class="small">{{ $alert['ship'] }}</strong>
+              @if($alert['is_reached'])
+                <span class="badge badge-success">Raggiunto!</span>
+              @else
+                <span class="badge" style="background:#1a7a8a; color:#fff;">In monitoraggio</span>
+              @endif
+            </div>
+            <div class="text-muted small mb-1">{{ $alert['itinerary'] }} · {{ $alert['departure_date'] }}</div>
+            <div class="progress mb-1">
+              <div class="progress-bar {{ $alert['is_reached'] ? 'bg-success' : '' }}"
+                   style="width:{{ $alert['progress_percentage'] }}%; {{ $alert['is_reached'] ? '' : 'background:#1a7a8a;' }}">
+              </div>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="small text-muted">Target: <strong>{{ $alert['target_price_formatted'] }}</strong></span>
+              <span class="small {{ $alert['is_reached'] ? 'text-success font-weight-bold' : 'text-muted' }}">
+                Ora: {{ $alert['current_price_formatted'] }}
+                @if($alert['is_reached'])<i class="fas fa-check-circle ml-1"></i>@endif
+              </span>
+            </div>
+          </div>
+          @endforeach
+          <a href="{{ route('alerts.index') }}" class="btn btn-sm btn-outline-danger btn-block mt-3">
+            Gestisci Alert
+          </a>
+        </div>
+      </div>
+      @endif
+
+      {{-- Attività Recente --}}
+      @if($activity_timeline->isNotEmpty())
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-clock mr-2" style="color:#1a7a8a;"></i>Attività Recente
+        </div>
+        <div class="card-body">
+          @foreach($activity_timeline as $activity)
+          <div class="timeline-item">
+            <span class="time-ago">{{ $activity['time_ago'] }}</span>
+            <span>{!! $activity['description'] !!}</span>
+          </div>
+          @endforeach
+        </div>
+      </div>
+      @endif
+
     </div>
-    @endif
+  </div>
+
+  {{-- ── Preferiti (tutta larghezza) ────────────────────────────────────────── --}}
+  @if($favorites->isNotEmpty())
+  <div class="mb-4" id="favorites-section">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-heart text-danger mr-2"></i>I Miei Preferiti</span>
+        <span class="badge badge-danger">{{ $stats['favorites_count'] }} {{ $stats['favorites_count'] == 1 ? 'crociera' : 'crociere' }}</span>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          @foreach($favorites as $fav)
+          <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+            <div class="fav-card">
+              <div class="fav-card__body">
+                <span class="badge {{ $fav['availability']['badge_class'] }} mb-2">{{ $fav['availability']['label'] }}</span>
+                <div class="fav-card__ship">{{ $fav['ship'] }}</div>
+                <div class="fav-card__route"><i class="fas fa-map-marker-alt mr-1"></i>{{ $fav['itinerary'] }}</div>
+                <div class="fav-card__meta">
+                  <i class="fas fa-calendar mr-1"></i>{{ $fav['departure_date'] }}
+                  &nbsp;·&nbsp;
+                  <i class="fas fa-moon mr-1"></i>{{ $fav['duration'] }}
+                </div>
+                <div class="mt-auto pt-2 d-flex justify-content-between align-items-end">
+                  <div>
+                    <div class="fav-card__price">{{ $fav['price_formatted'] }}</div>
+                    <div class="fav-card__price-label">a persona</div>
+                  </div>
+                  <a href="{{ route('crociere.show', $fav['id']) }}"
+                     class="btn btn-sm" style="background:#1a7a8a; color:#fff;">
+                    <i class="fas fa-eye mr-1"></i>Dettagli
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          @endforeach
+        </div>
+      </div>
+    </div>
+  </div>
+  @endif
+
+  {{-- ── Consigli Personalizzati ─────────────────────────────────────────── --}}
+  @if($recommendations)
+  <div class="reco-card">
+    <div class="d-flex align-items-start">
+      <i class="fas fa-magic fa-2x mr-3 mt-1" style="opacity:.8;"></i>
+      <div class="flex-grow-1">
+        <h6><i class="fas fa-lightbulb mr-1"></i>Consiglio per te</h6>
+        <p>{!! $recommendations['message'] !!}</p>
+        <a href="{{ route('crociere.index') }}" class="btn btn-light btn-sm font-weight-bold">
+          <i class="fas fa-arrow-right mr-1"></i>Scopri le offerte
+        </a>
+      </div>
+    </div>
+  </div>
+  @endif
+
 </div>
+
+{{-- ── FAB Nuova Ricerca (mobile) ────────────────────────────────────────────── --}}
+<a href="{{ route('crociere.index') }}" class="dash-fab d-md-none" title="Nuova Ricerca">
+  <i class="fas fa-search"></i>
+</a>
 
 @endsection
 

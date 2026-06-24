@@ -10,6 +10,7 @@
 
     <!-- Custom CSS -->
     <link href="{{ config('app.asset_url') }}/css/custom.css" rel="stylesheet">
+    <link href="{{ config('app.asset_url') }}/css/dashboard.css" rel="stylesheet">
 
     <!-- Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
@@ -17,6 +18,9 @@
 
     <!-- Styles -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Page-specific styles -->
+    @yield('styles')
 
     <!-- Livewire Styles -->
     @livewireStyles
