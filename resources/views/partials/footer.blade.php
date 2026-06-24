@@ -4,19 +4,19 @@
         {{-- SINISTRA: brand + CTA --}}
         <div class="fs-left">
             <a href="{{ url('/') }}">
-                <img src="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo.png' : asset('assets/img/logo.png') }}"
+                <img src="{{ config('app.asset_url') ? config('app.asset_url') . '/img/logo_white.png' : asset('assets/img/logo_white.png') }}"
                      alt="You-Price" class="fs-logo">
             </a>
             <p>Il primo servizio di crociere dove sei tu a decidere il prezzo. Trova la crociera dei tuoi sogni al budget che hai in testa.</p>
             <a href="{{ route('crociere.index') }}" class="fs-cta">
                 <i class="fas fa-search"></i> Fai la tua Ricerca!
             </a>
-            <div class="fs-social">
+            {{-- <div class="fs-social">
                 <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
                 <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
                 <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                 <a href="#" aria-label="X"><i class="fab fa-x-twitter"></i></a>
-            </div>
+            </div> --}}
         </div>
 
         {{-- DESTRA: link --}}
