@@ -837,7 +837,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ...(hasCurrent ? data.current_series.map(d => d.x) : []),
       ];
       const maxWeek = Math.max(...allXValues, 1);
-      const allWeeks = Array.from({ length: maxWeek + 1 }, (_, i) => maxWeek - i);
+      const allWeeks = Array.from({ length: maxWeek }, (_, i) => maxWeek - i);
 
       function buildSerie(points, name) {
         const map     = new Map(points.map(d => [d.x, d.y]));

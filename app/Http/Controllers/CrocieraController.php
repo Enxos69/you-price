@@ -351,6 +351,7 @@ class CrocieraController extends Controller
               AND p.port_to_id     = ?
               AND d.duration       = ?
               AND ph.category_code = ?
+              AND d.id            != ?
               AND d.deleted_at IS NULL
               AND p.deleted_at IS NULL
               AND TIMESTAMPDIFF(WEEK, ph.recorded_at, d.dep_date) BETWEEN 0 AND 24
@@ -363,6 +364,7 @@ class CrocieraController extends Controller
             $itinerary->port_to_id,
             $itinerary->duration,
             $category,
+            $id,
         ]);
 
         $byYear = [];
