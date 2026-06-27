@@ -36,19 +36,22 @@ class UserController extends Controller
         $user = User::findOrFail($request->id);
 
         $rules = [
-            'name' => 'required|string|max:255',
-            'surname' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $request->id,
-            'role' => 'required|in:1,2',
+            'name'     => 'required|string|max:255',
+            'surname'  => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email,' . $request->id,
+            'role'     => 'required|in:1,2',
             'abilitato' => 'required|boolean',
+            'password' => 'nullable|string|min:8|confirmed',
         ];
 
         $messages = [
-            'name.required' => 'Inserire il nome',
-            'surname.required' => 'Inserire il cognome',
-            'email.required' => 'Inserire la mail',
-            'email.email' => 'La mail deve avere un formato valido',
-            'email.unique' => 'Mail già utilizzata per la registrazione',
+            'name.required'       => 'Inserire il nome',
+            'surname.required'    => 'Inserire il cognome',
+            'email.required'      => 'Inserire la mail',
+            'email.email'         => 'La mail deve avere un formato valido',
+            'email.unique'        => 'Mail già utilizzata per la registrazione',
+            'password.min'        => 'La password deve essere di almeno 8 caratteri',
+            'password.confirmed'  => 'Le due password non coincidono',
         ];
 
 
@@ -63,14 +66,19 @@ class UserController extends Controller
             ]);
         }
 
-        // Aggiorna i dati dell'utente        
-        $user->update([
-            'name' => $request->input('name'),
-            'surname' => $request->input('surname'),
-            'email' => $request->input('email'),
-            'role' => $request->input('role'),
+        $data = [
+            'name'     => $request->input('name'),
+            'surname'  => $request->input('surname'),
+            'email'    => $request->input('email'),
+            'role'     => $request->input('role'),
             'abilitato' => $request->input('abilitato'),
-        ]);
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = bcrypt($request->input('password'));
+        }
+
+        $user->update($data);
 
         // Risposta di successo
         /* return response()->json(['success' => 'Utente aggiornato con successo.']); */

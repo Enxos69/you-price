@@ -45,6 +45,19 @@
                                     </option>
                                 </select>
                             </div>
+
+                            <hr>
+                            <p class="text-muted" style="font-size:13px;">Lascia vuoto per non modificare la password.</p>
+
+                            <div class="form-group">
+                                <label for="password">Nuova password</label>
+                                <input type="password" name="password" class="form-control" id="password" autocomplete="new-password">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="password_confirmation">Conferma password</label>
+                                <input type="password" name="password_confirmation" class="form-control" id="password_confirmation" autocomplete="new-password">
+                            </div>
                             <input type="hidden" name="id" id="id"
                             value="{{ isset($user->id) ? $user->id : '' }}">
                             {{--  <button type="submit" class="btn btn-primary">Aggiorna</button> --}}
