@@ -310,7 +310,7 @@ class CrocieraController extends Controller
             ->where('d.id', $id)
             ->whereNull('d.deleted_at')
             ->whereNull('p.deleted_at')
-            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id')
+            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id', 'd.duration')
             ->first();
 
         if (! $itinerary) {
@@ -324,6 +324,7 @@ class CrocieraController extends Controller
             ->where('p.cruise_line_id', $itinerary->cruise_line_id)
             ->where('p.port_from_id',   $itinerary->port_from_id)
             ->where('p.port_to_id',     $itinerary->port_to_id)
+            ->where('d.duration',       $itinerary->duration)
             ->whereNull('d.deleted_at')
             ->whereNull('p.deleted_at')
             ->distinct()
@@ -348,6 +349,7 @@ class CrocieraController extends Controller
               AND p.cruise_line_id = ?
               AND p.port_from_id   = ?
               AND p.port_to_id     = ?
+              AND d.duration       = ?
               AND ph.category_code = ?
               AND d.deleted_at IS NULL
               AND p.deleted_at IS NULL
@@ -359,6 +361,7 @@ class CrocieraController extends Controller
             $itinerary->cruise_line_id,
             $itinerary->port_from_id,
             $itinerary->port_to_id,
+            $itinerary->duration,
             $category,
         ]);
 
@@ -372,11 +375,30 @@ class CrocieraController extends Controller
             $series[] = ['name' => (string) $year, 'data' => $data];
         }
 
+        $currentRows = DB::select("
+            SELECT
+                TIMESTAMPDIFF(WEEK, ph.recorded_at, d.dep_date) AS weeks_before,
+                ROUND(AVG(ph.price), 2)                         AS avg_price
+            FROM price_history ph
+            JOIN departures d ON d.id = ph.departure_id
+            WHERE ph.departure_id  = ?
+              AND ph.category_code = ?
+              AND TIMESTAMPDIFF(WEEK, ph.recorded_at, d.dep_date) BETWEEN 0 AND 24
+            GROUP BY weeks_before
+            ORDER BY weeks_before DESC
+        ", [$id, $category]);
+
+        $currentSeries = array_map(
+            fn($r) => ['x' => (int) $r->weeks_before, 'y' => (float) $r->avg_price],
+            $currentRows
+        );
+
         return response()->json([
             'category'             => $category,
             'available_categories' => $availableCats,
             'series'               => $series,
-            'insufficient_data'    => count($series) < 1,
+            'current_series'       => $currentSeries,
+            'insufficient_data'    => count($series) < 1 && empty($currentSeries),
         ]);
     }
 
@@ -389,7 +411,7 @@ class CrocieraController extends Controller
             ->where('d.id', $id)
             ->whereNull('d.deleted_at')
             ->whereNull('p.deleted_at')
-            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id')
+            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id', 'd.duration')
             ->first();
 
         if (! $itinerary) {
@@ -403,6 +425,7 @@ class CrocieraController extends Controller
             ->where('p.cruise_line_id', $itinerary->cruise_line_id)
             ->where('p.port_from_id',   $itinerary->port_from_id)
             ->where('p.port_to_id',     $itinerary->port_to_id)
+            ->where('d.duration',       $itinerary->duration)
             ->whereNull('d.deleted_at')
             ->whereNull('p.deleted_at')
             ->distinct()
@@ -436,6 +459,7 @@ class CrocieraController extends Controller
               AND p.cruise_line_id = ?
               AND p.port_from_id   = ?
               AND p.port_to_id     = ?
+              AND d.duration       = ?
               AND d.deleted_at IS NULL
               AND p.deleted_at IS NULL
             GROUP BY edition_year, dep_month
@@ -446,6 +470,7 @@ class CrocieraController extends Controller
             $itinerary->cruise_line_id,
             $itinerary->port_from_id,
             $itinerary->port_to_id,
+            $itinerary->duration,
         ]);
 
         $monthNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];

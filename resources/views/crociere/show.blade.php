@@ -829,29 +829,57 @@ document.addEventListener('DOMContentLoaded', function () {
       msg.textContent = '';
       if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
 
-      // Asse X completo: tutte le settimane da maxWeek a 0 (proporzionale al tempo)
-      const maxWeek = Math.max(...data.series.flatMap(s => s.data.map(d => d.x)), 1);
+      const hasCurrent = data.current_series && data.current_series.length > 0;
+
+      // Asse X: settimane da maxWeek a 0, considerando sia serie storiche che partenza corrente
+      const allXValues = [
+        ...data.series.flatMap(s => s.data.map(d => d.x)),
+        ...(hasCurrent ? data.current_series.map(d => d.x) : []),
+      ];
+      const maxWeek = Math.max(...allXValues, 1);
       const allWeeks = Array.from({ length: maxWeek + 1 }, (_, i) => maxWeek - i);
 
-      const opts = chartBase('Prezzo medio per settimane prima della partenza');
-      opts.stroke = { width: 2, curve: 'straight' }; // linea piatta dove il prezzo non cambia
-      opts.series = data.series.map(s => {
-        const map     = new Map(s.data.map(d => [d.x, d.y]));
-        const minWeek = Math.min(...s.data.map(d => d.x)); // ultima settimana con dato reale
+      function buildSerie(points, name) {
+        const map     = new Map(points.map(d => [d.x, d.y]));
+        const minWeek = Math.min(...points.map(d => d.x));
         let last = null;
         return {
-          name: s.name,
+          name,
           data: allWeeks.map(w => {
             if (map.has(w)) last = map.get(w);
-            return w >= minWeek ? last : null; // null per settimane non ancora rilevate
+            return w >= minWeek ? last : null;
           }),
         };
-      });
+      }
+
+      const historicalSeries = data.series.map(s => buildSerie(s.data, `Media ${s.name}`));
+      const currentSerie     = hasCurrent ? buildSerie(data.current_series, 'Questa partenza') : null;
+
+      const chartSeries  = hasCurrent ? [...historicalSeries, currentSerie] : historicalSeries;
+      const strokeWidths = [...historicalSeries.map(() => 1.5), ...(hasCurrent ? [3] : [])];
+      const muteColors   = ['#adb5bd', '#ced4da', '#6c757d', '#868e96', '#b0bec5'];
+      const chartColors  = [
+        ...historicalSeries.map((_, i) => muteColors[i % muteColors.length]),
+        ...(hasCurrent ? ['#1a7a8a'] : []),
+      ];
+
+      if (!hasCurrent) {
+        msg.textContent = 'Nessun dato disponibile per questa partenza. Il grafico mostra la media storica delle edizioni precedenti dello stesso itinerario.';
+        msg.style.display = '';
+      } else {
+        msg.textContent = '';
+        msg.style.display = 'none';
+      }
+
+      const opts = chartBase('Prezzo medio per settimane prima della partenza');
+      opts.stroke = { width: strokeWidths, curve: 'straight' };
+      opts.colors = chartColors;
+      opts.series = chartSeries;
       opts.xaxis = {
         type: 'category',
         categories: allWeeks.map(w => w === 0 ? 'partenza' : `sett. ${w}`),
         title: { text: 'Settimane prima della partenza', style: { fontSize: '11px', color: '#999' } },
-        tickAmount: Math.min(allWeeks.length, 13), // max 13 label sull'asse
+        tickAmount: Math.min(allWeeks.length, 13),
         labels: { rotate: -45, style: { fontSize: '10px' } },
       };
       weeklyChart = new ApexCharts(el, opts);
