@@ -912,6 +912,21 @@ document.addEventListener('DOMContentLoaded', function () {
         categories: MONTH_NAMES,
         title: { text: 'Mese di partenza', style: { fontSize: '11px', color: '#999' } },
       };
+
+      if (data.dep_month) {
+        opts.annotations = {
+          xaxis: [{
+            x: MONTH_NAMES[data.dep_month - 1],
+            borderColor: '#1a7a8a',
+            borderWidth: 2,
+            label: {
+              text: 'Questa partenza',
+              style: { color: '#fff', background: '#1a7a8a', fontSize: '11px' },
+            },
+          }],
+        };
+      }
+
       monthlyChart = new ApexCharts(el, opts);
       monthlyChart.render();
     } catch (e) {

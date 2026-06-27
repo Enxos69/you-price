@@ -413,7 +413,7 @@ class CrocieraController extends Controller
             ->where('d.id', $id)
             ->whereNull('d.deleted_at')
             ->whereNull('p.deleted_at')
-            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id', 'd.duration')
+            ->select('p.cruise_name', 'p.cruise_line_id', 'p.port_from_id', 'p.port_to_id', 'd.duration', 'd.dep_date')
             ->first();
 
         if (! $itinerary) {
@@ -462,6 +462,7 @@ class CrocieraController extends Controller
               AND p.port_from_id   = ?
               AND p.port_to_id     = ?
               AND d.duration       = ?
+              AND d.id            != ?
               AND d.deleted_at IS NULL
               AND p.deleted_at IS NULL
             GROUP BY edition_year, dep_month
@@ -473,6 +474,7 @@ class CrocieraController extends Controller
             $itinerary->port_from_id,
             $itinerary->port_to_id,
             $itinerary->duration,
+            $id,
         ]);
 
         $monthNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
@@ -488,7 +490,7 @@ class CrocieraController extends Controller
             for ($m = 1; $m <= 12; $m++) {
                 $data[] = $monthMap[$m] ?? null;
             }
-            $series[] = ['name' => (string) $year, 'data' => $data];
+            $series[] = ['name' => "Media {$year}", 'data' => $data];
         }
 
         return response()->json([
@@ -496,6 +498,7 @@ class CrocieraController extends Controller
             'available_categories' => $availableCats,
             'categories'           => $monthNames,
             'series'               => $series,
+            'dep_month'            => (int) date('n', strtotime($itinerary->dep_date)),
         ]);
     }
 
