@@ -6,6 +6,77 @@
 /* ── CRUISE DETAIL PAGE ──────────────────────────────────────────── */
 .cruise-detail-page { background: #f4f6f8; min-height: 100vh; }
 
+body.modal-open {
+  overflow: hidden;
+}
+.quote-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 90px 16px 24px;
+  background: rgba(0, 0, 0, 0.55);
+  isolation: isolate;
+}
+.quote-modal-overlay.is-open {
+  display: flex;
+}
+.quote-modal-card {
+  position: relative;
+  z-index: 2147483647;
+  width: min(900px, 100%);
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.quote-modal-card .modal-header {
+  padding: 1rem 1.25rem;
+}
+.quote-modal-card .modal-body {
+  padding: 1.25rem;
+}
+.quote-modal-card .modal-footer {
+  padding: 1rem 1.25rem;
+}
+.quote-modal-card .form-group {
+  margin-bottom: 1rem;
+}
+.quote-modal-card .form-control {
+  border-radius: 8px;
+}
+.quote-modal-card .btn {
+  border-radius: 8px;
+  font-weight: 600;
+}
+.quote-modal-card .btn-primary {
+  background: #003580;
+  border-color: #003580;
+}
+.quote-modal-card .btn-primary:hover {
+  background: #002b62;
+  border-color: #002b62;
+}
+body.modal-open .navbar.fixed-top {
+  z-index: 1030 !important;
+}
+body.modal-open .leaflet-pane,
+body.modal-open .leaflet-top,
+body.modal-open .leaflet-bottom,
+body.modal-open .leaflet-control,
+body.modal-open .leaflet-container,
+body.modal-open .cd-itin-map-wrap,
+body.modal-open #cd-itin-map {
+  z-index: 0 !important;
+  position: relative !important;
+}
+body.modal-open .quote-modal-overlay {
+  z-index: 2147483647 !important;
+}
+
 /* Hero */
 .cd-hero {
   background: linear-gradient(135deg, #0d4f5c 0%, #1a7a8a 100%);
@@ -151,6 +222,13 @@
     $portTo    = $departure->product->portTo;
     $area      = $departure->product->area;
     $itinerary = $departure->product->itinerary;
+
+    $quickQuoteDateRange = request()->input('date_range') ?: ($departure->dep_date && $departure->arr_date ? $departure->dep_date->format('d/m/Y') . ' - ' . $departure->arr_date->format('d/m/Y') : 'Richiesta rapida');
+    $quickQuoteBudget = request()->input('budget') ?: (int) max(100, round(($currentMinPrice ?: 0) * 2));
+    $quickQuoteParticipants = request()->input('participants') ?: 2;
+    $quickQuotePortStart = request()->input('port_start') ?: ($departure->product->portFrom->name ?? '');
+    $quickQuoteNotes = request()->input('notes') ?: 'Richiesta rapida da dettaglio crociera';
+    $quickQuotePhone = request()->input('phone') ?: '';
   @endphp
 
   <div class="cd-hero"
@@ -444,10 +522,17 @@
               @endforeach
             @endif
 
-            <a href="{{ route('richiesta.store') }}"
-               class="btn btn-success btn-block cd-btn-cta mt-3">
-              <i class="fas fa-paper-plane mr-2"></i>Richiedi preventivo
-            </a>
+            <div class="mt-3">
+              @auth
+              <button type="button" class="btn btn-success btn-block cd-btn-cta" id="btn-open-quote-request">
+                <i class="fas fa-paper-plane mr-2"></i>Richiedi preventivo
+              </button>
+              @else
+              <a href="{{ route('register') }}" class="btn btn-success btn-block cd-btn-cta">
+                <i class="fas fa-user-plus mr-2"></i>Registrati per richiedere un preventivo
+              </a>
+              @endauth
+            </div>
 
             <button id="cd-favorite-btn"
                     class="btn btn-block mt-2 {{ $isFavorite ? 'btn-danger' : 'btn-outline-danger' }}"
@@ -458,6 +543,197 @@
             </button>
           </div>
         </div>
+
+        @auth
+        <div class="quote-modal-overlay" id="modalQuoteRequest" role="dialog" aria-modal="true" aria-labelledby="modalQuoteRequestLabel" aria-hidden="true">
+          <div class="quote-modal-card">
+            <div class="modal-header" style="background:#003580;color:#fff;">
+              <h5 class="modal-title" id="modalQuoteRequestLabel">
+                <i class="fas fa-paper-plane mr-2"></i> Richiedi una proposta personalizzata
+              </h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Chiudi">
+                <span aria-hidden="true" style="color:#fff;">&times;</span>
+              </button>
+            </div>
+            <form id="formQuoteRequest">
+              @csrf
+              <div class="modal-body">
+                <p class="text-muted mb-4">
+                  Compila il form con i tuoi parametri: il nostro team elaborerà una proposta personalizzata
+                  e ti ricontatterà nel più breve tempo possibile.
+                </p>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="qr_date_range">Periodo di viaggio <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="qr_date_range" name="date_range" placeholder="es. 01/06/2025 - 30/06/2025" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="qr_budget">Budget totale (€) <span class="text-danger">*</span></label>
+                      <input type="number" class="form-control" id="qr_budget" name="budget" min="1" step="1" placeholder="es. 2000" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="qr_participants">Numero partecipanti <span class="text-danger">*</span></label>
+                      <input type="number" class="form-control" id="qr_participants" name="participants" min="1" max="50" placeholder="es. 2" required>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="qr_port_start">Porto di imbarco preferito</label>
+                      <input type="text" class="form-control" id="qr_port_start" name="port_start" placeholder="es. Civitavecchia">
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label for="qr_phone">Telefono</label>
+                      <input type="tel" class="form-control" id="qr_phone" name="phone" placeholder="es. +39 333 1234567">
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="form-group">
+                      <label for="qr_notes">Note aggiuntive</label>
+                      <textarea class="form-control" id="qr_notes" name="notes" rows="3" placeholder="Destinazioni preferite, tipo di cabina, esigenze particolari..."></textarea>
+                    </div>
+                  </div>
+                </div>
+                <div id="qr-alert" class="alert d-none" role="alert"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annulla</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit-quote-request" style="background:#003580;border-color:#003580;min-width:140px;">
+                  <i class="fas fa-paper-plane mr-1"></i> Invia richiesta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.getElementById('formQuoteRequest');
+            var alertBox = document.getElementById('qr-alert');
+            var modal = document.getElementById('modalQuoteRequest');
+            var openButton = document.getElementById('btn-open-quote-request');
+            var closeButtons = modal ? modal.querySelectorAll('[data-dismiss="modal"]') : [];
+
+            if (!form || !alertBox || !modal) return;
+
+            function populateForm() {
+                var dateRange = @json($quickQuoteDateRange);
+                var budget = @json($quickQuoteBudget);
+                var participants = @json($quickQuoteParticipants);
+                var portStart = @json($quickQuotePortStart);
+                var phone = @json($quickQuotePhone);
+                var notes = @json($quickQuoteNotes);
+
+                document.getElementById('qr_date_range').value = dateRange || '';
+                document.getElementById('qr_budget').value = budget || '';
+                document.getElementById('qr_participants').value = participants || '';
+                document.getElementById('qr_port_start').value = portStart || '';
+                document.getElementById('qr_phone').value = phone || '';
+                document.getElementById('qr_notes').value = notes || '';
+                clearAlert();
+            }
+
+            function openModal() {
+                populateForm();
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('modal-open');
+            }
+
+            function closeModal() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('modal-open');
+            }
+
+            if (openButton) {
+                openButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    openModal();
+                });
+            }
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeModal();
+                });
+            });
+
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('is-open')) {
+                    closeModal();
+                }
+            });
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                clearAlert();
+
+                var submitButton = document.getElementById('btn-submit-quote-request');
+                var originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm mr-2" role="status"></span>Invio...';
+
+                fetch('{{ route('richiesta.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+                    },
+                    body: new FormData(form)
+                })
+                .then(function (response) {
+                    return response.json().then(function (data) {
+                        return { ok: response.ok, data: data };
+                    });
+                })
+                .then(function (result) {
+                    if (result.ok && result.data && result.data.success) {
+                        showAlert('success', result.data.message || 'Richiesta inviata con successo.');
+                        form.reset();
+                        setTimeout(function () {
+                            closeModal();
+                        }, 1800);
+                    } else {
+                        showAlert('danger', (result.data && result.data.message) || 'Si è verificato un errore.');
+                    }
+                })
+                .catch(function () {
+                    showAlert('danger', 'Si è verificato un errore. Riprova più tardi.');
+                })
+                .finally(function () {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                });
+            });
+
+            function showAlert(type, message) {
+                alertBox.className = 'alert alert-' + type;
+                alertBox.textContent = message;
+                alertBox.classList.remove('d-none');
+            }
+
+            function clearAlert() {
+                alertBox.className = 'alert d-none';
+                alertBox.textContent = '';
+            }
+        });
+        </script>
+        @endauth
 
         {{-- ── ALERT PREZZO ─────────────────────────────────────────────── --}}
         <div class="cd-alert-box">
